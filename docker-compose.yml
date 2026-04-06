@@ -1,0 +1,78 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: workshop-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: workshop123
+      POSTGRES_DB: workshop_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workshop -d workshop_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./workshop-backend
+    container_name: workshop-migrate
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: workshop_db
+      DB_USER: workshop
+      DB_PASSWORD: workshop123
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "node migrations/run.js && node scripts/seed.js"
+    restart: "no"
+
+  api:
+    build:
+      context: ./workshop-backend
+    container_name: workshop-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./workshop-backend/assets:/app/assets:ro
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: workshop_db
+      DB_USER: workshop
+      DB_PASSWORD: workshop123
+      JWT_SECRET: CAMBIA-ESTO-EN-PRODUCCION
+      JWT_EXPIRES_IN: 24h
+      WORKSHOP_NAME: Mi Taller Mecanico
+      WORKSHOP_ADDRESS: Calle Principal 123, Montevideo
+      WORKSHOP_PHONE: "+598 99 000 000"
+      WORKSHOP_EMAIL: taller@ejemplo.com
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    build:
+      context: ./workshop-frontend
+    container_name: workshop-frontend
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    depends_on:
+      - api
+
+volumes:
+  pg_data:
