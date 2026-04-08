@@ -12,3 +12,5 @@ coverage/
 .vscode/
 *.swp
 *.swo
+# CI workflow needs PAT with workflow scope - add manually via GitHub UI
+.github/
