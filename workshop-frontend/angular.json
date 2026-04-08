@@ -31,6 +31,9 @@
               "budgets": [
                 { "type": "initial", "maximumWarning": "2mb", "maximumError": "5mb" }
               ],
+              "optimization": {
+                "fonts": false
+              },
               "outputHashing": "all",
               "fileReplacements": [
                 {

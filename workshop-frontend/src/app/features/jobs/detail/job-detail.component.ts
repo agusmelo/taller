@@ -11,12 +11,14 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
-import { Job, JobItem, Payment } from '../../../core/models';
+import { NotificationService } from '../../../core/services/notification.service';
+import { Job } from '../../../core/models';
 import { StatusLabelPipe, PaymentMethodPipe, ItemTypePipe } from '../../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-job-detail',
@@ -24,24 +26,27 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
   imports: [
     CommonModule, FormsModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatDividerModule, MatFormFieldModule, MatInputModule, MatSelectModule,
-    MatDialogModule, MatSnackBarModule,
+    MatDialogModule, MatProgressSpinnerModule,
     StatusLabelPipe, PaymentMethodPipe, ItemTypePipe, AppCurrencyPipe
   ],
   template: `
-    <div class="page-container" *ngIf="job">
+    @if (loading) {
+      <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+    } @else if (job) {
+    <div class="page-container">
       <div class="page-header">
         <div>
           <h1>Trabajo {{ job.job_number }}</h1>
           <span [class]="'status-badge status-' + job.status" style="font-size:14px;">{{ job.status | statusLabel }}</span>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           @if (auth.isAdminOrRecep() && job.status === 'abierto') {
-            <button mat-raised-button color="accent" (click)="markDone()">
+            <button mat-raised-button color="accent" (click)="confirmMarkDone()">
               <mat-icon>check</mat-icon> Marcar terminado
             </button>
           }
-          <button mat-raised-button (click)="printPdf()">
-            <mat-icon>print</mat-icon> Imprimir PDF
+          <button mat-raised-button (click)="printPdf()" [disabled]="pdfLoading">
+            <mat-icon>print</mat-icon> {{ pdfLoading ? 'Generando...' : 'Imprimir PDF' }}
           </button>
           <button mat-button routerLink="/trabajos"><mat-icon>arrow_back</mat-icon> Volver</button>
         </div>
@@ -95,8 +100,8 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
           </div>
 
           @if (showAddItem) {
-            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;">
-              <mat-form-field appearance="outline" style="flex:2;" subscriptSizing="dynamic">
+            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
+              <mat-form-field appearance="outline" style="flex:2;min-width:160px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newItem.description" placeholder="Descripcion">
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:80px;" subscriptSizing="dynamic">
@@ -115,7 +120,9 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
               <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newItem.supplier" placeholder="Proveedor">
               </mat-form-field>
-              <button mat-raised-button color="primary" (click)="addItem()">Agregar</button>
+              <button mat-raised-button color="primary" (click)="addItem()" [disabled]="!newItem.description || savingItem">
+                {{ savingItem ? '...' : 'Agregar' }}
+              </button>
             </div>
           }
 
@@ -147,7 +154,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let i">
                 @if (auth.isAdminOrRecep() && job.status !== 'pagado') {
-                  <button mat-icon-button color="warn" (click)="deleteItem(i.id)">
+                  <button mat-icon-button color="warn" (click)="confirmDeleteItem(i.id, i.description)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
@@ -172,7 +179,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
           </div>
 
           @if (showAddPayment) {
-            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;">
+            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
               <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newPayment.amount" type="number" placeholder="Monto">
               </mat-form-field>
@@ -189,7 +196,10 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
               <mat-form-field appearance="outline" style="width:180px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newPayment.notes" placeholder="Notas">
               </mat-form-field>
-              <button mat-raised-button color="primary" (click)="addPayment()">Registrar</button>
+              <button mat-raised-button color="primary" (click)="addPayment()"
+                      [disabled]="!newPayment.amount || newPayment.amount <= 0 || savingPayment">
+                {{ savingPayment ? '...' : 'Registrar' }}
+              </button>
             </div>
           }
 
@@ -214,7 +224,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let p">
                 @if (auth.isAdmin()) {
-                  <button mat-icon-button color="warn" (click)="deletePayment(p.id)">
+                  <button mat-icon-button color="warn" (click)="confirmDeletePayment(p.id, p.amount)">
                     <mat-icon>delete</mat-icon>
                   </button>
                 }
@@ -241,6 +251,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
         </mat-card-content>
       </mat-card>
     </div>
+    }
   `
 })
 export class JobDetailComponent implements OnInit {
@@ -250,6 +261,10 @@ export class JobDetailComponent implements OnInit {
   showAddItem = false;
   showAddPayment = false;
   internalNotes = '';
+  loading = true;
+  pdfLoading = false;
+  savingItem = false;
+  savingPayment = false;
   newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '' };
 
@@ -257,68 +272,128 @@ export class JobDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private api: ApiService,
     public auth: AuthService,
-    private snackBar: MatSnackBar
+    private dialog: MatDialog,
+    private notify: NotificationService
   ) {}
 
   ngOnInit() { this.load(); }
 
   load() {
+    this.loading = true;
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.getJob(id).subscribe(j => {
-      this.job = j;
-      this.internalNotes = j.internal_notes || '';
+    this.api.getJob(id).subscribe({
+      next: j => { this.job = j; this.internalNotes = j.internal_notes || ''; this.loading = false; },
+      error: err => { this.notify.handleError(err); this.loading = false; }
     });
   }
 
+  confirmMarkDone() {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '380px',
+      data: {
+        title: 'Marcar como terminado',
+        message: '¿Esta seguro de marcar este trabajo como terminado?',
+        confirmText: 'Marcar terminado'
+      }
+    });
+    ref.afterClosed().subscribe(confirmed => { if (confirmed) this.markDone(); });
+  }
+
   markDone() {
-    this.api.updateJob(this.job!.id, { status: 'terminado' } as any).subscribe(() => {
-      this.snackBar.open('Trabajo marcado como terminado', 'OK', { duration: 3000 });
-      this.load();
+    this.api.updateJob(this.job!.id, { status: 'terminado' } as any).subscribe({
+      next: () => { this.notify.success('Trabajo marcado como terminado'); this.load(); },
+      error: err => this.notify.handleError(err)
     });
   }
 
   addItem() {
     if (!this.newItem.description) return;
-    this.api.addJobItem(this.job!.id, this.newItem).subscribe(() => {
-      this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
-      this.showAddItem = false;
-      this.load();
+    this.savingItem = true;
+    this.api.addJobItem(this.job!.id, this.newItem).subscribe({
+      next: () => {
+        this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
+        this.showAddItem = false;
+        this.savingItem = false;
+        this.notify.success('Item agregado');
+        this.load();
+      },
+      error: err => { this.notify.handleError(err); this.savingItem = false; }
     });
   }
 
+  confirmDeleteItem(itemId: string, description: string) {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '380px',
+      data: {
+        title: 'Eliminar item',
+        message: `¿Esta seguro de eliminar "${description}"?`,
+        confirmText: 'Eliminar'
+      }
+    });
+    ref.afterClosed().subscribe(confirmed => { if (confirmed) this.deleteItem(itemId); });
+  }
+
   deleteItem(itemId: string) {
-    this.api.deleteJobItem(this.job!.id, itemId).subscribe(() => this.load());
+    this.api.deleteJobItem(this.job!.id, itemId).subscribe({
+      next: () => { this.notify.success('Item eliminado'); this.load(); },
+      error: err => this.notify.handleError(err)
+    });
   }
 
   addPayment() {
     if (!this.newPayment.amount || this.newPayment.amount <= 0) return;
-    this.api.addPayment(this.job!.id, this.newPayment).subscribe(() => {
-      this.newPayment = { amount: 0, method: 'efectivo', reference: '', notes: '' };
-      this.showAddPayment = false;
-      this.snackBar.open('Pago registrado', 'OK', { duration: 3000 });
-      this.load();
+    this.savingPayment = true;
+    this.api.addPayment(this.job!.id, this.newPayment).subscribe({
+      next: () => {
+        this.newPayment = { amount: 0, method: 'efectivo', reference: '', notes: '' };
+        this.showAddPayment = false;
+        this.savingPayment = false;
+        this.notify.success('Pago registrado');
+        this.load();
+      },
+      error: err => { this.notify.handleError(err); this.savingPayment = false; }
     });
   }
 
+  confirmDeletePayment(paymentId: string, amount: number) {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '380px',
+      data: {
+        title: 'Eliminar pago',
+        message: `¿Esta seguro de eliminar el pago de $${amount}?`,
+        confirmText: 'Eliminar'
+      }
+    });
+    ref.afterClosed().subscribe(confirmed => { if (confirmed) this.deletePayment(paymentId); });
+  }
+
   deletePayment(paymentId: string) {
-    this.api.deletePayment(this.job!.id, paymentId).subscribe(() => this.load());
+    this.api.deletePayment(this.job!.id, paymentId).subscribe({
+      next: () => { this.notify.success('Pago eliminado'); this.load(); },
+      error: err => this.notify.handleError(err)
+    });
   }
 
   saveInternalNotes() {
     if (this.job && this.internalNotes !== (this.job.internal_notes || '')) {
-      this.api.updateJob(this.job.id, { internal_notes: this.internalNotes } as any).subscribe();
+      this.api.updateJob(this.job.id, { internal_notes: this.internalNotes } as any).subscribe({
+        next: () => this.notify.info('Notas guardadas'),
+        error: err => this.notify.handleError(err)
+      });
     }
   }
 
   printPdf() {
     const token = localStorage.getItem('workshop_token');
     const url = this.api.getJobPdfUrl(this.job!.id);
-    // Open PDF in new window with auth
+    this.pdfLoading = true;
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.blob())
       .then(blob => {
         const blobUrl = URL.createObjectURL(blob);
         window.open(blobUrl, '_blank');
-      });
+        this.pdfLoading = false;
+      })
+      .catch(() => { this.notify.error('Error al generar PDF'); this.pdfLoading = false; });
   }
 }

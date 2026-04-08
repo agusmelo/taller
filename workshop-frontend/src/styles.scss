@@ -79,3 +79,19 @@ html, body {
 .mt-16 { margin-top: 16px; }
 .mb-16 { margin-bottom: 16px; }
 .mr-8 { margin-right: 8px; }
+
+// Snackbar styles
+.snack-success .mdc-snackbar__surface {
+  background-color: #2e7d32 !important;
+}
+.snack-error .mdc-snackbar__surface {
+  background-color: #c62828 !important;
+}
+
+// Loading overlay
+.loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px;
+}
