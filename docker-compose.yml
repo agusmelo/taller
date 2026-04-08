@@ -57,6 +57,7 @@ services:
       WORKSHOP_ADDRESS: Calle Principal 123, Montevideo
       WORKSHOP_PHONE: "+598 99 000 000"
       WORKSHOP_EMAIL: taller@ejemplo.com
+      CORS_ORIGIN: http://localhost:4200,http://localhost
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     depends_on:
       db:

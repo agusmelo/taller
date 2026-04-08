@@ -9,12 +9,15 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Vehicle, Job, OwnershipHistory, Client } from '../../../core/models';
 import { VehicleFormComponent } from '../form/vehicle-form.component';
 import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
 @Component({
   selector: 'app-vehicle-detail',
@@ -22,10 +25,13 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
   imports: [
     CommonModule, RouterLink, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatAutocompleteModule, StatusLabelPipe
+    MatAutocompleteModule, MatProgressSpinnerModule, StatusLabelPipe
   ],
   template: `
-    <div class="page-container" *ngIf="vehicle">
+    @if (loading) {
+      <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+    } @else if (vehicle) {
+    <div class="page-container">
       <div class="page-header">
         <h1>{{ vehicle.plate_number }} - {{ vehicle.make }} {{ vehicle.model }}</h1>
         <div>
@@ -47,21 +53,25 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
         <mat-card class="mb-16">
           <mat-card-content>
             <h3>Transferir propiedad</h3>
-            <mat-form-field appearance="outline">
-              <mat-label>Buscar nuevo dueno</mat-label>
-              <input matInput [(ngModel)]="transferSearch" (input)="searchTransferClients()"
-                     [matAutocomplete]="transferAuto">
-              <mat-autocomplete #transferAuto="matAutocomplete" (optionSelected)="selectTransferClient($event)">
-                @for (c of transferClients; track c.id) {
-                  <mat-option [value]="c.id">{{ c.full_name }}</mat-option>
-                }
-              </mat-autocomplete>
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="mr-8">
-              <mat-label>Nota de transferencia</mat-label>
-              <input matInput [(ngModel)]="transferNotes">
-            </mat-form-field>
-            <button mat-raised-button color="primary" (click)="doTransfer()" [disabled]="!transferClientId">Confirmar</button>
+            <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+              <mat-form-field appearance="outline" style="flex:1;min-width:200px;">
+                <mat-label>Buscar nuevo dueno</mat-label>
+                <input matInput [(ngModel)]="transferSearch" (input)="searchTransferClients()"
+                       [matAutocomplete]="transferAuto">
+                <mat-autocomplete #transferAuto="matAutocomplete" (optionSelected)="selectTransferClient($event)">
+                  @for (c of transferClients; track c.id) {
+                    <mat-option [value]="c.id">{{ c.full_name }}</mat-option>
+                  }
+                </mat-autocomplete>
+              </mat-form-field>
+              <mat-form-field appearance="outline" style="flex:1;min-width:200px;">
+                <mat-label>Nota de transferencia</mat-label>
+                <input matInput [(ngModel)]="transferNotes">
+              </mat-form-field>
+              <button mat-raised-button color="primary" (click)="confirmTransfer()" [disabled]="!transferClientId || transferring">
+                {{ transferring ? 'Transfiriendo...' : 'Confirmar' }}
+              </button>
+            </div>
           </mat-card-content>
         </mat-card>
       }
@@ -123,38 +133,51 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
             class="clickable-row" (click)="goToJob(row.id)"></tr>
       </table>
     </div>
+    }
   `
 })
 export class VehicleDetailComponent implements OnInit {
   vehicle: Vehicle | null = null;
   history: OwnershipHistory[] = [];
   jobs: Job[] = [];
+  loading = true;
   showTransfer = false;
   transferSearch = '';
   transferClients: Client[] = [];
   transferClientId = '';
   transferNotes = '';
+  transferring = false;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private api: ApiService,
     public auth: AuthService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notify: NotificationService
   ) {}
 
   ngOnInit() { this.load(); }
 
   load() {
+    this.loading = true;
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.getVehicle(id).subscribe(v => this.vehicle = v);
+    this.api.getVehicle(id).subscribe({
+      next: v => { this.vehicle = v; this.loading = false; },
+      error: err => { this.notify.handleError(err); this.loading = false; }
+    });
     this.api.getOwnershipHistory(id).subscribe(h => this.history = h);
     this.api.getJobs({ vehicle_id: id }).subscribe(j => this.jobs = j);
   }
 
   edit() {
     const ref = this.dialog.open(VehicleFormComponent, { width: '500px', data: { vehicle: this.vehicle } });
-    ref.afterClosed().subscribe(r => { if (r) this.load(); });
+    ref.afterClosed().subscribe(r => {
+      if (r) {
+        this.notify.success('Vehiculo actualizado');
+        this.load();
+      }
+    });
   }
 
   searchTransferClients() {
@@ -164,10 +187,36 @@ export class VehicleDetailComponent implements OnInit {
 
   selectTransferClient(event: any) { this.transferClientId = event.option.value; }
 
+  confirmTransfer() {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Confirmar transferencia',
+        message: '¿Esta seguro de transferir la propiedad de este vehiculo?',
+        confirmText: 'Transferir'
+      }
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (confirmed) this.doTransfer();
+    });
+  }
+
   doTransfer() {
     const id = this.route.snapshot.paramMap.get('id')!;
+    this.transferring = true;
     this.api.transferOwnership(id, { new_client_id: this.transferClientId, transfer_notes: this.transferNotes })
-      .subscribe(() => { this.showTransfer = false; this.load(); });
+      .subscribe({
+        next: () => {
+          this.notify.success('Propiedad transferida correctamente');
+          this.showTransfer = false;
+          this.transferring = false;
+          this.transferClientId = '';
+          this.transferSearch = '';
+          this.transferNotes = '';
+          this.load();
+        },
+        error: err => { this.notify.handleError(err); this.transferring = false; }
+      });
   }
 
   goToJob(id: string) { this.router.navigate(['/trabajos', id]); }

@@ -9,8 +9,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatCardModule } from '@angular/material/card';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Client } from '../../../core/models';
 import { ClientFormComponent } from '../form/client-form.component';
 
@@ -19,7 +22,8 @@ import { ClientFormComponent } from '../form/client-form.component';
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatDialogModule, MatCardModule
+    MatFormFieldModule, MatInputModule, MatDialogModule, MatCardModule,
+    MatPaginatorModule, MatProgressSpinnerModule
   ],
   template: `
     <div class="page-container">
@@ -38,31 +42,41 @@ import { ClientFormComponent } from '../form/client-form.component';
         <mat-icon matPrefix>search</mat-icon>
       </mat-form-field>
 
-      <table mat-table [dataSource]="clients" class="mat-elevation-z1">
-        <ng-container matColumnDef="full_name">
-          <th mat-header-cell *matHeaderCellDef>Nombre</th>
-          <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
-        </ng-container>
-        <ng-container matColumnDef="type">
-          <th mat-header-cell *matHeaderCellDef>Tipo</th>
-          <td mat-cell *matCellDef="let c">{{ c.type === 'empresa' ? 'Empresa' : 'Individual' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="rut">
-          <th mat-header-cell *matHeaderCellDef>RUT</th>
-          <td mat-cell *matCellDef="let c">{{ c.rut || '-' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef>Telefono</th>
-          <td mat-cell *matCellDef="let c">{{ c.phone || '-' }}</td>
-        </ng-container>
-        <ng-container matColumnDef="vehicle_count">
-          <th mat-header-cell *matHeaderCellDef>Vehiculos</th>
-          <td mat-cell *matCellDef="let c">{{ c.vehicle_count }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="clickable-row" (click)="goToDetail(row.id)"></tr>
-      </table>
+      @if (loading) {
+        <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+      } @else {
+        <table mat-table [dataSource]="clients" class="mat-elevation-z1">
+          <ng-container matColumnDef="full_name">
+            <th mat-header-cell *matHeaderCellDef>Nombre</th>
+            <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
+          </ng-container>
+          <ng-container matColumnDef="type">
+            <th mat-header-cell *matHeaderCellDef>Tipo</th>
+            <td mat-cell *matCellDef="let c">{{ c.type === 'empresa' ? 'Empresa' : 'Individual' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="rut">
+            <th mat-header-cell *matHeaderCellDef>RUT</th>
+            <td mat-cell *matCellDef="let c">{{ c.rut || '-' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="phone">
+            <th mat-header-cell *matHeaderCellDef>Telefono</th>
+            <td mat-cell *matCellDef="let c">{{ c.phone || '-' }}</td>
+          </ng-container>
+          <ng-container matColumnDef="vehicle_count">
+            <th mat-header-cell *matHeaderCellDef>Vehiculos</th>
+            <td mat-cell *matCellDef="let c">{{ c.vehicle_count }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              class="clickable-row" (click)="goToDetail(row.id)"></tr>
+        </table>
+        <mat-paginator [length]="clients.length"
+                       [pageSize]="pageSize"
+                       [pageSizeOptions]="[10, 20, 50]"
+                       (page)="onPage($event)"
+                       showFirstLastButtons>
+        </mat-paginator>
+      }
     </div>
   `
 })
@@ -70,26 +84,38 @@ export class ClientListComponent implements OnInit {
   clients: Client[] = [];
   displayedColumns = ['full_name', 'type', 'rut', 'phone', 'vehicle_count'];
   searchQuery = '';
+  loading = false;
+  pageSize = 20;
   private searchTimeout: any;
 
   constructor(
     private api: ApiService,
     public auth: AuthService,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notify: NotificationService
   ) {}
 
   ngOnInit() { this.load(); }
 
   load() {
-    const params: Record<string, string> = {};
+    this.loading = true;
+    const params: Record<string, string> = { limit: String(this.pageSize) };
     if (this.searchQuery) params['q'] = this.searchQuery;
-    this.api.getClients(params).subscribe(c => this.clients = c);
+    this.api.getClients(params).subscribe({
+      next: c => { this.clients = c; this.loading = false; },
+      error: err => { this.notify.handleError(err); this.loading = false; }
+    });
   }
 
   onSearch() {
     clearTimeout(this.searchTimeout);
     this.searchTimeout = setTimeout(() => this.load(), 300);
+  }
+
+  onPage(event: PageEvent) {
+    this.pageSize = event.pageSize;
+    this.load();
   }
 
   goToDetail(id: string) {
@@ -101,6 +127,11 @@ export class ClientListComponent implements OnInit {
       width: '500px',
       data: { client }
     });
-    ref.afterClosed().subscribe(result => { if (result) this.load(); });
+    ref.afterClosed().subscribe(result => {
+      if (result) {
+        this.notify.success(client ? 'Cliente actualizado' : 'Cliente creado');
+        this.load();
+      }
+    });
   }
 }

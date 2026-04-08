@@ -7,8 +7,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Client, Vehicle, Job } from '../../../core/models';
 import { ClientFormComponent } from '../form/client-form.component';
 import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
@@ -18,10 +20,14 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
   standalone: true,
   imports: [
     CommonModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
-    MatTableModule, MatChipsModule, MatDialogModule, StatusLabelPipe
+    MatTableModule, MatChipsModule, MatDialogModule, MatProgressSpinnerModule,
+    StatusLabelPipe
   ],
   template: `
-    <div class="page-container" *ngIf="client">
+    @if (loading) {
+      <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+    } @else if (client) {
+    <div class="page-container">
       <div class="page-header">
         <h1>{{ client.full_name }}</h1>
         <div>
@@ -95,33 +101,45 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
             class="clickable-row" (click)="goToJob(row.id)"></tr>
       </table>
     </div>
+    }
   `
 })
 export class ClientDetailComponent implements OnInit {
   client: Client | null = null;
   vehicles: Vehicle[] = [];
   jobs: Job[] = [];
+  loading = true;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private api: ApiService,
     public auth: AuthService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notify: NotificationService
   ) {}
 
   ngOnInit() { this.load(); }
 
   load() {
+    this.loading = true;
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.getClient(id).subscribe(c => this.client = c);
+    this.api.getClient(id).subscribe({
+      next: c => { this.client = c; this.loading = false; },
+      error: err => { this.notify.handleError(err); this.loading = false; }
+    });
     this.api.getClientVehicles(id).subscribe(v => this.vehicles = v);
     this.api.getClientJobs(id).subscribe(j => this.jobs = j);
   }
 
   edit() {
     const ref = this.dialog.open(ClientFormComponent, { width: '500px', data: { client: this.client } });
-    ref.afterClosed().subscribe(r => { if (r) this.load(); });
+    ref.afterClosed().subscribe(r => {
+      if (r) {
+        this.notify.success('Cliente actualizado');
+        this.load();
+      }
+    });
   }
 
   goToVehicle(id: string) { this.router.navigate(['/vehiculos', id]); }

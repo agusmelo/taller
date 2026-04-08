@@ -12,18 +12,17 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ApiService } from '../../../core/services/api.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Vehicle, Client } from '../../../core/models';
 import { ClientFormComponent } from '../../clients/form/client-form.component';
 import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component';
-import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
-
 @Component({
   selector: 'app-job-create',
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterLink, MatCardModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatIconModule, MatSelectModule,
-    MatCheckboxModule, MatDividerModule, MatDialogModule, AppCurrencyPipe
+    MatCheckboxModule, MatDividerModule, MatDialogModule
   ],
   template: `
     <div class="page-container">
@@ -158,7 +157,7 @@ export class JobCreateComponent {
   saving = false;
   error = '';
 
-  constructor(private api: ApiService, private router: Router, private dialog: MatDialog) {}
+  constructor(private api: ApiService, private router: Router, private dialog: MatDialog, private notify: NotificationService) {}
 
   searchPlate() {
     if (!this.plateSearch) return;
@@ -199,8 +198,8 @@ export class JobCreateComponent {
       notes: this.notes || null,
       items: this.items.filter(i => i.description)
     }).subscribe({
-      next: (job) => this.router.navigate(['/trabajos', job.id]),
-      error: (err) => { this.saving = false; this.error = err.error?.error || 'Error al crear'; }
+      next: (job) => { this.notify.success('Trabajo creado'); this.router.navigate(['/trabajos', job.id]); },
+      error: (err) => { this.saving = false; this.error = this.notify.handleError(err); }
     });
   }
 }

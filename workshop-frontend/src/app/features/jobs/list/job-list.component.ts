@@ -9,8 +9,11 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { NotificationService } from '../../../core/services/notification.service';
 import { Job } from '../../../core/models';
 import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
@@ -21,6 +24,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
   imports: [
     CommonModule, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatChipsModule,
+    MatPaginatorModule, MatProgressSpinnerModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
@@ -34,7 +38,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
         }
       </div>
 
-      <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;">
+      <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
         <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
           <mat-label>Buscar...</mat-label>
           <input matInput [(ngModel)]="searchQuery" (input)="onSearch()">
@@ -51,41 +55,51 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
         </mat-form-field>
       </div>
 
-      <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
-        <ng-container matColumnDef="job_number">
-          <th mat-header-cell *matHeaderCellDef>Numero</th>
-          <td mat-cell *matCellDef="let j"><strong>{{ j.job_number }}</strong></td>
-        </ng-container>
-        <ng-container matColumnDef="client_name">
-          <th mat-header-cell *matHeaderCellDef>Cliente</th>
-          <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
-        </ng-container>
-        <ng-container matColumnDef="plate_number">
-          <th mat-header-cell *matHeaderCellDef>Patente</th>
-          <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
-        </ng-container>
-        <ng-container matColumnDef="vehicle">
-          <th mat-header-cell *matHeaderCellDef>Vehiculo</th>
-          <td mat-cell *matCellDef="let j">{{ j.make }} {{ j.model }}</td>
-        </ng-container>
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Estado</th>
-          <td mat-cell *matCellDef="let j">
-            <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="subtotal">
-          <th mat-header-cell *matHeaderCellDef class="text-right">Subtotal</th>
-          <td mat-cell *matCellDef="let j" class="text-right">{{ j.subtotal | appCurrency }}</td>
-        </ng-container>
-        <ng-container matColumnDef="created_at">
-          <th mat-header-cell *matHeaderCellDef>Fecha</th>
-          <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-            class="clickable-row" (click)="goToDetail(row.id)"></tr>
-      </table>
+      @if (loading) {
+        <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+      } @else {
+        <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
+          <ng-container matColumnDef="job_number">
+            <th mat-header-cell *matHeaderCellDef>Numero</th>
+            <td mat-cell *matCellDef="let j"><strong>{{ j.job_number }}</strong></td>
+          </ng-container>
+          <ng-container matColumnDef="client_name">
+            <th mat-header-cell *matHeaderCellDef>Cliente</th>
+            <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
+          </ng-container>
+          <ng-container matColumnDef="plate_number">
+            <th mat-header-cell *matHeaderCellDef>Patente</th>
+            <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
+          </ng-container>
+          <ng-container matColumnDef="vehicle">
+            <th mat-header-cell *matHeaderCellDef>Vehiculo</th>
+            <td mat-cell *matCellDef="let j">{{ j.make }} {{ j.model }}</td>
+          </ng-container>
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Estado</th>
+            <td mat-cell *matCellDef="let j">
+              <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="subtotal">
+            <th mat-header-cell *matHeaderCellDef class="text-right">Subtotal</th>
+            <td mat-cell *matCellDef="let j" class="text-right">{{ j.subtotal | appCurrency }}</td>
+          </ng-container>
+          <ng-container matColumnDef="created_at">
+            <th mat-header-cell *matHeaderCellDef>Fecha</th>
+            <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+              class="clickable-row" (click)="goToDetail(row.id)"></tr>
+        </table>
+        <mat-paginator [length]="jobs.length"
+                       [pageSize]="pageSize"
+                       [pageSizeOptions]="[10, 20, 50]"
+                       (page)="onPage($event)"
+                       showFirstLastButtons>
+        </mat-paginator>
+      }
     </div>
   `
 })
@@ -94,22 +108,38 @@ export class JobListComponent implements OnInit {
   displayedColumns = ['job_number', 'client_name', 'plate_number', 'vehicle', 'status', 'subtotal', 'created_at'];
   searchQuery = '';
   statusFilter = '';
+  loading = false;
+  pageSize = 20;
   private searchTimeout: any;
 
-  constructor(private api: ApiService, public auth: AuthService, private router: Router) {}
+  constructor(
+    private api: ApiService,
+    public auth: AuthService,
+    private router: Router,
+    private notify: NotificationService
+  ) {}
 
   ngOnInit() { this.load(); }
 
   load() {
-    const params: Record<string, string> = {};
+    this.loading = true;
+    const params: Record<string, string> = { limit: String(this.pageSize) };
     if (this.searchQuery) params['q'] = this.searchQuery;
     if (this.statusFilter) params['status'] = this.statusFilter;
-    this.api.getJobs(params).subscribe(j => this.jobs = j);
+    this.api.getJobs(params).subscribe({
+      next: j => { this.jobs = j; this.loading = false; },
+      error: err => { this.notify.handleError(err); this.loading = false; }
+    });
   }
 
   onSearch() {
     clearTimeout(this.searchTimeout);
     this.searchTimeout = setTimeout(() => this.load(), 300);
+  }
+
+  onPage(event: PageEvent) {
+    this.pageSize = event.pageSize;
+    this.load();
   }
 
   goToDetail(id: string) { this.router.navigate(['/trabajos', id]); }
