@@ -51,12 +51,12 @@ router.get('/jobs/:id/pdf',authenticate, v.uuidParam, pdf.generatePdf);
 router.get('/jobs/:id/items',            authenticate, v.uuidParam, jobs.listItems);
 router.post('/jobs/:id/items',           authenticate, v.addItemRules, jobs.addItem);
 router.put('/jobs/:id/items/:itemId',    authenticate, v.updateItemRules, jobs.updateItem);
-router.delete('/jobs/:id/items/:itemId', authenticate, requireAdminOrRecep, jobs.removeItem);
+router.delete('/jobs/:id/items/:itemId', authenticate, requireAdminOrRecep, v.updateItemRules, jobs.removeItem);
 
 // Payments
 router.get('/jobs/:id/payments',               authenticate, v.uuidParam, jobs.listPayments);
 router.post('/jobs/:id/payments',              authenticate, requireAdminOrRecep, v.addPaymentRules, jobs.addPayment);
-router.delete('/jobs/:id/payments/:paymentId', authenticate, requireAdmin, jobs.removePayment);
+router.delete('/jobs/:id/payments/:paymentId', authenticate, requireAdmin, v.uuidParam, jobs.removePayment);
 
 // Dashboard (admin only)
 router.get('/dashboard/summary',            authenticate, requireAdmin, dashboard.summary);

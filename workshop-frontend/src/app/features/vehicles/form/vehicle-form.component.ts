@@ -102,7 +102,7 @@ export class VehicleFormComponent {
       : this.api.createVehicle(this.form);
     obs.subscribe({
       next: () => this.dialogRef.close(true),
-      error: (err) => { this.saving = false; this.error = err.error?.error || 'Error al guardar'; }
+      error: (err) => { this.saving = false; this.error = err.error?.detalles?.map((d: any) => d.mensaje).join(', ') || err.error?.error || 'Error al guardar'; }
     });
   }
 }
