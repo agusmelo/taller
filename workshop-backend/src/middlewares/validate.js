@@ -23,7 +23,7 @@ const createClientRules = [
   body('full_name').trim().notEmpty().withMessage('Nombre completo es requerido'),
   body('type').optional().isIn(['individual', 'empresa']).withMessage('Tipo debe ser individual o empresa'),
   body('email').optional({ values: 'falsy' }).isEmail().withMessage('Email invalido'),
-  body('rut').optional({ values: 'falsy' }).isString(),
+  body('rut').optional({ values: 'falsy' }).isString().withMessage('RUT debe ser texto'),
   handleValidation
 ];
 
@@ -31,7 +31,7 @@ const updateClientRules = [
   param('id').isUUID().withMessage('ID invalido'),
   body('type').optional().isIn(['individual', 'empresa']).withMessage('Tipo debe ser individual o empresa'),
   body('email').optional({ values: 'falsy' }).isEmail().withMessage('Email invalido'),
-  body('rut').optional({ values: 'falsy' }).isString(),
+  body('rut').optional({ values: 'falsy' }).isString().withMessage('RUT debe ser texto'),
   handleValidation
 ];
 
