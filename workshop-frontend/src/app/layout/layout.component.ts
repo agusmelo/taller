@@ -28,8 +28,14 @@ import { SearchResults } from '../core/models';
     <mat-sidenav-container class="layout-container">
       <mat-sidenav mode="side" opened class="sidenav">
         <div class="sidenav-header">
-          <mat-icon class="logo-icon">build</mat-icon>
-          <span class="logo-text">Taller</span>
+          <div class="logo-container">
+            <img src="assets/logo.png" alt="La Llave" class="logo-img"
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+            <div class="logo-fallback" style="display:none;">
+              <mat-icon class="logo-icon">build</mat-icon>
+              <span class="logo-text">La Llave</span>
+            </div>
+          </div>
         </div>
         <mat-nav-list>
           @if (auth.isAdmin()) {
@@ -62,7 +68,7 @@ import { SearchResults } from '../core/models';
       </mat-sidenav>
 
       <mat-sidenav-content class="main-content">
-        <mat-toolbar color="primary" class="top-toolbar">
+        <mat-toolbar class="top-toolbar">
           <mat-form-field appearance="outline" class="search-bar" subscriptSizing="dynamic">
             <mat-icon matPrefix>search</mat-icon>
             <input matInput placeholder="Buscar cliente, patente, trabajo..."
@@ -92,7 +98,7 @@ import { SearchResults } from '../core/models';
 
           <span class="spacer"></span>
 
-          <button mat-button [matMenuTriggerFor]="userMenu">
+          <button mat-button [matMenuTriggerFor]="userMenu" class="user-menu-btn">
             <mat-icon>account_circle</mat-icon>
             {{ auth.currentUser()?.full_name }}
           </button>
@@ -118,13 +124,29 @@ import { SearchResults } from '../core/models';
     .layout-container { height: 100vh; }
     .sidenav {
       width: 220px;
-      background: #1a237e;
+      background: var(--color-primary);
     }
     .sidenav-header {
       display: flex;
       align-items: center;
-      padding: 16px;
+      justify-content: center;
+      padding: 16px 12px;
       color: white;
+    }
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+    .logo-img {
+      max-width: 160px;
+      max-height: 80px;
+      object-fit: contain;
+    }
+    .logo-fallback {
+      display: flex;
+      align-items: center;
       gap: 8px;
     }
     .logo-icon { font-size: 28px; width: 28px; height: 28px; }
@@ -135,12 +157,22 @@ import { SearchResults } from '../core/models';
     .sidenav mat-nav-list a.active {
       color: white;
       background: rgba(255,255,255,0.12);
+      border-left: 3px solid var(--color-accent);
     }
     .sidenav mat-nav-list mat-icon {
       color: rgba(255,255,255,0.7);
     }
+    .sidenav mat-nav-list a.active mat-icon {
+      color: var(--color-accent-light);
+    }
     .main-content { display: flex; flex-direction: column; }
-    .top-toolbar { position: sticky; top: 0; z-index: 10; }
+    .top-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--color-primary-dark);
+      color: white;
+    }
     .search-bar {
       margin-left: 16px;
       width: 350px;
@@ -149,11 +181,12 @@ import { SearchResults } from '../core/models';
       padding: 0;
     }
     :host ::ng-deep .search-bar .mat-mdc-text-field-wrapper {
-      background: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.12);
       border-radius: 4px;
     }
     :host ::ng-deep .search-bar input { color: white; }
     :host ::ng-deep .search-bar mat-icon { color: rgba(255,255,255,0.7); }
+    .user-menu-btn { color: white; }
     .page-wrapper { flex: 1; overflow: auto; }
     .spacer { flex: 1; }
   `]

@@ -1,10 +1,37 @@
+// ============================
+// THEME VARIABLES (centralized)
+// ============================
+:root {
+  --color-primary: #1A2B5F;
+  --color-primary-light: #2A3D7F;
+  --color-primary-dark: #111D40;
+  --color-accent: #C41E2A;
+  --color-accent-light: #E8363F;
+  --color-accent-dark: #9A1620;
+  --color-bg: #FAFAFA;
+  --color-surface: #FFFFFF;
+  --color-text: #212121;
+  --color-text-secondary: #616161;
+  --color-border: #E0E0E0;
+  --color-success: #2E7D32;
+  --color-warning: #E65100;
+  --color-error: #C62828;
+}
+
+// ============================
+// BASE
+// ============================
 html, body {
   height: 100%;
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
-  background-color: #fafafa;
+  background-color: var(--color-bg);
+  color: var(--color-text);
 }
 
+// ============================
+// LAYOUT
+// ============================
 .page-container {
   padding: 24px;
   max-width: 1400px;
@@ -16,12 +43,15 @@ html, body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .page-header h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 400;
+  font-weight: 500;
+  color: var(--color-primary);
 }
 
 .card-grid {
@@ -31,6 +61,43 @@ html, body {
   margin-bottom: 24px;
 }
 
+// ============================
+// FORMS
+// ============================
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.form-grid .full-width {
+  grid-column: 1 / -1;
+}
+
+.form-section {
+  margin-bottom: 24px;
+}
+
+.form-section-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (max-width: 600px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+// ============================
+// STATUS BADGES
+// ============================
 .status-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -41,12 +108,18 @@ html, body {
 }
 
 .status-abierto { background: #e3f2fd; color: #1565c0; }
-.status-terminado { background: #fff3e0; color: #e65100; }
-.status-pagado { background: #e8f5e9; color: #2e7d32; }
+.status-terminado { background: #fff3e0; color: var(--color-warning); }
+.status-pagado { background: #e8f5e9; color: var(--color-success); }
 
-.balance-positive { color: #d32f2f; font-weight: 500; }
-.balance-zero { color: #2e7d32; font-weight: 500; }
+// ============================
+// FINANCIAL
+// ============================
+.balance-positive { color: var(--color-error); font-weight: 500; }
+.balance-zero { color: var(--color-success); font-weight: 500; }
 
+// ============================
+// TABLES
+// ============================
 .mat-mdc-table {
   width: 100%;
 }
@@ -59,39 +132,107 @@ html, body {
   background-color: #f5f5f5;
 }
 
+// ============================
+// SEARCH
+// ============================
 .search-field {
   width: 100%;
   max-width: 400px;
 }
 
-.spacer {
-  flex: 1 1 auto;
-}
-
-.text-right {
-  text-align: right;
-}
-
-.text-center {
-  text-align: center;
-}
-
+// ============================
+// UTILITIES
+// ============================
+.spacer { flex: 1 1 auto; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
 .mt-16 { margin-top: 16px; }
 .mb-16 { margin-bottom: 16px; }
 .mr-8 { margin-right: 8px; }
 
-// Snackbar styles
+// ============================
+// SNACKBAR
+// ============================
 .snack-success .mdc-snackbar__surface {
-  background-color: #2e7d32 !important;
+  background-color: var(--color-success) !important;
 }
 .snack-error .mdc-snackbar__surface {
-  background-color: #c62828 !important;
+  background-color: var(--color-error) !important;
 }
 
-// Loading overlay
+// ============================
+// LOADING
+// ============================
 .loading-overlay {
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 48px;
+}
+
+// ============================
+// ALERTS
+// ============================
+.error-msg {
+  background: #ffebee;
+  color: var(--color-error);
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.warning-msg {
+  background: #fff8e1;
+  color: #f57f17;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.info-msg {
+  background: #e3f2fd;
+  color: #1565c0;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+// ============================
+// LOCK BANNER
+// ============================
+.lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff3e0;
+  color: var(--color-warning);
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+// ============================
+// TOTALS PANEL
+// ============================
+.totals-panel {
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.totals-panel .total-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.totals-panel .total-row.grand-total {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--color-primary);
+  border-top: 2px solid var(--color-border);
+  padding-top: 8px;
+  margin-top: 4px;
 }

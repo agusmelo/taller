@@ -85,9 +85,9 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
             <th mat-header-cell *matHeaderCellDef class="text-right">Subtotal</th>
             <td mat-cell *matCellDef="let j" class="text-right">{{ j.subtotal | appCurrency }}</td>
           </ng-container>
-          <ng-container matColumnDef="created_at">
+          <ng-container matColumnDef="job_date">
             <th mat-header-cell *matHeaderCellDef>Fecha</th>
-            <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
+            <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
           </ng-container>
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
@@ -105,7 +105,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 })
 export class JobListComponent implements OnInit {
   jobs: Job[] = [];
-  displayedColumns = ['job_number', 'client_name', 'plate_number', 'vehicle', 'status', 'subtotal', 'created_at'];
+  displayedColumns = ['job_number', 'client_name', 'plate_number', 'vehicle', 'status', 'subtotal', 'job_date'];
   searchQuery = '';
   statusFilter = '';
   loading = false;

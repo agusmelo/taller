@@ -60,6 +60,8 @@ export interface Job {
   notes: string | null;
   internal_notes: string | null;
   created_by: string | null;
+  job_date: string;
+  is_locked: boolean;
   client_name?: string;
   client_rut?: string;
   client_phone?: string;
@@ -100,8 +102,25 @@ export interface Payment {
   reference: string | null;
   notes: string | null;
   paid_at: string;
+  payment_date: string;
   created_by: string | null;
   created_at: string;
+}
+
+export interface VehicleSearchResult {
+  id: string;
+  plate_number: string;
+  make: string;
+  model: string;
+  year: number | null;
+  client_id: string;
+  client_name: string;
+  client_rut: string | null;
+}
+
+export interface DuplicateCheckResult {
+  rut_match: { id: string; full_name: string; rut: string; phone: string } | null;
+  name_matches: { id: string; full_name: string; rut: string | null; phone: string | null }[];
 }
 
 export interface JobFinancials {
