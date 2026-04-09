@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import {
   Client, Vehicle, Job, JobItem, Payment,
   SearchResults, OwnershipHistory,
-  DashboardSummary, ClientFinancials, User
+  DashboardSummary, ClientFinancials, User,
+  VehicleSearchResult, DuplicateCheckResult
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -24,6 +25,12 @@ export class ApiService {
   }
   getClient(id: string) { return this.http.get<Client>(`${this.url}/clients/${id}`); }
   getClientByRut(rut: string) { return this.http.get<Client>(`${this.url}/clients/by-rut/${rut}`); }
+  checkDuplicateClient(name?: string, rut?: string) {
+    const params: Record<string, string> = {};
+    if (name) params['name'] = name;
+    if (rut) params['rut'] = rut;
+    return this.http.get<DuplicateCheckResult>(`${this.url}/clients/check-duplicate`, { params });
+  }
   createClient(data: Partial<Client>) { return this.http.post<Client>(`${this.url}/clients`, data); }
   updateClient(id: string, data: Partial<Client>) { return this.http.put<Client>(`${this.url}/clients/${id}`, data); }
   deleteClient(id: string) { return this.http.delete(`${this.url}/clients/${id}`); }
@@ -33,6 +40,9 @@ export class ApiService {
   // Vehicles
   getVehicles(params?: Record<string, string>) {
     return this.http.get<Vehicle[]>(`${this.url}/vehicles`, { params });
+  }
+  searchVehicles(q: string) {
+    return this.http.get<VehicleSearchResult[]>(`${this.url}/vehicles/search`, { params: { q } });
   }
   getVehicle(id: string) { return this.http.get<Vehicle>(`${this.url}/vehicles/${id}`); }
   getVehicleByPlate(plate: string) { return this.http.get<Vehicle>(`${this.url}/vehicles/by-plate/${plate}`); }
@@ -52,6 +62,8 @@ export class ApiService {
   createJob(data: any) { return this.http.post<Job>(`${this.url}/jobs`, data); }
   updateJob(id: string, data: Partial<Job>) { return this.http.put<Job>(`${this.url}/jobs/${id}`, data); }
   deleteJob(id: string) { return this.http.delete(`${this.url}/jobs/${id}`); }
+  lockJob(id: string) { return this.http.put<Job>(`${this.url}/jobs/${id}/lock`, {}); }
+  unlockJob(id: string) { return this.http.put<Job>(`${this.url}/jobs/${id}/unlock`, {}); }
   getJobPdfUrl(id: string) { return `${this.url}/jobs/${id}/pdf`; }
 
   // Job Items

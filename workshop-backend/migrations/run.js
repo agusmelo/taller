@@ -11,12 +11,24 @@ const pool = new Pool({
   password: process.env.DB_PASSWORD,
 });
 
+const migrations = [
+  'schema.sql',
+  '002_fase3.sql',
+];
+
 async function run() {
   console.log('Corriendo migraciones...');
   const client = await pool.connect();
   try {
-    const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-    await client.query(sql);
+    for (const file of migrations) {
+      const filePath = path.join(__dirname, file);
+      if (fs.existsSync(filePath)) {
+        console.log(`  Ejecutando ${file}...`);
+        const sql = fs.readFileSync(filePath, 'utf8');
+        await client.query(sql);
+        console.log(`  ${file} completado.`);
+      }
+    }
     console.log('Esquema creado correctamente.');
   } catch (err) {
     console.error('Error en migracion:', err.message);

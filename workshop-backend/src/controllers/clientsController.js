@@ -46,6 +46,33 @@ async function getByRut(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function checkDuplicate(req, res, next) {
+  try {
+    const { name, rut } = req.query;
+    const result = { rut_match: null, name_matches: [] };
+
+    if (rut) {
+      const formattedRut = formatRut(rut);
+      if (formattedRut) {
+        const r = await pool.query(
+          `SELECT id, full_name, rut, phone FROM clients WHERE rut = $1 AND deleted_at IS NULL`, [formattedRut]);
+        if (r.rows[0]) result.rut_match = r.rows[0];
+      }
+    }
+
+    if (name && name.length >= 3) {
+      const r = await pool.query(
+        `SELECT id, full_name, rut, phone FROM clients
+         WHERE full_name ILIKE $1 AND deleted_at IS NULL
+         ORDER BY full_name LIMIT 5`,
+        [`%${name}%`]);
+      result.name_matches = r.rows;
+    }
+
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
 async function create(req, res, next) {
   try {
     const { type = 'individual', full_name, rut, phone, email, address, notes } = req.body;
@@ -114,4 +141,4 @@ async function getJobs(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, getByRut, create, update, remove, getVehicles, getJobs };
+module.exports = { list, getOne, getByRut, checkDuplicate, create, update, remove, getVehicles, getJobs };

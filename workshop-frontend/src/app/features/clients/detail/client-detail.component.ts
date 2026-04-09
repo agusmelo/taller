@@ -13,6 +13,7 @@ import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { Client, Vehicle, Job } from '../../../core/models';
 import { ClientFormComponent } from '../form/client-form.component';
+import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
 
 @Component({
@@ -30,10 +31,15 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
     <div class="page-container">
       <div class="page-header">
         <h1>{{ client.full_name }}</h1>
-        <div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           @if (auth.isAdminOrRecep()) {
-            <button mat-raised-button color="accent" (click)="edit()" class="mr-8">
+            <button mat-raised-button color="accent" (click)="edit()">
               <mat-icon>edit</mat-icon> Editar
+            </button>
+          }
+          @if (auth.isAdmin()) {
+            <button mat-raised-button color="warn" (click)="confirmDelete()">
+              <mat-icon>delete</mat-icon> Eliminar
             </button>
           }
           <button mat-button routerLink="/clientes"><mat-icon>arrow_back</mat-icon> Volver</button>
@@ -94,7 +100,7 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
         </ng-container>
         <ng-container matColumnDef="created_at">
           <th mat-header-cell *matHeaderCellDef>Fecha</th>
-          <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
+          <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
         </ng-container>
         <tr mat-header-row *matHeaderRowDef="['job_number','plate_number','status','created_at']"></tr>
         <tr mat-row *matRowDef="let row; columns: ['job_number','plate_number','status','created_at'];"
@@ -139,6 +145,38 @@ export class ClientDetailComponent implements OnInit {
         this.notify.success('Cliente actualizado');
         this.load();
       }
+    });
+  }
+
+  confirmDelete() {
+    let message = `¿Esta seguro de eliminar al cliente "${this.client!.full_name}"?`;
+    if (this.vehicles.length > 0) {
+      message += `\n\nEste cliente tiene ${this.vehicles.length} vehiculo(s) asociado(s) que deberan ser reasignados.`;
+    }
+    if (this.jobs.length > 0) {
+      message += `\n\nLos ${this.jobs.length} trabajo(s) asociados se mantendran en el historial.`;
+    }
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Eliminar cliente',
+        message,
+        confirmText: 'Eliminar'
+      }
+    });
+    ref.afterClosed().subscribe(confirmed => {
+      if (confirmed) this.deleteClient();
+    });
+  }
+
+  deleteClient() {
+    this.api.deleteClient(this.client!.id).subscribe({
+      next: () => {
+        this.notify.success('Cliente eliminado');
+        this.router.navigate(['/clientes']);
+      },
+      error: err => this.notify.handleError(err)
     });
   }
 

@@ -66,6 +66,7 @@ const createJobRules = [
   body('tax_rate').optional().isFloat({ min: 0, max: 1 }).withMessage('tax_rate debe estar entre 0 y 1'),
   body('discount_amount').optional().isFloat({ min: 0 }).withMessage('Descuento debe ser positivo'),
   body('discount_type').optional().isIn(['fixed', 'percentage']).withMessage('Tipo de descuento invalido'),
+  body('job_date').optional().isISO8601().withMessage('Fecha del trabajo invalida'),
   body('items').optional().isArray().withMessage('Items debe ser un array'),
   body('items.*.description').optional().trim().notEmpty().withMessage('Descripcion del item es requerida'),
   body('items.*.quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
@@ -80,6 +81,7 @@ const updateJobRules = [
   body('tax_rate').optional().isFloat({ min: 0, max: 1 }).withMessage('tax_rate debe estar entre 0 y 1'),
   body('discount_amount').optional().isFloat({ min: 0 }).withMessage('Descuento debe ser positivo'),
   body('discount_type').optional().isIn(['fixed', 'percentage']).withMessage('Tipo de descuento invalido'),
+  body('job_date').optional().isISO8601().withMessage('Fecha del trabajo invalida'),
   handleValidation
 ];
 
@@ -107,6 +109,7 @@ const addPaymentRules = [
   param('id').isUUID().withMessage('ID de trabajo invalido'),
   body('amount').isFloat({ gt: 0 }).withMessage('Monto debe ser mayor a 0'),
   body('method').optional().isIn(['efectivo', 'transferencia', 'credito']).withMessage('Metodo de pago invalido'),
+  body('payment_date').optional().isISO8601().withMessage('Fecha de pago invalida'),
   handleValidation
 ];
 

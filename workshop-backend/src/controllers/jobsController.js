@@ -30,7 +30,7 @@ async function checkAndPay(client, jobId) {
   const { balance } = calcFinancials(jobRes.rows[0], itemsRes.rows, paysRes.rows);
   if (balance <= 0) {
     await client.query(
-      `UPDATE jobs SET status = 'pagado' WHERE id = $1 AND status != 'pagado'`, [jobId]);
+      `UPDATE jobs SET status = 'pagado', is_locked = TRUE WHERE id = $1 AND status != 'pagado'`, [jobId]);
   }
 }
 
@@ -100,17 +100,17 @@ async function create(req, res, next) {
   try {
     const { client_id, vehicle_id, mileage_at_service, tax_enabled = true,
             tax_rate = 0.22, discount_amount = 0, discount_type = 'fixed',
-            notes, items = [] } = req.body;
+            notes, items = [], job_date } = req.body;
     if (!client_id || !vehicle_id)
       return res.status(400).json({ error: 'client_id y vehicle_id son requeridos' });
 
     await db.query('BEGIN');
     const r = await db.query(`
       INSERT INTO jobs (job_number, client_id, vehicle_id, mileage_at_service,
-                        tax_enabled, tax_rate, discount_amount, discount_type, notes, created_by)
-      VALUES (generate_job_number(),$1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+                        tax_enabled, tax_rate, discount_amount, discount_type, notes, created_by, job_date)
+      VALUES (generate_job_number(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [client_id, vehicle_id, mileage_at_service || null, tax_enabled, tax_rate,
-       discount_amount, discount_type, notes || null, req.user.id]
+       discount_amount, discount_type, notes || null, req.user.id, job_date || new Date().toISOString().split('T')[0]]
     );
     const job = r.rows[0];
     for (const item of items) {
@@ -130,7 +130,14 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const { mileage_at_service, status, tax_enabled, tax_rate,
-            discount_amount, discount_type, notes, internal_notes } = req.body;
+            discount_amount, discount_type, notes, internal_notes, job_date } = req.body;
+
+    // Auto-lock when transitioning to terminado or pagado
+    let is_locked = undefined;
+    if (status === 'terminado' || status === 'pagado') {
+      is_locked = true;
+    }
+
     const r = await pool.query(`
       UPDATE jobs SET
         mileage_at_service = COALESCE($1, mileage_at_service),
@@ -140,11 +147,31 @@ async function update(req, res, next) {
         discount_amount    = COALESCE($5, discount_amount),
         discount_type      = COALESCE($6, discount_type),
         notes              = COALESCE($7, notes),
-        internal_notes     = COALESCE($8, internal_notes)
-      WHERE id = $9 AND deleted_at IS NULL RETURNING *`,
+        internal_notes     = COALESCE($8, internal_notes),
+        job_date           = COALESCE($9, job_date),
+        is_locked          = COALESCE($10, is_locked)
+      WHERE id = $11 AND deleted_at IS NULL RETURNING *`,
       [mileage_at_service, status, tax_enabled, tax_rate,
-       discount_amount, discount_type, notes, internal_notes, req.params.id]
+       discount_amount, discount_type, notes, internal_notes, job_date, is_locked, req.params.id]
     );
+    if (!r.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
+    res.json(r.rows[0]);
+  } catch (err) { next(err); }
+}
+
+async function lockJob(req, res, next) {
+  try {
+    const r = await pool.query(
+      `UPDATE jobs SET is_locked = TRUE WHERE id = $1 AND deleted_at IS NULL RETURNING *`, [req.params.id]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
+    res.json(r.rows[0]);
+  } catch (err) { next(err); }
+}
+
+async function unlockJob(req, res, next) {
+  try {
+    const r = await pool.query(
+      `UPDATE jobs SET is_locked = FALSE WHERE id = $1 AND deleted_at IS NULL RETURNING *`, [req.params.id]);
     if (!r.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
     res.json(r.rows[0]);
   } catch (err) { next(err); }
@@ -204,7 +231,7 @@ async function removeItem(req, res, next) {
 // Payments
 async function listPayments(req, res, next) {
   try {
-    const r = await pool.query(`SELECT * FROM payments WHERE job_id = $1 ORDER BY paid_at`, [req.params.id]);
+    const r = await pool.query(`SELECT * FROM payments WHERE job_id = $1 ORDER BY payment_date DESC, paid_at DESC`, [req.params.id]);
     res.json(r.rows);
   } catch (err) { next(err); }
 }
@@ -212,13 +239,14 @@ async function listPayments(req, res, next) {
 async function addPayment(req, res, next) {
   const db = await pool.connect();
   try {
-    const { amount, method = 'efectivo', reference, notes, paid_at } = req.body;
+    const { amount, method = 'efectivo', reference, notes, payment_date } = req.body;
     if (!amount || amount <= 0) return res.status(400).json({ error: 'Monto invalido' });
     await db.query('BEGIN');
     const r = await db.query(
-      `INSERT INTO payments (job_id, amount, method, reference, notes, paid_at, created_by)
+      `INSERT INTO payments (job_id, amount, method, reference, notes, payment_date, created_by)
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-      [req.params.id, amount, method, reference || null, notes || null, paid_at || new Date(), req.user.id]
+      [req.params.id, amount, method, reference || null, notes || null,
+       payment_date || new Date().toISOString().split('T')[0], req.user.id]
     );
     await checkAndPay(db, req.params.id);
     await db.query('COMMIT');
@@ -236,6 +264,7 @@ async function removePayment(req, res, next) {
 
 module.exports = {
   list, getOne, create, update, remove,
+  lockJob, unlockJob,
   listItems, addItem, updateItem, removeItem,
   listPayments, addPayment, removePayment,
   calcFinancials

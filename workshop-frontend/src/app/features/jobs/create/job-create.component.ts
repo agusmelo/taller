@@ -11,18 +11,23 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Vehicle, Client } from '../../../core/models';
-import { ClientFormComponent } from '../../clients/form/client-form.component';
+import { Vehicle, VehicleSearchResult } from '../../../core/models';
 import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component';
+import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
+
 @Component({
   selector: 'app-job-create',
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterLink, MatCardModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatIconModule, MatSelectModule,
-    MatCheckboxModule, MatDividerModule, MatDialogModule
+    MatCheckboxModule, MatDividerModule, MatDialogModule, MatAutocompleteModule,
+    MatDatepickerModule, MatNativeDateModule, AppCurrencyPipe
   ],
   template: `
     <div class="page-container">
@@ -31,123 +36,212 @@ import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component
         <button mat-button routerLink="/trabajos"><mat-icon>arrow_back</mat-icon> Volver</button>
       </div>
 
-      @if (error) { <div class="error-msg mb-16">{{ error }}</div> }
+      @if (error) { <div class="error-msg">{{ error }}</div> }
 
-      <!-- Step 1: Search by plate -->
-      <mat-card class="mb-16">
-        <mat-card-content>
-          <h3>1. Buscar vehiculo por patente</h3>
-          <div style="display:flex;gap:16px;align-items:center;">
-            <mat-form-field appearance="outline" style="flex:1;">
-              <mat-label>Patente</mat-label>
-              <input matInput [(ngModel)]="plateSearch" (keyup.enter)="searchPlate()"
-                     style="text-transform:uppercase;" placeholder="Ej: ABC1234">
-            </mat-form-field>
-            <button mat-raised-button color="primary" (click)="searchPlate()">
-              <mat-icon>search</mat-icon> Buscar
-            </button>
-          </div>
+      <div class="job-create-layout">
+        <!-- LEFT: Form -->
+        <div class="job-create-form">
 
-          @if (plateNotFound) {
-            <p style="color:#e65100;">Vehiculo no encontrado.</p>
-            <button mat-stroked-button color="primary" (click)="createNewVehicle()">
-              <mat-icon>add</mat-icon> Crear vehiculo nuevo
-            </button>
-          }
+          <!-- Vehicle search -->
+          <mat-card class="mb-16">
+            <mat-card-content>
+              <div class="form-section-title">Vehiculo</div>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Buscar por patente</mat-label>
+                <input matInput [(ngModel)]="plateSearch" (input)="onPlateSearch()"
+                       [matAutocomplete]="plateAuto"
+                       style="text-transform:uppercase;" placeholder="Ej: ABC1234">
+                <mat-icon matSuffix>search</mat-icon>
+                <mat-autocomplete #plateAuto="matAutocomplete"
+                                  (optionSelected)="selectVehicle($event)"
+                                  [displayWith]="displayPlate">
+                  @for (v of vehicleResults; track v.id) {
+                    <mat-option [value]="v">
+                      <strong>{{ v.plate_number }}</strong> — {{ v.make }} {{ v.model }}
+                      <small style="color:#666;"> ({{ v.client_name }})</small>
+                    </mat-option>
+                  }
+                  @if (plateSearch.length >= 2 && vehicleResults.length === 0 && !searchingPlate) {
+                    <mat-option disabled>
+                      <em>Sin resultados</em>
+                    </mat-option>
+                  }
+                </mat-autocomplete>
+              </mat-form-field>
+
+              @if (!vehicle && plateSearch.length >= 3 && vehicleResults.length === 0 && !searchingPlate) {
+                <button mat-stroked-button color="primary" (click)="createNewVehicle()">
+                  <mat-icon>add</mat-icon> Crear vehiculo nuevo
+                </button>
+              }
+
+              @if (vehicle) {
+                <div class="info-msg">
+                  <strong>{{ vehicle.plate_number }}</strong> — {{ vehicle.make }} {{ vehicle.model }} {{ vehicle.year || '' }}<br>
+                  Dueno: <strong>{{ vehicle.client_name }}</strong>
+                  {{ vehicle.client_rut ? '(' + vehicle.client_rut + ')' : '' }}
+                </div>
+              }
+            </mat-card-content>
+          </mat-card>
 
           @if (vehicle) {
-            <mat-divider class="mb-16 mt-16"></mat-divider>
-            <h3>Vehiculo encontrado</h3>
-            <p><strong>{{ vehicle.plate_number }}</strong> - {{ vehicle.make }} {{ vehicle.model }} {{ vehicle.year || '' }}</p>
-            <p>Dueno: <strong>{{ vehicle.client_name }}</strong> {{ vehicle.client_rut ? '(' + vehicle.client_rut + ')' : '' }}</p>
+            <!-- Job details -->
+            <mat-card class="mb-16">
+              <mat-card-content>
+                <div class="form-section-title">Detalles del trabajo</div>
+                <div class="form-grid">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Fecha del trabajo</mat-label>
+                    <input matInput [matDatepicker]="jobDatePicker" [(ngModel)]="jobDate">
+                    <mat-datepicker-toggle matIconSuffix [for]="jobDatePicker"></mat-datepicker-toggle>
+                    <mat-datepicker #jobDatePicker></mat-datepicker>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>Kilometraje actual</mat-label>
+                    <input matInput [(ngModel)]="mileage" type="number">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Notas (aparecen en PDF)</mat-label>
+                    <textarea matInput [(ngModel)]="notes" rows="2"></textarea>
+                  </mat-form-field>
+                </div>
+                <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+                  <mat-checkbox [(ngModel)]="taxEnabled">IVA (22%)</mat-checkbox>
+                  <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
+                    <mat-label>Descuento</mat-label>
+                    <input matInput [(ngModel)]="discountAmount" type="number" (ngModelChange)="calcTotals()">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
+                    <mat-select [(ngModel)]="discountType" (selectionChange)="calcTotals()">
+                      <mat-option value="fixed">Fijo ($)</mat-option>
+                      <mat-option value="percentage">Porcentaje (%)</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Items -->
+            <mat-card class="mb-16">
+              <mat-card-content>
+                <div class="form-section-title">Items</div>
+                @for (item of items; track $index) {
+                  <div class="item-row">
+                    <mat-form-field appearance="outline" class="item-desc" subscriptSizing="dynamic">
+                      <mat-label>Descripcion</mat-label>
+                      <input matInput [(ngModel)]="item.description">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="item-qty" subscriptSizing="dynamic">
+                      <mat-label>Cant.</mat-label>
+                      <input matInput [(ngModel)]="item.quantity" type="number" (ngModelChange)="calcTotals()">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="item-price" subscriptSizing="dynamic">
+                      <mat-label>Precio</mat-label>
+                      <input matInput [(ngModel)]="item.unit_price" type="number" (ngModelChange)="calcTotals()">
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="item-type" subscriptSizing="dynamic">
+                      <mat-select [(ngModel)]="item.item_type">
+                        <mat-option value="mano_de_obra">Mano de obra</mat-option>
+                        <mat-option value="repuesto">Repuesto</mat-option>
+                        <mat-option value="otro">Otro</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" class="item-supplier" subscriptSizing="dynamic">
+                      <mat-label>Proveedor</mat-label>
+                      <input matInput [(ngModel)]="item.supplier">
+                    </mat-form-field>
+                    <span class="item-total text-right">{{ (item.quantity * item.unit_price) | appCurrency }}</span>
+                    <button mat-icon-button color="warn" (click)="removeItem($index)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                }
+                <button mat-stroked-button (click)="addItem()">
+                  <mat-icon>add</mat-icon> Agregar item
+                </button>
+              </mat-card-content>
+            </mat-card>
           }
-        </mat-card-content>
-      </mat-card>
+        </div>
 
-      @if (vehicle) {
-        <!-- Step 2: Job details -->
-        <mat-card class="mb-16">
-          <mat-card-content>
-            <h3>2. Detalles del trabajo</h3>
-            <mat-form-field appearance="outline">
-              <mat-label>Kilometraje actual</mat-label>
-              <input matInput [(ngModel)]="mileage" type="number">
-            </mat-form-field>
-            <mat-form-field appearance="outline" style="width:100%;">
-              <mat-label>Notas (aparecen en PDF)</mat-label>
-              <textarea matInput [(ngModel)]="notes" rows="2"></textarea>
-            </mat-form-field>
-            <div style="display:flex;gap:16px;">
-              <mat-checkbox [(ngModel)]="taxEnabled">IVA (22%)</mat-checkbox>
-              <mat-form-field appearance="outline" style="width:120px;">
-                <mat-label>Descuento</mat-label>
-                <input matInput [(ngModel)]="discountAmount" type="number">
-              </mat-form-field>
-              <mat-form-field appearance="outline" style="width:140px;">
-                <mat-select [(ngModel)]="discountType">
-                  <mat-option value="fixed">Fijo ($)</mat-option>
-                  <mat-option value="percentage">Porcentaje (%)</mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
-          </mat-card-content>
-        </mat-card>
+        <!-- RIGHT: Totals panel (sticky) -->
+        @if (vehicle) {
+          <div class="job-create-sidebar">
+            <div class="totals-panel" style="position:sticky;top:80px;">
+              <div class="form-section-title" style="border:none;margin-bottom:8px;">Resumen</div>
+              <div class="total-row">
+                <span>Subtotal</span>
+                <span>{{ totals.subtotal | appCurrency }}</span>
+              </div>
+              @if (totals.discount > 0) {
+                <div class="total-row" style="color:var(--color-warning);">
+                  <span>Descuento</span>
+                  <span>-{{ totals.discount | appCurrency }}</span>
+                </div>
+              }
+              @if (taxEnabled) {
+                <div class="total-row">
+                  <span>IVA (22%)</span>
+                  <span>+{{ totals.tax | appCurrency }}</span>
+                </div>
+              }
+              <div class="total-row grand-total">
+                <span>Total</span>
+                <span>{{ totals.total | appCurrency }}</span>
+              </div>
 
-        <!-- Step 3: Items -->
-        <mat-card class="mb-16">
-          <mat-card-content>
-            <h3>3. Items</h3>
-            @for (item of items; track $index) {
-              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-                <mat-form-field appearance="outline" style="flex:2;" subscriptSizing="dynamic">
-                  <mat-label>Descripcion</mat-label>
-                  <input matInput [(ngModel)]="item.description">
-                </mat-form-field>
-                <mat-form-field appearance="outline" style="width:100px;" subscriptSizing="dynamic">
-                  <mat-label>Cant.</mat-label>
-                  <input matInput [(ngModel)]="item.quantity" type="number">
-                </mat-form-field>
-                <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
-                  <mat-label>Precio</mat-label>
-                  <input matInput [(ngModel)]="item.unit_price" type="number">
-                </mat-form-field>
-                <mat-form-field appearance="outline" style="width:150px;" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="item.item_type">
-                    <mat-option value="mano_de_obra">Mano de obra</mat-option>
-                    <mat-option value="repuesto">Repuesto</mat-option>
-                    <mat-option value="otro">Otro</mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field appearance="outline" style="width:150px;" subscriptSizing="dynamic">
-                  <mat-label>Proveedor</mat-label>
-                  <input matInput [(ngModel)]="item.supplier">
-                </mat-form-field>
-                <button mat-icon-button color="warn" (click)="items.splice($index, 1)">
-                  <mat-icon>delete</mat-icon>
+              <div style="margin-top:24px;">
+                <button mat-raised-button color="primary" (click)="save()"
+                        [disabled]="saving || !vehicle" style="width:100%;height:48px;font-size:16px;">
+                  {{ saving ? 'Guardando...' : 'Crear Trabajo' }}
+                </button>
+                <button mat-button routerLink="/trabajos" style="width:100%;margin-top:8px;">
+                  Cancelar
                 </button>
               </div>
-            }
-            <button mat-stroked-button (click)="addItem()">
-              <mat-icon>add</mat-icon> Agregar item
-            </button>
-          </mat-card-content>
-        </mat-card>
-
-        <div style="display:flex;justify-content:flex-end;gap:16px;">
-          <button mat-button routerLink="/trabajos">Cancelar</button>
-          <button mat-raised-button color="primary" (click)="save()" [disabled]="saving" style="height:48px;font-size:16px;">
-            {{ saving ? 'Guardando...' : 'Crear Trabajo' }}
-          </button>
-        </div>
-      }
+            </div>
+          </div>
+        }
+      </div>
     </div>
   `,
-  styles: [`.error-msg { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; }`]
+  styles: [`
+    .job-create-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .job-create-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .job-create-form { min-width: 0; }
+    .job-create-sidebar { min-width: 0; }
+    .full-width { width: 100%; }
+    .item-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .item-desc { flex: 2; min-width: 160px; }
+    .item-qty { width: 80px; }
+    .item-price { width: 100px; }
+    .item-type { width: 140px; }
+    .item-supplier { width: 130px; }
+    .item-total { width: 100px; font-weight: 500; font-size: 13px; white-space: nowrap; }
+  `]
 })
 export class JobCreateComponent {
   plateSearch = '';
-  vehicle: Vehicle | null = null;
-  plateNotFound = false;
+  vehicleResults: VehicleSearchResult[] = [];
+  searchingPlate = false;
+  vehicle: (VehicleSearchResult & { make: string; model: string; year?: number | null; client_name: string; client_rut?: string | null }) | null = null;
+  jobDate = new Date();
   mileage: number | null = null;
   notes = '';
   taxEnabled = true;
@@ -156,26 +250,70 @@ export class JobCreateComponent {
   items: any[] = [];
   saving = false;
   error = '';
+  totals = { subtotal: 0, discount: 0, tax: 0, total: 0 };
 
-  constructor(private api: ApiService, private router: Router, private dialog: MatDialog, private notify: NotificationService) {}
+  private searchTimeout: any;
 
-  searchPlate() {
-    if (!this.plateSearch) return;
-    this.plateNotFound = false;
+  constructor(
+    private api: ApiService,
+    private router: Router,
+    private dialog: MatDialog,
+    private notify: NotificationService
+  ) {}
+
+  displayPlate = (v: VehicleSearchResult | string): string => {
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    return v.plate_number;
+  };
+
+  onPlateSearch() {
+    clearTimeout(this.searchTimeout);
     this.vehicle = null;
-    this.api.getVehicleByPlate(this.plateSearch).subscribe({
-      next: (v) => {
-        this.vehicle = v;
-        if (v.mileage) this.mileage = v.mileage;
-      },
-      error: () => this.plateNotFound = true
+    const q = this.plateSearch?.trim();
+    if (!q || q.length < 2) {
+      this.vehicleResults = [];
+      return;
+    }
+    this.searchingPlate = true;
+    this.searchTimeout = setTimeout(() => {
+      this.api.searchVehicles(q).subscribe({
+        next: results => { this.vehicleResults = results; this.searchingPlate = false; },
+        error: () => { this.vehicleResults = []; this.searchingPlate = false; }
+      });
+    }, 300);
+  }
+
+  selectVehicle(event: any) {
+    const v = event.option.value as VehicleSearchResult;
+    this.vehicle = v as any;
+    this.plateSearch = v.plate_number;
+    this.vehicleResults = [];
+    // Fetch full vehicle data for mileage
+    this.api.getVehicleByPlate(v.plate_number).subscribe({
+      next: full => {
+        if (full.mileage) this.mileage = full.mileage;
+        this.vehicle = { ...v, make: full.make, model: full.model, year: full.year, client_name: full.client_name || v.client_name, client_rut: full.client_rut || v.client_rut };
+      }
     });
   }
 
   createNewVehicle() {
     const ref = this.dialog.open(VehicleFormComponent, { width: '500px', data: null });
     ref.afterClosed().subscribe(r => {
-      if (r) this.searchPlate();
+      if (r) {
+        this.notify.success('Vehiculo creado');
+        // Re-search with current plate
+        if (this.plateSearch) {
+          this.api.searchVehicles(this.plateSearch).subscribe(results => {
+            this.vehicleResults = results;
+            if (results.length === 1) {
+              this.vehicle = results[0] as any;
+              this.plateSearch = results[0].plate_number;
+            }
+          });
+        }
+      }
     });
   }
 
@@ -183,10 +321,34 @@ export class JobCreateComponent {
     this.items.push({ description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' });
   }
 
+  removeItem(index: number) {
+    this.items.splice(index, 1);
+    this.calcTotals();
+  }
+
+  calcTotals() {
+    const subtotal = this.items.reduce((s: number, i: any) => s + (i.quantity || 0) * (i.unit_price || 0), 0);
+    const discount = this.discountType === 'percentage'
+      ? subtotal * (this.discountAmount / 100)
+      : this.discountAmount;
+    const taxBase = subtotal - discount;
+    const tax = this.taxEnabled ? taxBase * 0.22 : 0;
+    const total = taxBase + tax;
+    this.totals = {
+      subtotal: Math.round(subtotal * 100) / 100,
+      discount: Math.round(Math.max(0, discount) * 100) / 100,
+      tax: Math.round(Math.max(0, tax) * 100) / 100,
+      total: Math.round(Math.max(0, total) * 100) / 100
+    };
+  }
+
   save() {
     if (!this.vehicle) return;
     this.saving = true;
     this.error = '';
+    const jobDate = this.jobDate instanceof Date
+      ? this.jobDate.toISOString().split('T')[0]
+      : this.jobDate;
     this.api.createJob({
       client_id: this.vehicle.client_id,
       vehicle_id: this.vehicle.id,
@@ -196,6 +358,7 @@ export class JobCreateComponent {
       discount_amount: this.discountAmount,
       discount_type: this.discountType,
       notes: this.notes || null,
+      job_date: jobDate,
       items: this.items.filter(i => i.description)
     }).subscribe({
       next: (job) => { this.notify.success('Trabajo creado'); this.router.navigate(['/trabajos', job.id]); },

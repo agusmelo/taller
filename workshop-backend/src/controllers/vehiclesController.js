@@ -16,6 +16,25 @@ async function list(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function search(req, res, next) {
+  try {
+    const { q } = req.query;
+    if (!q || q.length < 2) return res.json([]);
+    const r = await pool.query(
+      `SELECT v.id, v.plate_number, v.make, v.model, v.year, v.client_id,
+              c.full_name AS client_name, c.rut AS client_rut
+       FROM vehicles v
+       JOIN clients c ON c.id = v.client_id
+       WHERE v.deleted_at IS NULL AND c.deleted_at IS NULL
+         AND v.plate_number ILIKE $1
+       ORDER BY v.plate_number
+       LIMIT 10`,
+      [`%${q}%`]
+    );
+    res.json(r.rows);
+  } catch (err) { next(err); }
+}
+
 async function getOne(req, res, next) {
   try {
     const r = await pool.query(
@@ -134,4 +153,4 @@ async function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, getByPlate, getOwnershipHistory, create, transferOwnership, update, remove };
+module.exports = { list, search, getOne, getByPlate, getOwnershipHistory, create, transferOwnership, update, remove };

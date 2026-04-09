@@ -1,6 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { authenticate, requireAdmin, requireAdminOrRecep } = require('../middlewares/auth');
+const { checkJobLocked } = require('../middlewares/checkJobLocked');
 const v = require('../middlewares/validate');
 
 const auth      = require('../controllers/authController');
@@ -21,6 +22,7 @@ router.get('/search', authenticate, search.search);
 
 // Clients
 router.get('/clients',                   authenticate, clients.list);
+router.get('/clients/check-duplicate',   authenticate, clients.checkDuplicate);
 router.post('/clients',                  authenticate, requireAdminOrRecep, v.createClientRules, clients.create);
 router.get('/clients/by-rut/:rut',       authenticate, clients.getByRut);
 router.get('/clients/:id',               authenticate, v.uuidParam, clients.getOne);
@@ -31,6 +33,7 @@ router.get('/clients/:id/jobs',          authenticate, v.uuidParam, clients.getJ
 
 // Vehicles
 router.get('/vehicles',                        authenticate, vehicles.list);
+router.get('/vehicles/search',                 authenticate, vehicles.search);
 router.post('/vehicles',                       authenticate, requireAdminOrRecep, v.createVehicleRules, vehicles.create);
 router.get('/vehicles/by-plate/:plate',        authenticate, vehicles.getByPlate);
 router.get('/vehicles/:id',                    authenticate, v.uuidParam, vehicles.getOne);
@@ -40,23 +43,25 @@ router.put('/vehicles/:id',                    authenticate, requireAdminOrRecep
 router.delete('/vehicles/:id',                 authenticate, requireAdmin, v.uuidParam, vehicles.remove);
 
 // Jobs
-router.get('/jobs',        authenticate, jobs.list);
-router.post('/jobs',       authenticate, requireAdminOrRecep, v.createJobRules, jobs.create);
-router.get('/jobs/:id',    authenticate, v.uuidParam, jobs.getOne);
-router.put('/jobs/:id',    authenticate, v.updateJobRules, jobs.update);
-router.delete('/jobs/:id', authenticate, requireAdmin, v.uuidParam, jobs.remove);
-router.get('/jobs/:id/pdf',authenticate, v.uuidParam, pdf.generatePdf);
+router.get('/jobs',              authenticate, jobs.list);
+router.post('/jobs',             authenticate, requireAdminOrRecep, v.createJobRules, jobs.create);
+router.get('/jobs/:id',          authenticate, v.uuidParam, jobs.getOne);
+router.put('/jobs/:id',          authenticate, v.updateJobRules, jobs.update);
+router.delete('/jobs/:id',       authenticate, requireAdmin, v.uuidParam, jobs.remove);
+router.put('/jobs/:id/lock',     authenticate, requireAdminOrRecep, v.uuidParam, jobs.lockJob);
+router.put('/jobs/:id/unlock',   authenticate, requireAdmin, v.uuidParam, jobs.unlockJob);
+router.get('/jobs/:id/pdf',      authenticate, v.uuidParam, pdf.generatePdf);
 
-// Items
+// Items (locked jobs block add/edit/delete)
 router.get('/jobs/:id/items',            authenticate, v.uuidParam, jobs.listItems);
-router.post('/jobs/:id/items',           authenticate, v.addItemRules, jobs.addItem);
-router.put('/jobs/:id/items/:itemId',    authenticate, v.updateItemRules, jobs.updateItem);
-router.delete('/jobs/:id/items/:itemId', authenticate, requireAdminOrRecep, v.updateItemRules, jobs.removeItem);
+router.post('/jobs/:id/items',           authenticate, checkJobLocked, v.addItemRules, jobs.addItem);
+router.put('/jobs/:id/items/:itemId',    authenticate, checkJobLocked, v.updateItemRules, jobs.updateItem);
+router.delete('/jobs/:id/items/:itemId', authenticate, requireAdminOrRecep, checkJobLocked, v.updateItemRules, jobs.removeItem);
 
-// Payments
+// Payments (locked jobs block add/delete)
 router.get('/jobs/:id/payments',               authenticate, v.uuidParam, jobs.listPayments);
-router.post('/jobs/:id/payments',              authenticate, requireAdminOrRecep, v.addPaymentRules, jobs.addPayment);
-router.delete('/jobs/:id/payments/:paymentId', authenticate, requireAdmin, v.uuidParam, jobs.removePayment);
+router.post('/jobs/:id/payments',              authenticate, requireAdminOrRecep, checkJobLocked, v.addPaymentRules, jobs.addPayment);
+router.delete('/jobs/:id/payments/:paymentId', authenticate, requireAdmin, checkJobLocked, v.uuidParam, jobs.removePayment);
 
 // Dashboard (admin only)
 router.get('/dashboard/summary',            authenticate, requireAdmin, dashboard.summary);
