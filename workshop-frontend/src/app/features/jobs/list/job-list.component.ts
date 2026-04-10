@@ -11,6 +11,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -24,7 +26,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
   imports: [
     CommonModule, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
     MatFormFieldModule, MatInputModule, MatSelectModule, MatChipsModule,
-    MatPaginatorModule, MatProgressSpinnerModule,
+    MatPaginatorModule, MatProgressSpinnerModule, MatDatepickerModule, MatNativeDateModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
@@ -53,6 +55,23 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
             <mat-option value="pagado">Pagado</mat-option>
           </mat-select>
         </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:140px;">
+          <mat-label>Desde</mat-label>
+          <input matInput [matDatepicker]="dateFrom" [(ngModel)]="dateFromFilter" (dateChange)="load()">
+          <mat-datepicker-toggle matIconSuffix [for]="dateFrom"></mat-datepicker-toggle>
+          <mat-datepicker #dateFrom></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:140px;">
+          <mat-label>Hasta</mat-label>
+          <input matInput [matDatepicker]="dateTo" [(ngModel)]="dateToFilter" (dateChange)="load()">
+          <mat-datepicker-toggle matIconSuffix [for]="dateTo"></mat-datepicker-toggle>
+          <mat-datepicker #dateTo></mat-datepicker>
+        </mat-form-field>
+        @if (dateFromFilter || dateToFilter) {
+          <button mat-icon-button (click)="clearDates()">
+            <mat-icon>clear</mat-icon>
+          </button>
+        }
       </div>
 
       @if (loading) {
@@ -108,6 +127,8 @@ export class JobListComponent implements OnInit {
   displayedColumns = ['job_number', 'client_name', 'plate_number', 'vehicle', 'status', 'subtotal', 'job_date'];
   searchQuery = '';
   statusFilter = '';
+  dateFromFilter: Date | null = null;
+  dateToFilter: Date | null = null;
   loading = false;
   pageSize = 20;
   private searchTimeout: any;
@@ -126,6 +147,8 @@ export class JobListComponent implements OnInit {
     const params: Record<string, string> = { limit: String(this.pageSize) };
     if (this.searchQuery) params['q'] = this.searchQuery;
     if (this.statusFilter) params['status'] = this.statusFilter;
+    if (this.dateFromFilter) params['date_from'] = this.formatDate(this.dateFromFilter);
+    if (this.dateToFilter) params['date_to'] = this.formatDate(this.dateToFilter);
     this.api.getJobs(params).subscribe({
       next: j => { this.jobs = j; this.loading = false; },
       error: err => { this.notify.handleError(err); this.loading = false; }
@@ -140,6 +163,16 @@ export class JobListComponent implements OnInit {
   onPage(event: PageEvent) {
     this.pageSize = event.pageSize;
     this.load();
+  }
+
+  clearDates() {
+    this.dateFromFilter = null;
+    this.dateToFilter = null;
+    this.load();
+  }
+
+  private formatDate(d: Date): string {
+    return d.toISOString().split('T')[0];
   }
 
   goToDetail(id: string) { this.router.navigate(['/trabajos', id]); }

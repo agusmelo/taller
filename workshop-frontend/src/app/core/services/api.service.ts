@@ -81,7 +81,9 @@ export class ApiService {
 
   // Dashboard
   getDashboardSummary() { return this.http.get<DashboardSummary>(`${this.url}/dashboard/summary`); }
-  getRevenueTrend() { return this.http.get<{month: string; total: number}[]>(`${this.url}/dashboard/revenue-trend`); }
+  getRevenueTrend(params?: Record<string, string>) {
+    return this.http.get<{period: string; total: number}[]>(`${this.url}/dashboard/revenue-trend`, { params });
+  }
   getJobStatus() { return this.http.get<{abierto: number; terminado: number; pagado: number}>(`${this.url}/dashboard/job-status`); }
   getClientFinancials(filter?: string) {
     const params: Record<string, string> = {};

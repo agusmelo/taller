@@ -14,6 +14,7 @@ const pool = new Pool({
 const migrations = [
   'schema.sql',
   '002_fase3.sql',
+  '003_job_number_date.sql',
 ];
 
 async function run() {

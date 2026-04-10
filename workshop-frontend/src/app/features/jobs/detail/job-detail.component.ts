@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -53,6 +53,11 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
           <button mat-raised-button (click)="printPdf()" [disabled]="pdfLoading">
             <mat-icon>print</mat-icon> {{ pdfLoading ? 'Generando...' : 'Imprimir PDF' }}
           </button>
+          @if (auth.isAdmin()) {
+            <button mat-raised-button color="warn" (click)="confirmDeleteJob()">
+              <mat-icon>delete</mat-icon> Eliminar
+            </button>
+          }
           <button mat-button routerLink="/trabajos"><mat-icon>arrow_back</mat-icon> Volver</button>
         </div>
       </div>
@@ -61,7 +66,9 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       @if (job.is_locked) {
         <div class="lock-banner">
           <mat-icon>lock</mat-icon>
-          <span>Este trabajo esta bloqueado para edicion.</span>
+          <span>Este trabajo esta bloqueado para edicion.
+            @if (job.status === 'terminado') { Se pueden registrar pagos. }
+          </span>
           @if (auth.isAdmin()) {
             <button mat-stroked-button (click)="toggleLock(false)" style="margin-left:auto;">
               <mat-icon>lock_open</mat-icon> Desbloquear
@@ -104,9 +111,13 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
               @if (job.tax_enabled) { <p>IVA (22%): +{{ f.tax | appCurrency }}</p> }
               <p><strong>Total: {{ f.total | appCurrency }}</strong></p>
               <p>Pagado: {{ f.total_paid | appCurrency }}</p>
-              <p [class]="f.balance > 0 ? 'balance-positive' : 'balance-zero'">
-                <strong>Saldo: {{ f.balance | appCurrency }}</strong>
-              </p>
+              @if (f.balance > 0) {
+                <p class="balance-positive"><strong>Saldo: {{ f.balance | appCurrency }}</strong></p>
+              } @else if (f.balance < 0) {
+                <p class="balance-overpaid"><strong>Excedente: {{ (f.balance * -1) | appCurrency }}</strong></p>
+              } @else {
+                <p class="balance-zero"><strong>Saldo: {{ f.balance | appCurrency }}</strong></p>
+              }
             }
           </mat-card-content>
         </mat-card>
@@ -126,6 +137,13 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 
           @if (showAddItem && !job.is_locked) {
             <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
+              <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
+                <mat-select [(ngModel)]="newItem.item_type">
+                  <mat-option value="mano_de_obra">Mano de obra</mat-option>
+                  <mat-option value="repuesto">Repuesto</mat-option>
+                  <mat-option value="otro">Otro</mat-option>
+                </mat-select>
+              </mat-form-field>
               <mat-form-field appearance="outline" style="flex:2;min-width:160px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newItem.description" placeholder="Descripcion">
               </mat-form-field>
@@ -134,13 +152,6 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:100px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newItem.unit_price" type="number" placeholder="Precio">
-              </mat-form-field>
-              <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
-                <mat-select [(ngModel)]="newItem.item_type">
-                  <mat-option value="mano_de_obra">Mano de obra</mat-option>
-                  <mat-option value="repuesto">Repuesto</mat-option>
-                  <mat-option value="otro">Otro</mat-option>
-                </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newItem.supplier" placeholder="Proveedor">
@@ -196,17 +207,20 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <h3>Pagos</h3>
-            @if (auth.isAdminOrRecep() && !job.is_locked) {
+            @if (auth.isAdminOrRecep() && canAddPayments()) {
               <button mat-stroked-button (click)="showAddPayment = !showAddPayment">
                 <mat-icon>payment</mat-icon> Registrar pago
               </button>
             }
           </div>
 
-          @if (showAddPayment && !job.is_locked) {
+          @if (showAddPayment && canAddPayments()) {
             <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
-              <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
-                <input matInput [(ngModel)]="newPayment.amount" type="number" placeholder="Monto">
+              <mat-form-field appearance="outline" style="width:150px;" subscriptSizing="dynamic">
+                <mat-label>Fecha de pago</mat-label>
+                <input matInput [matDatepicker]="payDatePicker" [(ngModel)]="newPayment.payment_date">
+                <mat-datepicker-toggle matIconSuffix [for]="payDatePicker"></mat-datepicker-toggle>
+                <mat-datepicker #payDatePicker></mat-datepicker>
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:160px;" subscriptSizing="dynamic">
                 <mat-select [(ngModel)]="newPayment.method">
@@ -215,11 +229,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
                   <mat-option value="credito">Credito</mat-option>
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" style="width:150px;" subscriptSizing="dynamic">
-                <mat-label>Fecha de pago</mat-label>
-                <input matInput [matDatepicker]="payDatePicker" [(ngModel)]="newPayment.payment_date">
-                <mat-datepicker-toggle matIconSuffix [for]="payDatePicker"></mat-datepicker-toggle>
-                <mat-datepicker #payDatePicker></mat-datepicker>
+              <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
+                <input matInput [(ngModel)]="newPayment.amount" type="number" placeholder="Monto">
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:150px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newPayment.reference" placeholder="Referencia">
@@ -298,6 +309,7 @@ export class JobDetailComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private api: ApiService,
     public auth: AuthService,
     private dialog: MatDialog,
@@ -313,6 +325,12 @@ export class JobDetailComponent implements OnInit {
       next: j => { this.job = j; this.internalNotes = j.internal_notes || ''; this.loading = false; },
       error: err => { this.notify.handleError(err); this.loading = false; }
     });
+  }
+
+  canAddPayments(): boolean {
+    if (!this.job) return false;
+    // Allow payments when not locked, or when locked but terminado (to transition to pagado)
+    return !this.job.is_locked || (this.job.is_locked && this.job.status === 'terminado');
   }
 
   toggleLock(lock: boolean) {
@@ -338,6 +356,28 @@ export class JobDetailComponent implements OnInit {
   markDone() {
     this.api.updateJob(this.job!.id, { status: 'terminado' } as any).subscribe({
       next: () => { this.notify.success('Trabajo marcado como terminado'); this.load(); },
+      error: err => this.notify.handleError(err)
+    });
+  }
+
+  confirmDeleteJob() {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Eliminar trabajo',
+        message: `¿Esta seguro de eliminar el trabajo "${this.job!.job_number}"? Esta accion no se puede deshacer.`,
+        confirmText: 'Eliminar'
+      }
+    });
+    ref.afterClosed().subscribe(confirmed => { if (confirmed) this.deleteJob(); });
+  }
+
+  deleteJob() {
+    this.api.deleteJob(this.job!.id).subscribe({
+      next: () => {
+        this.notify.success('Trabajo eliminado');
+        this.router.navigate(['/trabajos']);
+      },
       error: err => this.notify.handleError(err)
     });
   }
