@@ -26,13 +26,42 @@ async function summary(req, res, next) {
 
 async function revenueTrend(req, res, next) {
   try {
+    const { granularity = 'month', date_from, date_to } = req.query;
+
+    let format, defaultInterval;
+    if (granularity === 'week') {
+      format = 'IYYY-IW';        // ISO year-week
+      defaultInterval = '6 months';
+    } else if (granularity === 'year') {
+      format = 'YYYY';
+      defaultInterval = '5 years';
+    } else {
+      format = 'YYYY-MM';
+      defaultInterval = '12 months';
+    }
+
+    const params = [];
+    let dateFilter;
+    if (date_from && date_to) {
+      params.push(date_from, date_to);
+      dateFilter = `paid_at >= $1 AND paid_at < ($2::date + 1)`;
+    } else if (date_from) {
+      params.push(date_from);
+      dateFilter = `paid_at >= $1`;
+    } else if (date_to) {
+      params.push(date_to);
+      dateFilter = `paid_at < ($1::date + 1)`;
+    } else {
+      dateFilter = `paid_at >= NOW() - INTERVAL '${defaultInterval}'`;
+    }
+
     const r = await pool.query(`
-      SELECT TO_CHAR(paid_at, 'YYYY-MM') AS month, SUM(amount) AS total
+      SELECT TO_CHAR(paid_at, '${format}') AS period, SUM(amount) AS total
       FROM payments
-      WHERE paid_at >= NOW() - INTERVAL '12 months'
-      GROUP BY TO_CHAR(paid_at, 'YYYY-MM')
-      ORDER BY month
-    `);
+      WHERE ${dateFilter}
+      GROUP BY TO_CHAR(paid_at, '${format}')
+      ORDER BY period
+    `, params);
     res.json(r.rows);
   } catch (err) { next(err); }
 }

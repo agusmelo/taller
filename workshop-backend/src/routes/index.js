@@ -54,14 +54,14 @@ router.get('/jobs/:id/pdf',      authenticate, v.uuidParam, pdf.generatePdf);
 
 // Items (locked jobs block add/edit/delete)
 router.get('/jobs/:id/items',            authenticate, v.uuidParam, jobs.listItems);
-router.post('/jobs/:id/items',           authenticate, checkJobLocked, v.addItemRules, jobs.addItem);
-router.put('/jobs/:id/items/:itemId',    authenticate, checkJobLocked, v.updateItemRules, jobs.updateItem);
-router.delete('/jobs/:id/items/:itemId', authenticate, requireAdminOrRecep, checkJobLocked, v.updateItemRules, jobs.removeItem);
+router.post('/jobs/:id/items',           authenticate, checkJobLocked(), v.addItemRules, jobs.addItem);
+router.put('/jobs/:id/items/:itemId',    authenticate, checkJobLocked(), v.updateItemRules, jobs.updateItem);
+router.delete('/jobs/:id/items/:itemId', authenticate, requireAdminOrRecep, checkJobLocked(), v.updateItemRules, jobs.removeItem);
 
-// Payments (locked jobs block add/delete)
+// Payments (locked terminado jobs allow adding payments to transition to pagado)
 router.get('/jobs/:id/payments',               authenticate, v.uuidParam, jobs.listPayments);
-router.post('/jobs/:id/payments',              authenticate, requireAdminOrRecep, checkJobLocked, v.addPaymentRules, jobs.addPayment);
-router.delete('/jobs/:id/payments/:paymentId', authenticate, requireAdmin, checkJobLocked, v.uuidParam, jobs.removePayment);
+router.post('/jobs/:id/payments',              authenticate, requireAdminOrRecep, checkJobLocked({ allowPaymentsOnTerminado: true }), v.addPaymentRules, jobs.addPayment);
+router.delete('/jobs/:id/payments/:paymentId', authenticate, requireAdmin, checkJobLocked(), v.uuidParam, jobs.removePayment);
 
 // Dashboard (admin only)
 router.get('/dashboard/summary',            authenticate, requireAdmin, dashboard.summary);

@@ -152,7 +152,7 @@ import { SearchResults } from '../core/models';
     .logo-icon { font-size: 28px; width: 28px; height: 28px; }
     .logo-text { font-size: 20px; font-weight: 500; }
     .sidenav mat-nav-list a {
-      color: rgba(255,255,255,0.8);
+      color: white;
     }
     .sidenav mat-nav-list a.active {
       color: white;
@@ -160,10 +160,13 @@ import { SearchResults } from '../core/models';
       border-left: 3px solid var(--color-accent);
     }
     .sidenav mat-nav-list mat-icon {
-      color: rgba(255,255,255,0.7);
+      color: white;
     }
     .sidenav mat-nav-list a.active mat-icon {
       color: var(--color-accent-light);
+    }
+    :host ::ng-deep .sidenav .mat-mdc-list-item .mdc-list-item__primary-text {
+      color: white !important;
     }
     .main-content { display: flex; flex-direction: column; }
     .top-toolbar {

@@ -8,7 +8,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ApiService } from '../../core/services/api.service';
 import { DashboardSummary, ClientFinancialRow, Job } from '../../core/models';
 import { StatusLabelPipe } from '../../shared/pipes/status.pipe';
@@ -20,12 +24,21 @@ import Chart from 'chart.js/auto';
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
-    MatTableModule, MatSelectModule, MatFormFieldModule, MatDividerModule,
+    MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule, MatDividerModule,
+    MatDatepickerModule, MatNativeDateModule, MatSlideToggleModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
     <div class="page-container">
-      <h1 style="margin-bottom:24px;">Dashboard</h1>
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <mat-slide-toggle [(ngModel)]="privacyMode" (change)="onPrivacyToggle()">
+          <mat-icon style="vertical-align:middle;margin-right:4px;">
+            {{ privacyMode ? 'visibility_off' : 'visibility' }}
+          </mat-icon>
+          Privacidad
+        </mat-slide-toggle>
+      </div>
 
       <!-- Summary Cards -->
       <div class="card-grid" *ngIf="summary">
@@ -34,7 +47,7 @@ import Chart from 'chart.js/auto';
             <mat-icon class="stat-icon" style="color:#1565c0;">today</mat-icon>
             <div>
               <div class="stat-label">Ingresos hoy</div>
-              <div class="stat-value">{{ summary.revenue_today | appCurrency }}</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.revenue_today | appCurrency) }}</div>
             </div>
           </mat-card-content>
         </mat-card>
@@ -43,7 +56,7 @@ import Chart from 'chart.js/auto';
             <mat-icon class="stat-icon" style="color:#2e7d32;">calendar_month</mat-icon>
             <div>
               <div class="stat-label">Ingresos este mes</div>
-              <div class="stat-value">{{ summary.revenue_month | appCurrency }}</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.revenue_month | appCurrency) }}</div>
             </div>
           </mat-card-content>
         </mat-card>
@@ -52,7 +65,7 @@ import Chart from 'chart.js/auto';
             <mat-icon class="stat-icon" style="color:#6a1b9a;">date_range</mat-icon>
             <div>
               <div class="stat-label">Ingresos este ano</div>
-              <div class="stat-value">{{ summary.revenue_year | appCurrency }}</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.revenue_year | appCurrency) }}</div>
             </div>
           </mat-card-content>
         </mat-card>
@@ -89,7 +102,36 @@ import Chart from 'chart.js/auto';
       <!-- Revenue Chart -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <h3>Tendencia de ingresos (ultimos 12 meses)</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+            <h3 style="margin:0;">Tendencia de ingresos</h3>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:130px;">
+                <mat-label>Granularidad</mat-label>
+                <mat-select [(ngModel)]="trendGranularity" (selectionChange)="loadRevenueTrend()">
+                  <mat-option value="week">Semana</mat-option>
+                  <mat-option value="month">Mes</mat-option>
+                  <mat-option value="year">Ano</mat-option>
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:140px;">
+                <mat-label>Desde</mat-label>
+                <input matInput [matDatepicker]="trendFrom" [(ngModel)]="trendDateFrom" (dateChange)="loadRevenueTrend()">
+                <mat-datepicker-toggle matIconSuffix [for]="trendFrom"></mat-datepicker-toggle>
+                <mat-datepicker #trendFrom></mat-datepicker>
+              </mat-form-field>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:140px;">
+                <mat-label>Hasta</mat-label>
+                <input matInput [matDatepicker]="trendTo" [(ngModel)]="trendDateTo" (dateChange)="loadRevenueTrend()">
+                <mat-datepicker-toggle matIconSuffix [for]="trendTo"></mat-datepicker-toggle>
+                <mat-datepicker #trendTo></mat-datepicker>
+              </mat-form-field>
+              @if (trendDateFrom || trendDateTo) {
+                <button mat-icon-button (click)="clearTrendDates()">
+                  <mat-icon>clear</mat-icon>
+                </button>
+              }
+            </div>
+          </div>
           <canvas #revenueChart height="80"></canvas>
         </mat-card-content>
       </mat-card>
@@ -145,17 +187,17 @@ import Chart from 'chart.js/auto';
             <div class="card-grid" style="margin-bottom:16px;">
               <mat-card style="background:#e3f2fd;">
                 <mat-card-content class="stat-card">
-                  <div><div class="stat-label">Total facturado</div><div class="stat-value">{{ financialTotals.total_facturado | appCurrency }}</div></div>
+                  <div><div class="stat-label">Total facturado</div><div class="stat-value">{{ privacyMode ? '***' : (financialTotals.total_facturado | appCurrency) }}</div></div>
                 </mat-card-content>
               </mat-card>
               <mat-card style="background:#e8f5e9;">
                 <mat-card-content class="stat-card">
-                  <div><div class="stat-label">Total cobrado</div><div class="stat-value">{{ financialTotals.total_pagado | appCurrency }}</div></div>
+                  <div><div class="stat-label">Total cobrado</div><div class="stat-value">{{ privacyMode ? '***' : (financialTotals.total_pagado | appCurrency) }}</div></div>
                 </mat-card-content>
               </mat-card>
               <mat-card style="background:#fff3e0;">
                 <mat-card-content class="stat-card">
-                  <div><div class="stat-label">Total pendiente</div><div class="stat-value balance-positive">{{ financialTotals.total_pendiente | appCurrency }}</div></div>
+                  <div><div class="stat-label">Total pendiente</div><div class="stat-value balance-positive">{{ privacyMode ? '***' : (financialTotals.total_pendiente | appCurrency) }}</div></div>
                 </mat-card-content>
               </mat-card>
             </div>
@@ -176,18 +218,18 @@ import Chart from 'chart.js/auto';
             </ng-container>
             <ng-container matColumnDef="total_facturado">
               <th mat-header-cell *matHeaderCellDef class="text-right">Facturado</th>
-              <td mat-cell *matCellDef="let c" class="text-right">{{ c.total_facturado | appCurrency }}</td>
+              <td mat-cell *matCellDef="let c" class="text-right">{{ privacyMode ? '***' : (c.total_facturado | appCurrency) }}</td>
             </ng-container>
             <ng-container matColumnDef="total_pagado">
               <th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th>
-              <td mat-cell *matCellDef="let c" class="text-right">{{ c.total_pagado | appCurrency }}</td>
+              <td mat-cell *matCellDef="let c" class="text-right">{{ privacyMode ? '***' : (c.total_pagado | appCurrency) }}</td>
             </ng-container>
             <ng-container matColumnDef="saldo">
               <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
               <td mat-cell *matCellDef="let c" class="text-right"
                   [style.background]="c.saldo > 0 ? '#fff8e1' : '#e8f5e9'"
                   [class]="c.saldo > 0 ? 'balance-positive' : 'balance-zero'">
-                {{ c.saldo | appCurrency }}
+                {{ privacyMode ? '***' : (c.saldo | appCurrency) }}
               </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="['full_name','rut','job_count','total_facturado','total_pagado','saldo']"></tr>
@@ -213,8 +255,15 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   clientFinancials: ClientFinancialRow[] = [];
   financialTotals: { total_facturado: number; total_pagado: number; total_pendiente: number } | null = null;
   debtFilter = '';
+  privacyMode = false;
+
+  // Trend chart filters
+  trendGranularity: 'week' | 'month' | 'year' = 'month';
+  trendDateFrom: Date | null = null;
+  trendDateTo: Date | null = null;
+
   private chart: Chart | null = null;
-  private revenueTrendData: { month: string; total: number }[] = [];
+  private revenueTrendData: { period: string; total: number }[] = [];
 
   constructor(private api: ApiService, private router: Router) {}
 
@@ -222,15 +271,28 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.api.getDashboardSummary().subscribe(s => this.summary = s);
     this.api.getJobStatus().subscribe(s => this.jobStatus = s);
     this.api.getRecentJobs().subscribe(j => this.recentJobs = j);
-    this.api.getRevenueTrend().subscribe(d => {
-      this.revenueTrendData = d;
-      this.renderChart();
-    });
+    this.loadRevenueTrend();
     this.loadClientFinancials();
   }
 
   ngAfterViewInit() {
     if (this.revenueTrendData.length) this.renderChart();
+  }
+
+  loadRevenueTrend() {
+    const params: Record<string, string> = { granularity: this.trendGranularity };
+    if (this.trendDateFrom) params['date_from'] = this.formatDate(this.trendDateFrom);
+    if (this.trendDateTo) params['date_to'] = this.formatDate(this.trendDateTo);
+    this.api.getRevenueTrend(params).subscribe(d => {
+      this.revenueTrendData = d;
+      this.renderChart();
+    });
+  }
+
+  clearTrendDates() {
+    this.trendDateFrom = null;
+    this.trendDateTo = null;
+    this.loadRevenueTrend();
   }
 
   loadClientFinancials() {
@@ -240,16 +302,24 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     });
   }
 
+  onPrivacyToggle() {
+    this.renderChart();
+  }
+
   renderChart() {
     if (!this.chartRef?.nativeElement || !this.revenueTrendData.length) return;
     if (this.chart) this.chart.destroy();
+
+    const labels = this.revenueTrendData.map(d => d.period);
+    const data = this.revenueTrendData.map(d => parseFloat(d.total as any));
+
     this.chart = new Chart(this.chartRef.nativeElement, {
       type: 'bar',
       data: {
-        labels: this.revenueTrendData.map(d => d.month),
+        labels,
         datasets: [{
           label: 'Ingresos',
-          data: this.revenueTrendData.map(d => parseFloat(d.total as any)),
+          data,
           backgroundColor: '#1565c0',
           borderRadius: 4,
         }]
@@ -258,10 +328,18 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, ticks: { callback: (v) => '$ ' + Number(v).toLocaleString('es-UY') } }
+          y: {
+            beginAtZero: true,
+            display: !this.privacyMode,
+            ticks: { callback: (v) => '$ ' + Number(v).toLocaleString('es-UY') }
+          }
         }
       }
     });
+  }
+
+  private formatDate(d: Date): string {
+    return d.toISOString().split('T')[0];
   }
 
   goToJob(id: string) { this.router.navigate(['/trabajos', id]); }

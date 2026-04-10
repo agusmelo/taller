@@ -36,13 +36,15 @@ async function checkAndPay(client, jobId) {
 
 async function list(req, res, next) {
   try {
-    const { status, client_id, vehicle_id, q, page = 1, limit = 20 } = req.query;
+    const { status, client_id, vehicle_id, q, date_from, date_to, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
     const params = []; const where = ['j.deleted_at IS NULL'];
     if (status)     { params.push(status);     where.push(`j.status = $${params.length}`); }
     if (client_id)  { params.push(client_id);  where.push(`j.client_id = $${params.length}`); }
     if (vehicle_id) { params.push(vehicle_id); where.push(`j.vehicle_id = $${params.length}`); }
     if (q) { params.push(`%${q}%`); where.push(`(j.job_number ILIKE $${params.length} OR c.full_name ILIKE $${params.length} OR v.plate_number ILIKE $${params.length})`); }
+    if (date_from) { params.push(date_from); where.push(`j.job_date >= $${params.length}`); }
+    if (date_to)   { params.push(date_to);   where.push(`j.job_date <= $${params.length}`); }
     params.push(parseInt(limit), parseInt(offset));
     const r = await pool.query(`
       SELECT j.*, c.full_name AS client_name, c.rut AS client_rut,

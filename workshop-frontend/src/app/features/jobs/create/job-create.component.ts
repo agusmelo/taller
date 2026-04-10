@@ -107,7 +107,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
                   </mat-form-field>
                 </div>
                 <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-                  <mat-checkbox [(ngModel)]="taxEnabled">IVA (22%)</mat-checkbox>
+                  <mat-checkbox [(ngModel)]="taxEnabled" (change)="calcTotals()">IVA (22%)</mat-checkbox>
                   <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
                     <mat-label>Descuento</mat-label>
                     <input matInput [(ngModel)]="discountAmount" type="number" (ngModelChange)="calcTotals()">
