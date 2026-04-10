@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,6 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { FormsModule } from '@angular/forms';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from '../core/auth/auth.service';
 import { ApiService } from '../core/services/api.service';
 import { SearchResults } from '../core/models';
@@ -26,7 +27,7 @@ import { SearchResults } from '../core/models';
   ],
   template: `
     <mat-sidenav-container class="layout-container">
-      <mat-sidenav mode="side" opened class="sidenav">
+      <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="!isMobile" class="sidenav">
         <div class="sidenav-header">
           <div class="logo-container">
             <img src="assets/logo.png" alt="La Llave" class="logo-img"
@@ -39,27 +40,27 @@ import { SearchResults } from '../core/models';
         </div>
         <mat-nav-list>
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
+            <a mat-list-item routerLink="/dashboard" routerLinkActive="active" (click)="onNavClick()">
               <mat-icon matListItemIcon>dashboard</mat-icon>
               <span>Dashboard</span>
             </a>
           }
-          <a mat-list-item routerLink="/trabajos" routerLinkActive="active">
+          <a mat-list-item routerLink="/trabajos" routerLinkActive="active" (click)="onNavClick()">
             <mat-icon matListItemIcon>work</mat-icon>
             <span>Trabajos</span>
           </a>
           @if (auth.isAdminOrRecep()) {
-            <a mat-list-item routerLink="/clientes" routerLinkActive="active">
+            <a mat-list-item routerLink="/clientes" routerLinkActive="active" (click)="onNavClick()">
               <mat-icon matListItemIcon>people</mat-icon>
               <span>Clientes</span>
             </a>
           }
-          <a mat-list-item routerLink="/vehiculos" routerLinkActive="active">
+          <a mat-list-item routerLink="/vehiculos" routerLinkActive="active" (click)="onNavClick()">
             <mat-icon matListItemIcon>directions_car</mat-icon>
             <span>Vehiculos</span>
           </a>
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/usuarios" routerLinkActive="active">
+            <a mat-list-item routerLink="/usuarios" routerLinkActive="active" (click)="onNavClick()">
               <mat-icon matListItemIcon>manage_accounts</mat-icon>
               <span>Usuarios</span>
             </a>
@@ -69,6 +70,11 @@ import { SearchResults } from '../core/models';
 
       <mat-sidenav-content class="main-content">
         <mat-toolbar class="top-toolbar">
+          @if (isMobile) {
+            <button mat-icon-button (click)="sidenav.toggle()" style="color:white;">
+              <mat-icon>menu</mat-icon>
+            </button>
+          }
           <mat-form-field appearance="outline" class="search-bar" subscriptSizing="dynamic">
             <mat-icon matPrefix>search</mat-icon>
             <input matInput placeholder="Buscar cliente, patente, trabajo..."
@@ -100,7 +106,7 @@ import { SearchResults } from '../core/models';
 
           <button mat-button [matMenuTriggerFor]="userMenu" class="user-menu-btn">
             <mat-icon>account_circle</mat-icon>
-            {{ auth.currentUser()?.full_name }}
+            @if (!isMobile) { {{ auth.currentUser()?.full_name }} }
           </button>
           <mat-menu #userMenu="matMenu">
             <button mat-menu-item disabled>
@@ -180,6 +186,12 @@ import { SearchResults } from '../core/models';
       margin-left: 16px;
       width: 350px;
     }
+    @media (max-width: 768px) {
+      .search-bar {
+        width: 180px;
+        margin-left: 8px;
+      }
+    }
     .search-bar .mat-mdc-form-field-wrapper {
       padding: 0;
     }
@@ -195,15 +207,26 @@ import { SearchResults } from '../core/models';
   `]
 })
 export class LayoutComponent {
+  @ViewChild('sidenav') sidenav!: MatSidenav;
   searchQuery = '';
   searchResults: SearchResults | null = null;
+  isMobile = false;
   private searchTimeout: any;
 
   constructor(
     public auth: AuthService,
     private api: ApiService,
-    private router: Router
-  ) {}
+    private router: Router,
+    private breakpointObserver: BreakpointObserver
+  ) {
+    this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(result => {
+      this.isMobile = result.matches;
+    });
+  }
+
+  onNavClick() {
+    if (this.isMobile) this.sidenav.close();
+  }
 
   onSearch() {
     clearTimeout(this.searchTimeout);

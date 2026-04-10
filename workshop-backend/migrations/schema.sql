@@ -204,14 +204,15 @@ END $$;
 
 -- ============================================================
 -- JOB NUMBER GENERATOR: YYYY-MM-NNNNN (resets monthly)
+-- Uses the provided date (job_date) to determine the month
 -- ============================================================
-CREATE OR REPLACE FUNCTION generate_job_number()
+CREATE OR REPLACE FUNCTION generate_job_number(p_date DATE DEFAULT CURRENT_DATE)
 RETURNS TEXT AS $$
 DECLARE
   v_year_month CHAR(7);
   v_seq        INTEGER;
 BEGIN
-  v_year_month := TO_CHAR(NOW(), 'YYYY-MM');
+  v_year_month := TO_CHAR(p_date, 'YYYY-MM');
   INSERT INTO job_number_sequences (year_month, last_seq)
   VALUES (v_year_month, 1)
   ON CONFLICT (year_month) DO UPDATE

@@ -107,12 +107,13 @@ async function create(req, res, next) {
       return res.status(400).json({ error: 'client_id y vehicle_id son requeridos' });
 
     await db.query('BEGIN');
+    const effectiveJobDate = job_date || new Date().toISOString().split('T')[0];
     const r = await db.query(`
       INSERT INTO jobs (job_number, client_id, vehicle_id, mileage_at_service,
                         tax_enabled, tax_rate, discount_amount, discount_type, notes, created_by, job_date)
-      VALUES (generate_job_number(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      VALUES (generate_job_number($10::date),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [client_id, vehicle_id, mileage_at_service || null, tax_enabled, tax_rate,
-       discount_amount, discount_type, notes || null, req.user.id, job_date || new Date().toISOString().split('T')[0]]
+       discount_amount, discount_type, notes || null, req.user.id, effectiveJobDate]
     );
     const job = r.rows[0];
     for (const item of items) {

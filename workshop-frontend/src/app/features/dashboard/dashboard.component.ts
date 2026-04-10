@@ -159,12 +159,12 @@ import Chart from 'chart.js/auto';
                 <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
               </td>
             </ng-container>
-            <ng-container matColumnDef="created_at">
+            <ng-container matColumnDef="job_date">
               <th mat-header-cell *matHeaderCellDef>Fecha</th>
-              <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
+              <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
             </ng-container>
-            <tr mat-header-row *matHeaderRowDef="['job_number','client_name','plate_number','status','created_at']"></tr>
-            <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','plate_number','status','created_at'];"
+            <tr mat-header-row *matHeaderRowDef="['job_number','client_name','plate_number','status','job_date']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','plate_number','status','job_date'];"
                 class="clickable-row" (click)="goToJob(row.id)"></tr>
           </table>
         </mat-card-content>

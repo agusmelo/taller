@@ -7,9 +7,9 @@ async function summary(req, res, next) {
     const yearStart  = today.slice(0, 4) + '-01-01';
 
     const [revenueToday, revenueMonth, revenueYear, jobsToday, jobsMonth] = await Promise.all([
-      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE paid_at::date = $1`, [today]),
-      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE paid_at >= $1`, [monthStart]),
-      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE paid_at >= $1`, [yearStart]),
+      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date = $1`, [today]),
+      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date >= $1`, [monthStart]),
+      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date >= $1`, [yearStart]),
       pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE created_at::date = $1 AND deleted_at IS NULL`, [today]),
       pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE created_at >= $1 AND deleted_at IS NULL`, [monthStart]),
     ]);
@@ -44,22 +44,22 @@ async function revenueTrend(req, res, next) {
     let dateFilter;
     if (date_from && date_to) {
       params.push(date_from, date_to);
-      dateFilter = `paid_at >= $1 AND paid_at < ($2::date + 1)`;
+      dateFilter = `payment_date >= $1 AND payment_date < ($2::date + 1)`;
     } else if (date_from) {
       params.push(date_from);
-      dateFilter = `paid_at >= $1`;
+      dateFilter = `payment_date >= $1`;
     } else if (date_to) {
       params.push(date_to);
-      dateFilter = `paid_at < ($1::date + 1)`;
+      dateFilter = `payment_date < ($1::date + 1)`;
     } else {
-      dateFilter = `paid_at >= NOW() - INTERVAL '${defaultInterval}'`;
+      dateFilter = `payment_date >= NOW() - INTERVAL '${defaultInterval}'`;
     }
 
     const r = await pool.query(`
-      SELECT TO_CHAR(paid_at, '${format}') AS period, SUM(amount) AS total
+      SELECT TO_CHAR(payment_date, '${format}') AS period, SUM(amount) AS total
       FROM payments
       WHERE ${dateFilter}
-      GROUP BY TO_CHAR(paid_at, '${format}')
+      GROUP BY TO_CHAR(payment_date, '${format}')
       ORDER BY period
     `, params);
     res.json(r.rows);
@@ -127,13 +127,13 @@ async function clientFinancials(req, res, next) {
 async function recentJobs(req, res, next) {
   try {
     const r = await pool.query(`
-      SELECT j.id, j.job_number, j.status, j.created_at,
+      SELECT j.id, j.job_number, j.status, j.job_date, j.created_at,
              c.full_name AS client_name, v.plate_number, v.make, v.model
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
       JOIN vehicles v ON v.id = j.vehicle_id
       WHERE j.deleted_at IS NULL
-      ORDER BY j.created_at DESC LIMIT 10
+      ORDER BY j.job_date DESC, j.created_at DESC LIMIT 10
     `);
     res.json(r.rows);
   } catch (err) { next(err); }
