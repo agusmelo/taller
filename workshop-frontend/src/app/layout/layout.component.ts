@@ -185,6 +185,8 @@ import { SearchResults } from '../core/models';
     .search-bar {
       margin-left: 16px;
       width: 350px;
+      --mdc-outlined-text-field-input-text-placeholder-color: rgba(255,255,255,0.75);
+      --mdc-filled-text-field-input-text-placeholder-color: rgba(255,255,255,0.75);
     }
     @media (max-width: 768px) {
       .search-bar {
@@ -199,9 +201,18 @@ import { SearchResults } from '../core/models';
       background: rgba(255,255,255,0.12);
       border-radius: 4px;
     }
-    :host ::ng-deep .search-bar input { color: white; }
+    :host ::ng-deep .search-bar .mat-mdc-input-element {
+      color: white !important;
+      caret-color: white;
+    }
+    :host ::ng-deep .search-bar .mat-mdc-input-element::placeholder {
+      color: rgba(255,255,255,0.75) !important;
+      opacity: 1;
+    }
     :host ::ng-deep .search-bar mat-icon { color: rgba(255,255,255,0.7); }
     .user-menu-btn { color: white; }
+    :host ::ng-deep .user-menu-btn .mdc-button__label { color: white !important; }
+    :host ::ng-deep .user-menu-btn mat-icon { color: white !important; }
     .page-wrapper { flex: 1; overflow: auto; }
     .spacer { flex: 1; }
   `]
