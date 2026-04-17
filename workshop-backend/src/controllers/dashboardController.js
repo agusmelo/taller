@@ -4,36 +4,40 @@ async function summary(req, res, next) {
   try {
     const today = new Date().toISOString().split('T')[0];
     const monthStart = today.slice(0, 7) + '-01';
-    const yearStart  = today.slice(0, 4) + '-01-01';
 
-    const [revenueToday, revenueMonth, revenueYear, jobsToday, jobsMonth] = await Promise.all([
-      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date = $1`, [today]),
+    const [cobradoMonth, jobsMonth, activeJobs, facturadoMonth, pendienteTotal] = await Promise.all([
       pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date >= $1`, [monthStart]),
-      pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date >= $1`, [yearStart]),
-      pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE created_at::date = $1 AND deleted_at IS NULL`, [today]),
       pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE created_at >= $1 AND deleted_at IS NULL`, [monthStart]),
+      pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE status IN ('abierto','terminado') AND deleted_at IS NULL`),
+      pool.query(`
+        SELECT COALESCE(SUM(sub.subtotal), 0) AS total FROM (
+          SELECT SUM(ji.quantity * ji.unit_price) AS subtotal
+          FROM jobs j JOIN job_items ji ON ji.job_id = j.id
+          WHERE j.deleted_at IS NULL AND j.created_at >= $1
+          GROUP BY j.id
+        ) sub`, [monthStart]),
+      pool.query(`
+        SELECT COALESCE(SUM(sub.balance), 0) AS total FROM (
+          SELECT COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance
+          FROM jobs j
+          LEFT JOIN job_items ji ON ji.job_id = j.id
+          LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
+          WHERE j.status != 'pagado' AND j.deleted_at IS NULL
+          GROUP BY j.id, p.paid
+          HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
+        ) sub`),
     ]);
 
-    const revMonth = parseFloat(revenueMonth.rows[0].total);
-    const jMonth = parseInt(jobsMonth.rows[0].total);
-
-    const facturadoMonth = await pool.query(`
-      SELECT COALESCE(SUM(sub.subtotal), 0) AS total FROM (
-        SELECT SUM(ji.quantity * ji.unit_price) AS subtotal
-        FROM jobs j JOIN job_items ji ON ji.job_id = j.id
-        WHERE j.deleted_at IS NULL AND j.created_at >= $1
-        GROUP BY j.id
-      ) sub`, [monthStart]);
-    const totalFacturadoMonth = parseFloat(facturadoMonth.rows[0].total);
+    const cobrado = parseFloat(cobradoMonth.rows[0].total);
+    const facturado = parseFloat(facturadoMonth.rows[0].total);
 
     res.json({
-      revenue_today:  parseFloat(revenueToday.rows[0].total),
-      revenue_month:  revMonth,
-      revenue_year:   parseFloat(revenueYear.rows[0].total),
-      jobs_today:     parseInt(jobsToday.rows[0].total),
-      jobs_month:     jMonth,
-      avg_ticket_month: jMonth > 0 ? Math.round(revMonth / jMonth * 100) / 100 : 0,
-      collection_rate_month: totalFacturadoMonth > 0 ? Math.round(revMonth / totalFacturadoMonth * 10000) / 100 : 0,
+      facturado_month: facturado,
+      cobrado_month:   cobrado,
+      pendiente_total: parseFloat(pendienteTotal.rows[0].total),
+      jobs_month:      parseInt(jobsMonth.rows[0].total),
+      active_jobs:     parseInt(activeJobs.rows[0].total),
+      collection_rate_month: facturado > 0 ? Math.round(cobrado / facturado * 10000) / 100 : 0,
     });
   } catch (err) { next(err); }
 }

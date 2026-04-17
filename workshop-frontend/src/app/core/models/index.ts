@@ -151,12 +151,11 @@ export interface OwnershipHistory {
 }
 
 export interface DashboardSummary {
-  revenue_today: number;
-  revenue_month: number;
-  revenue_year: number;
-  jobs_today: number;
+  facturado_month: number;
+  cobrado_month: number;
+  pendiente_total: number;
   jobs_month: number;
-  avg_ticket_month: number;
+  active_jobs: number;
   collection_rate_month: number;
 }
 

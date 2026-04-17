@@ -50,46 +50,48 @@ import Chart from 'chart.js/auto';
       <div class="card-grid kpi-grid" *ngIf="summary">
         <mat-card>
           <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#1565c0;">today</mat-icon>
+            <mat-icon class="stat-icon" style="color:#1565c0;">request_quote</mat-icon>
             <div>
-              <div class="stat-label">Ingresos hoy</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.revenue_today | appCurrency) }}</div>
+              <div class="stat-label">Facturado (mes)</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.facturado_month | appCurrency) }}</div>
             </div>
           </mat-card-content>
         </mat-card>
         <mat-card>
           <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#2e7d32;">calendar_month</mat-icon>
+            <mat-icon class="stat-icon" style="color:#2e7d32;">payments</mat-icon>
             <div>
-              <div class="stat-label">Ingresos este mes</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.revenue_month | appCurrency) }}</div>
+              <div class="stat-label">Cobrado (mes)</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.cobrado_month | appCurrency) }}</div>
             </div>
           </mat-card-content>
         </mat-card>
         <mat-card>
           <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#6a1b9a;">date_range</mat-icon>
+            <mat-icon class="stat-icon" style="color:#e65100;">account_balance_wallet</mat-icon>
             <div>
-              <div class="stat-label">Ingresos este ano</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.revenue_year | appCurrency) }}</div>
+              <div class="stat-label">Pendiente total</div>
+              <div class="stat-value" [style.color]="summary.pendiente_total > 0 ? '#c62828' : '#2e7d32'">
+                {{ privacyMode ? '***' : (summary.pendiente_total | appCurrency) }}
+              </div>
             </div>
           </mat-card-content>
         </mat-card>
         <mat-card>
           <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#e65100;">work</mat-icon>
+            <mat-icon class="stat-icon" style="color:#6a1b9a;">build_circle</mat-icon>
             <div>
-              <div class="stat-label">Trabajos hoy / mes</div>
-              <div class="stat-value">{{ summary.jobs_today }} / {{ summary.jobs_month }}</div>
+              <div class="stat-label">Trabajos del mes</div>
+              <div class="stat-value">{{ summary.jobs_month }}</div>
             </div>
           </mat-card-content>
         </mat-card>
         <mat-card>
           <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#00838f;">receipt_long</mat-icon>
+            <mat-icon class="stat-icon" style="color:#00838f;">engineering</mat-icon>
             <div>
-              <div class="stat-label">Ticket promedio (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.avg_ticket_month | appCurrency) }}</div>
+              <div class="stat-label">Trabajos activos</div>
+              <div class="stat-value">{{ summary.active_jobs }}</div>
             </div>
           </mat-card-content>
         </mat-card>
