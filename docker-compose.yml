@@ -53,10 +53,12 @@ services:
       DB_PASSWORD: workshop123
       JWT_SECRET: CAMBIA-ESTO-EN-PRODUCCION
       JWT_EXPIRES_IN: 24h
-      WORKSHOP_NAME: Mi Taller Mecanico
-      WORKSHOP_ADDRESS: Calle Principal 123, Montevideo
-      WORKSHOP_PHONE: "+598 99 000 000"
-      WORKSHOP_EMAIL: taller@ejemplo.com
+      WORKSHOP_NAME: La Llave - Mecanica Integral
+      WORKSHOP_ADDRESS: Ildemaro Ribas 1320, Sarandi Grande, Uruguay
+      WORKSHOP_PHONE: "+598 99 354 032"
+      WORKSHOP_EMAIL: lallavetaller@gmail.com
+      WORKSHOP_LOGO_URL: /assets/logo.png
+      WORKSHOP_SERVICES: "Diagnostico y Reparacion Mecanica · Inyeccion Electronica · Scanner · Inyeccion Diesel · Electronica Automotriz · Programacion y Codificacion del Automovil · Reparacion de Modulos"
       CORS_ORIGIN: http://localhost:4200,http://localhost
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
     depends_on:

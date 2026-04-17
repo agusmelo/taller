@@ -99,7 +99,10 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
                   </mat-form-field>
                   <mat-form-field appearance="outline">
                     <mat-label>Kilometraje actual</mat-label>
-                    <input matInput [(ngModel)]="mileage" type="number">
+                    <input matInput [(ngModel)]="mileage" type="number" [min]="vehicleMileage || 0">
+                    @if (vehicleMileage) {
+                      <mat-hint>Ultimo registrado: {{ vehicleMileage.toLocaleString() }} km</mat-hint>
+                    }
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="full-width">
                     <mat-label>Notas (aparecen en PDF)</mat-label>
@@ -241,6 +244,7 @@ export class JobCreateComponent {
   vehicleResults: VehicleSearchResult[] = [];
   searchingPlate = false;
   vehicle: (VehicleSearchResult & { make: string; model: string; year?: number | null; client_name: string; client_rut?: string | null }) | null = null;
+  vehicleMileage: number | null = null;
   jobDate = new Date();
   mileage: number | null = null;
   notes = '';
@@ -292,6 +296,7 @@ export class JobCreateComponent {
     // Fetch full vehicle data for mileage
     this.api.getVehicleByPlate(v.plate_number).subscribe({
       next: full => {
+        this.vehicleMileage = full.mileage;
         if (full.mileage) this.mileage = full.mileage;
         this.vehicle = { ...v, make: full.make, model: full.model, year: full.year, client_name: full.client_name || v.client_name, client_rut: full.client_rut || v.client_rut };
       }
@@ -344,6 +349,10 @@ export class JobCreateComponent {
 
   save() {
     if (!this.vehicle) return;
+    if (this.mileage && this.vehicleMileage && this.mileage < this.vehicleMileage) {
+      this.error = `El kilometraje (${this.mileage}) no puede ser menor al registrado anteriormente (${this.vehicleMileage.toLocaleString()} km)`;
+      return;
+    }
     this.saving = true;
     this.error = '';
     const jobDate = this.jobDate instanceof Date

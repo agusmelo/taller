@@ -33,11 +33,18 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     <div class="page-container">
       <div class="page-header">
         <h1>Trabajos</h1>
-        @if (auth.isAdminOrRecep()) {
-          <button mat-raised-button color="primary" routerLink="/trabajos/nuevo">
-            <mat-icon>add</mat-icon> Nuevo Trabajo
-          </button>
-        }
+        <div style="display:flex;gap:8px;">
+          @if (auth.isAdmin()) {
+            <button mat-stroked-button (click)="exportCsv()">
+              <mat-icon>download</mat-icon> CSV
+            </button>
+          }
+          @if (auth.isAdminOrRecep()) {
+            <button mat-raised-button color="primary" routerLink="/trabajos/nuevo">
+              <mat-icon>add</mat-icon> Nuevo Trabajo
+            </button>
+          }
+        </div>
       </div>
 
       <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
@@ -76,6 +83,12 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 
       @if (loading) {
         <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+      } @else if (jobs.length === 0) {
+        <div class="empty-state">
+          <mat-icon>build_circle</mat-icon>
+          <p>No hay trabajos registrados</p>
+          @if (searchQuery) { <p class="empty-hint">Intenta con otro termino de busqueda</p> }
+        </div>
       } @else {
         <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
           <ng-container matColumnDef="job_number">
@@ -112,7 +125,8 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
               class="clickable-row" (click)="goToDetail(row.id)"></tr>
         </table>
-        <mat-paginator [length]="jobs.length"
+        <mat-paginator [length]="totalItems"
+                       [pageIndex]="page"
                        [pageSize]="pageSize"
                        [pageSizeOptions]="[10, 20, 50]"
                        (page)="onPage($event)"
@@ -131,6 +145,8 @@ export class JobListComponent implements OnInit {
   dateToFilter: Date | null = null;
   loading = false;
   pageSize = 20;
+  page = 0;
+  totalItems = 0;
   private searchTimeout: any;
 
   constructor(
@@ -144,23 +160,25 @@ export class JobListComponent implements OnInit {
 
   load() {
     this.loading = true;
-    const params: Record<string, string> = { limit: String(this.pageSize) };
+    const params: Record<string, string> = { limit: String(this.pageSize), page: String(this.page + 1) };
     if (this.searchQuery) params['q'] = this.searchQuery;
     if (this.statusFilter) params['status'] = this.statusFilter;
     if (this.dateFromFilter) params['date_from'] = this.formatDate(this.dateFromFilter);
     if (this.dateToFilter) params['date_to'] = this.formatDate(this.dateToFilter);
     this.api.getJobs(params).subscribe({
-      next: j => { this.jobs = j; this.loading = false; },
+      next: res => { this.jobs = res.data; this.totalItems = res.total; this.loading = false; },
       error: err => { this.notify.handleError(err); this.loading = false; }
     });
   }
 
   onSearch() {
     clearTimeout(this.searchTimeout);
+    this.page = 0;
     this.searchTimeout = setTimeout(() => this.load(), 300);
   }
 
   onPage(event: PageEvent) {
+    this.page = event.pageIndex;
     this.pageSize = event.pageSize;
     this.load();
   }
@@ -173,6 +191,20 @@ export class JobListComponent implements OnInit {
 
   private formatDate(d: Date): string {
     return d.toISOString().split('T')[0];
+  }
+
+  exportCsv() {
+    const params: Record<string, string> = {};
+    if (this.dateFromFilter) params['date_from'] = this.formatDate(this.dateFromFilter);
+    if (this.dateToFilter) params['date_to'] = this.formatDate(this.dateToFilter);
+    this.api.exportJobsCsv(params).subscribe(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'trabajos.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
   }
 
   goToDetail(id: string) { this.router.navigate(['/trabajos', id]); }

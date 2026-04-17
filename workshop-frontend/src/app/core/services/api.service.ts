@@ -5,7 +5,10 @@ import {
   Client, Vehicle, Job, JobItem, Payment,
   SearchResults, OwnershipHistory,
   DashboardSummary, ClientFinancials, User,
-  VehicleSearchResult, DuplicateCheckResult
+  VehicleSearchResult, DuplicateCheckResult,
+  PaginatedResponse, OverdueDebt, UnpaidJob,
+  TopClient, PaymentMethodBreakdown, NewClientsData,
+  RevenueTrendItem
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -21,7 +24,7 @@ export class ApiService {
 
   // Clients
   getClients(params?: Record<string, string>) {
-    return this.http.get<Client[]>(`${this.url}/clients`, { params });
+    return this.http.get<PaginatedResponse<Client>>(`${this.url}/clients`, { params });
   }
   getClient(id: string) { return this.http.get<Client>(`${this.url}/clients/${id}`); }
   getClientByRut(rut: string) { return this.http.get<Client>(`${this.url}/clients/by-rut/${rut}`); }
@@ -36,10 +39,11 @@ export class ApiService {
   deleteClient(id: string) { return this.http.delete(`${this.url}/clients/${id}`); }
   getClientVehicles(id: string) { return this.http.get<Vehicle[]>(`${this.url}/clients/${id}/vehicles`); }
   getClientJobs(id: string) { return this.http.get<Job[]>(`${this.url}/clients/${id}/jobs`); }
+  getClientCredit(id: string) { return this.http.get<{ credit_available: number }>(`${this.url}/clients/${id}/credit`); }
 
   // Vehicles
   getVehicles(params?: Record<string, string>) {
-    return this.http.get<Vehicle[]>(`${this.url}/vehicles`, { params });
+    return this.http.get<PaginatedResponse<Vehicle>>(`${this.url}/vehicles`, { params });
   }
   searchVehicles(q: string) {
     return this.http.get<VehicleSearchResult[]>(`${this.url}/vehicles/search`, { params: { q } });
@@ -56,7 +60,7 @@ export class ApiService {
 
   // Jobs
   getJobs(params?: Record<string, string>) {
-    return this.http.get<Job[]>(`${this.url}/jobs`, { params });
+    return this.http.get<PaginatedResponse<Job>>(`${this.url}/jobs`, { params });
   }
   getJob(id: string) { return this.http.get<Job>(`${this.url}/jobs/${id}`); }
   createJob(data: any) { return this.http.post<Job>(`${this.url}/jobs`, data); }
@@ -82,7 +86,7 @@ export class ApiService {
   // Dashboard
   getDashboardSummary() { return this.http.get<DashboardSummary>(`${this.url}/dashboard/summary`); }
   getRevenueTrend(params?: Record<string, string>) {
-    return this.http.get<{period: string; total: number}[]>(`${this.url}/dashboard/revenue-trend`, { params });
+    return this.http.get<RevenueTrendItem[]>(`${this.url}/dashboard/revenue-trend`, { params });
   }
   getJobStatus() { return this.http.get<{abierto: number; terminado: number; pagado: number}>(`${this.url}/dashboard/job-status`); }
   getClientFinancials(filter?: string) {
@@ -91,6 +95,19 @@ export class ApiService {
     return this.http.get<ClientFinancials>(`${this.url}/dashboard/client-financials`, { params });
   }
   getRecentJobs() { return this.http.get<Job[]>(`${this.url}/dashboard/recent-jobs`); }
+  getOverdueDebts(days: number) { return this.http.get<OverdueDebt[]>(`${this.url}/dashboard/overdue-debts`, { params: { days: days.toString() } }); }
+  getUnpaidJobs(days: number) { return this.http.get<UnpaidJob[]>(`${this.url}/dashboard/unpaid-jobs`, { params: { days: days.toString() } }); }
+  getTopClients(limit = 5) { return this.http.get<TopClient[]>(`${this.url}/dashboard/top-clients`, { params: { limit: limit.toString() } }); }
+  getPaymentMethods() { return this.http.get<PaymentMethodBreakdown[]>(`${this.url}/dashboard/payment-methods`); }
+  getNewClients() { return this.http.get<NewClientsData>(`${this.url}/dashboard/new-clients`); }
+
+  // Exports
+  exportJobsCsv(params?: Record<string, string>) {
+    return this.http.get(`${this.url}/export/jobs`, { params, responseType: 'blob' });
+  }
+  exportClientsCsv() {
+    return this.http.get(`${this.url}/export/clients`, { responseType: 'blob' });
+  }
 
   // Users
   getUsers() { return this.http.get<User[]>(`${this.url}/users`); }

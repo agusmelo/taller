@@ -18,7 +18,8 @@ export class PaymentMethodPipe implements PipeTransform {
   private labels: Record<string, string> = {
     efectivo: 'Efectivo',
     transferencia: 'Transferencia',
-    credito: 'Credito'
+    credito: 'Credito',
+    cheque: 'Cheque'
   };
 
   transform(value: string): string {

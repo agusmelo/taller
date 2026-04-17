@@ -98,7 +98,7 @@ export interface Payment {
   id: string;
   job_id: string;
   amount: number;
-  method: 'efectivo' | 'transferencia' | 'credito';
+  method: 'efectivo' | 'transferencia' | 'credito' | 'cheque';
   reference: string | null;
   notes: string | null;
   paid_at: string;
@@ -156,11 +156,20 @@ export interface DashboardSummary {
   revenue_year: number;
   jobs_today: number;
   jobs_month: number;
+  avg_ticket_month: number;
+  collection_rate_month: number;
 }
 
 export interface ClientFinancials {
   clients: ClientFinancialRow[];
   totals: { total_facturado: number; total_pagado: number; total_pendiente: number };
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ClientFinancialRow {
@@ -171,4 +180,62 @@ export interface ClientFinancialRow {
   total_facturado: number;
   total_pagado: number;
   saldo: number;
+}
+
+export interface WorkshopConfig {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo_url: string;
+  services_tagline: string;
+}
+
+export interface OverdueDebt {
+  id: string;
+  full_name: string;
+  rut: string | null;
+  phone: string | null;
+  saldo: number;
+  job_count: number;
+  oldest_unpaid_date: string;
+  days_overdue: number;
+}
+
+export interface UnpaidJob {
+  id: string;
+  job_number: string;
+  job_date: string;
+  total: number;
+  paid: number;
+  balance: number;
+  days_pending: number;
+  client_name: string;
+  client_id: string;
+  plate_number: string;
+}
+
+export interface TopClient {
+  id: string;
+  full_name: string;
+  rut: string | null;
+  total_paid: number;
+  job_count: number;
+}
+
+export interface PaymentMethodBreakdown {
+  method: string;
+  total: number;
+  count: number;
+}
+
+export interface NewClientsData {
+  current_month: number;
+  previous_month: number;
+}
+
+export interface RevenueTrendItem {
+  period: string;
+  total: number;
+  jobs_count: number;
 }

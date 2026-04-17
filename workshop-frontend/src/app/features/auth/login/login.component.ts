@@ -9,6 +9,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/auth/auth.service';
+import { WorkshopConfigService } from '../../../core/services/workshop-config.service';
 
 @Component({
   selector: 'app-login',
@@ -22,7 +23,7 @@ import { AuthService } from '../../../core/auth/auth.service';
       <mat-card class="login-card">
         <mat-card-header>
           <mat-icon mat-card-avatar class="login-icon">build</mat-icon>
-          <mat-card-title>Taller Mecanico</mat-card-title>
+          <mat-card-title>{{ workshopConfig.config()?.name || 'Taller Mecanico' }}</mat-card-title>
           <mat-card-subtitle>Iniciar sesion</mat-card-subtitle>
         </mat-card-header>
         <mat-card-content>
@@ -95,7 +96,7 @@ export class LoginComponent {
   loading = false;
   error = '';
 
-  constructor(private auth: AuthService, private router: Router) {
+  constructor(private auth: AuthService, private router: Router, public workshopConfig: WorkshopConfigService) {
     if (auth.isLoggedIn()) this.router.navigate(['/']);
   }
 

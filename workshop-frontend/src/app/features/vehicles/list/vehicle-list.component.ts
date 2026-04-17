@@ -43,6 +43,12 @@ import { VehicleFormComponent } from '../form/vehicle-form.component';
 
       @if (loading) {
         <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+      } @else if (vehicles.length === 0) {
+        <div class="empty-state">
+          <mat-icon>directions_car</mat-icon>
+          <p>No hay vehiculos registrados</p>
+          @if (searchQuery) { <p class="empty-hint">Intenta con otro termino de busqueda</p> }
+        </div>
       } @else {
         <table mat-table [dataSource]="vehicles" class="mat-elevation-z1">
           <ng-container matColumnDef="plate_number">
@@ -69,7 +75,8 @@ import { VehicleFormComponent } from '../form/vehicle-form.component';
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
               class="clickable-row" (click)="goToDetail(row.id)"></tr>
         </table>
-        <mat-paginator [length]="vehicles.length"
+        <mat-paginator [length]="totalItems"
+                       [pageIndex]="page"
                        [pageSize]="pageSize"
                        [pageSizeOptions]="[10, 20, 50]"
                        (page)="onPage($event)"
@@ -85,6 +92,8 @@ export class VehicleListComponent implements OnInit {
   searchQuery = '';
   loading = false;
   pageSize = 20;
+  page = 0;
+  totalItems = 0;
   private searchTimeout: any;
 
   constructor(
@@ -99,20 +108,22 @@ export class VehicleListComponent implements OnInit {
 
   load() {
     this.loading = true;
-    const params: Record<string, string> = { limit: String(this.pageSize) };
+    const params: Record<string, string> = { limit: String(this.pageSize), page: String(this.page + 1) };
     if (this.searchQuery) params['q'] = this.searchQuery;
     this.api.getVehicles(params).subscribe({
-      next: v => { this.vehicles = v; this.loading = false; },
+      next: res => { this.vehicles = res.data; this.totalItems = res.total; this.loading = false; },
       error: err => { this.notify.handleError(err); this.loading = false; }
     });
   }
 
   onSearch() {
     clearTimeout(this.searchTimeout);
+    this.page = 0;
     this.searchTimeout = setTimeout(() => this.load(), 300);
   }
 
   onPage(event: PageEvent) {
+    this.page = event.pageIndex;
     this.pageSize = event.pageSize;
     this.load();
   }

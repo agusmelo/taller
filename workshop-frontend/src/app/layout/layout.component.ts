@@ -14,6 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from '../core/auth/auth.service';
 import { ApiService } from '../core/services/api.service';
+import { WorkshopConfigService } from '../core/services/workshop-config.service';
 import { SearchResults } from '../core/models';
 
 @Component({
@@ -30,11 +31,13 @@ import { SearchResults } from '../core/models';
       <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="!isMobile" class="sidenav">
         <div class="sidenav-header">
           <div class="logo-container">
-            <img src="assets/logo.png" alt="La Llave" class="logo-img"
+            <img [src]="workshopConfig.config()?.logo_url || 'assets/logo.png'"
+                 [alt]="workshopConfig.config()?.name || 'Taller'"
+                 class="logo-img"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
             <div class="logo-fallback" style="display:none;">
               <mat-icon class="logo-icon">build</mat-icon>
-              <span class="logo-text">La Llave</span>
+              <span class="logo-text">{{ workshopConfig.config()?.name || 'Taller' }}</span>
             </div>
           </div>
         </div>
@@ -216,6 +219,7 @@ export class LayoutComponent {
   constructor(
     public auth: AuthService,
     private api: ApiService,
+    public workshopConfig: WorkshopConfigService,
     private router: Router,
     private breakpointObserver: BreakpointObserver
   ) {

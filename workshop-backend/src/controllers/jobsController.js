@@ -50,7 +50,8 @@ async function list(req, res, next) {
       SELECT j.*, c.full_name AS client_name, c.rut AS client_rut,
              v.plate_number, v.make, v.model,
              COALESCE(it.subtotal, 0) AS subtotal,
-             COALESCE(py.total_paid, 0) AS total_paid
+             COALESCE(py.total_paid, 0) AS total_paid,
+             COUNT(*) OVER() AS total_count
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
       JOIN vehicles v ON v.id = j.vehicle_id
@@ -60,7 +61,9 @@ async function list(req, res, next) {
       ORDER BY j.created_at DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `, params);
-    res.json(r.rows);
+    const total = r.rows.length > 0 ? parseInt(r.rows[0].total_count) : 0;
+    const data = r.rows.map(row => { const { total_count, ...rest } = row; return rest; });
+    res.json({ data, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) { next(err); }
 }
 
@@ -106,12 +109,22 @@ async function create(req, res, next) {
     if (!client_id || !vehicle_id)
       return res.status(400).json({ error: 'client_id y vehicle_id son requeridos' });
 
+    // Validate mileage >= vehicle's current mileage
+    if (mileage_at_service) {
+      const veh = await db.query(`SELECT mileage FROM vehicles WHERE id = $1`, [vehicle_id]);
+      if (veh.rows[0] && veh.rows[0].mileage && mileage_at_service < veh.rows[0].mileage) {
+        return res.status(400).json({
+          error: `El kilometraje (${mileage_at_service}) no puede ser menor al registrado anteriormente (${veh.rows[0].mileage} km)`
+        });
+      }
+    }
+
     await db.query('BEGIN');
     const effectiveJobDate = job_date || new Date().toISOString().split('T')[0];
     const r = await db.query(`
       INSERT INTO jobs (job_number, client_id, vehicle_id, mileage_at_service,
                         tax_enabled, tax_rate, discount_amount, discount_type, notes, created_by, job_date)
-      VALUES (generate_job_number($10::date),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      VALUES (generate_job_number(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
       [client_id, vehicle_id, mileage_at_service || null, tax_enabled, tax_rate,
        discount_amount, discount_type, notes || null, req.user.id, effectiveJobDate]
     );
@@ -124,6 +137,13 @@ async function create(req, res, next) {
          item.item_type || 'mano_de_obra', item.supplier || null]
       );
     }
+    // Update vehicle mileage
+    if (mileage_at_service) {
+      await db.query(
+        `UPDATE vehicles SET mileage = $1 WHERE id = $2 AND (mileage IS NULL OR mileage < $1)`,
+        [mileage_at_service, vehicle_id]
+      );
+    }
     await db.query('COMMIT');
     res.status(201).json(job);
   } catch (err) { await db.query('ROLLBACK'); next(err); }
@@ -134,6 +154,20 @@ async function update(req, res, next) {
   try {
     const { mileage_at_service, status, tax_enabled, tax_rate,
             discount_amount, discount_type, notes, internal_notes, job_date } = req.body;
+
+    // Validate all items have price before closing
+    if (status === 'terminado' || status === 'pagado') {
+      const itemCheck = await pool.query(
+        `SELECT COUNT(*) AS zero_count FROM job_items WHERE job_id = $1 AND (unit_price IS NULL OR unit_price = 0)`,
+        [req.params.id]
+      );
+      const zeroCount = parseInt(itemCheck.rows[0].zero_count);
+      if (zeroCount > 0) {
+        return res.status(400).json({
+          error: `No se puede cerrar el trabajo: ${zeroCount} item(s) sin precio asignado. Asigne precio a todos los items antes de continuar.`
+        });
+      }
+    }
 
     // Auto-lock when transitioning to terminado or pagado
     let is_locked = undefined;
@@ -243,7 +277,39 @@ async function addPayment(req, res, next) {
   const db = await pool.connect();
   try {
     const { amount, method = 'efectivo', reference, notes, payment_date } = req.body;
-    if (!amount || amount <= 0) return res.status(400).json({ error: 'Monto invalido' });
+    if (!amount || amount <= 0) return res.status(400).json({ error: 'El monto debe ser mayor a 0' });
+
+    // Validate credit payments against available client credit
+    if (method === 'credito') {
+      const jobRes = await db.query(`SELECT client_id FROM jobs WHERE id = $1`, [req.params.id]);
+      if (!jobRes.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
+      const clientId = jobRes.rows[0].client_id;
+      const creditRes = await db.query(`
+        SELECT COALESCE(SUM(GREATEST(sub.total_paid - sub.total, 0)), 0) AS credit_available
+        FROM (
+          SELECT j.id,
+                 COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
+                   - CASE WHEN j.discount_type = 'percentage'
+                     THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
+                     ELSE j.discount_amount END
+                   + CASE WHEN j.tax_enabled
+                     THEN (COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
+                           - CASE WHEN j.discount_type = 'percentage'
+                             THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
+                             ELSE j.discount_amount END) * j.tax_rate
+                     ELSE 0 END AS total,
+                 COALESCE((SELECT SUM(amount) FROM payments WHERE job_id = j.id), 0) AS total_paid
+          FROM jobs j
+          WHERE j.client_id = $1 AND j.deleted_at IS NULL
+        ) sub
+        WHERE sub.total_paid > sub.total
+      `, [clientId]);
+      const creditAvailable = parseFloat(creditRes.rows[0].credit_available) || 0;
+      if (amount > creditAvailable) {
+        return res.status(400).json({ error: `El monto excede el credito disponible del cliente ($${creditAvailable.toFixed(2)})` });
+      }
+    }
+
     await db.query('BEGIN');
     const r = await db.query(
       `INSERT INTO payments (job_id, amount, method, reference, notes, payment_date, created_by)

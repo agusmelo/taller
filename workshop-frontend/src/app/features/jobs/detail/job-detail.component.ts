@@ -223,23 +223,42 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
                 <mat-datepicker #payDatePicker></mat-datepicker>
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:160px;" subscriptSizing="dynamic">
-                <mat-select [(ngModel)]="newPayment.method">
+                <mat-select [(ngModel)]="newPayment.method" (selectionChange)="onPaymentMethodChange()">
                   <mat-option value="efectivo">Efectivo</mat-option>
                   <mat-option value="transferencia">Transferencia</mat-option>
+                  <mat-option value="cheque">Cheque</mat-option>
                   <mat-option value="credito">Credito</mat-option>
                 </mat-select>
               </mat-form-field>
               <mat-form-field appearance="outline" style="width:120px;" subscriptSizing="dynamic">
-                <input matInput [(ngModel)]="newPayment.amount" type="number" placeholder="Monto">
+                <input matInput [(ngModel)]="newPayment.amount" type="number" placeholder="Monto" min="0.01">
+                @if (newPayment.method === 'credito' && clientCredit > 0) {
+                  <mat-hint>Credito disponible: {{ clientCredit | appCurrency }}</mat-hint>
+                }
               </mat-form-field>
+              @if (job.financials && job.financials.balance > 0) {
+                <button mat-stroked-button (click)="fillRemainingBalance()" matTooltip="Completar saldo pendiente">
+                  <mat-icon>payment</mat-icon> Completar
+                </button>
+              }
               <mat-form-field appearance="outline" style="width:150px;" subscriptSizing="dynamic">
                 <input matInput [(ngModel)]="newPayment.reference" placeholder="Referencia">
               </mat-form-field>
               <button mat-raised-button color="primary" (click)="addPayment()"
-                      [disabled]="!newPayment.amount || newPayment.amount <= 0 || savingPayment">
+                      [disabled]="!newPayment.amount || newPayment.amount <= 0 || savingPayment || (newPayment.method === 'credito' && newPayment.amount > clientCredit)">
                 {{ savingPayment ? '...' : 'Registrar' }}
               </button>
             </div>
+            @if (newPayment.method === 'credito' && clientCredit <= 0) {
+              <div style="color:var(--color-error);font-size:13px;margin-bottom:8px;">
+                Este cliente no tiene credito disponible.
+              </div>
+            }
+            @if (newPayment.method === 'credito' && newPayment.amount > clientCredit && clientCredit > 0) {
+              <div style="color:var(--color-error);font-size:13px;margin-bottom:8px;">
+                El monto excede el credito disponible ({{ clientCredit | appCurrency }}).
+              </div>
+            }
           }
 
           <table mat-table [dataSource]="job.payments || []" style="width:100%;">
@@ -306,6 +325,7 @@ export class JobDetailComponent implements OnInit {
   savingPayment = false;
   newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '', payment_date: new Date() };
+  clientCredit = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -329,8 +349,31 @@ export class JobDetailComponent implements OnInit {
 
   canAddPayments(): boolean {
     if (!this.job) return false;
-    // Allow payments when not locked, or when locked but terminado (to transition to pagado)
     return !this.job.is_locked || (this.job.is_locked && this.job.status === 'terminado');
+  }
+
+  fillRemainingBalance() {
+    if (this.job?.financials && this.job.financials.balance > 0) {
+      if (this.newPayment.method === 'credito' && this.clientCredit > 0) {
+        this.newPayment.amount = Math.min(this.job.financials.balance, this.clientCredit);
+      } else {
+        this.newPayment.amount = this.job.financials.balance;
+      }
+    }
+  }
+
+  onPaymentMethodChange() {
+    if (this.newPayment.method === 'credito' && this.job) {
+      this.loadClientCredit();
+    }
+  }
+
+  loadClientCredit() {
+    if (!this.job) return;
+    this.api.getClientCredit(this.job.client_id).subscribe({
+      next: res => this.clientCredit = res.credit_available,
+      error: () => this.clientCredit = 0
+    });
   }
 
   toggleLock(lock: boolean) {

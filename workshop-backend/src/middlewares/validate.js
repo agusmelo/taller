@@ -108,7 +108,7 @@ const updateItemRules = [
 const addPaymentRules = [
   param('id').isUUID().withMessage('ID de trabajo invalido'),
   body('amount').isFloat({ gt: 0 }).withMessage('Monto debe ser mayor a 0'),
-  body('method').optional().isIn(['efectivo', 'transferencia', 'credito']).withMessage('Metodo de pago invalido'),
+  body('method').optional().isIn(['efectivo', 'transferencia', 'credito', 'cheque']).withMessage('Metodo de pago invalido'),
   body('payment_date').optional().isISO8601().withMessage('Fecha de pago invalida'),
   handleValidation
 ];

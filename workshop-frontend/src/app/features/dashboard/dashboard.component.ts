@@ -13,8 +13,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../core/services/api.service';
-import { DashboardSummary, ClientFinancialRow, Job } from '../../core/models';
+import {
+  DashboardSummary, ClientFinancialRow, Job,
+  OverdueDebt, UnpaidJob, TopClient,
+  PaymentMethodBreakdown, NewClientsData, RevenueTrendItem
+} from '../../core/models';
 import { StatusLabelPipe } from '../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
 import Chart from 'chart.js/auto';
@@ -25,7 +31,7 @@ import Chart from 'chart.js/auto';
   imports: [
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule, MatDividerModule,
-    MatDatepickerModule, MatNativeDateModule, MatSlideToggleModule,
+    MatDatepickerModule, MatNativeDateModule, MatSlideToggleModule, MatTabsModule, MatTooltipModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
@@ -40,8 +46,8 @@ import Chart from 'chart.js/auto';
         </mat-slide-toggle>
       </div>
 
-      <!-- Summary Cards -->
-      <div class="card-grid" *ngIf="summary">
+      <!-- Section A: KPI Cards -->
+      <div class="card-grid kpi-grid" *ngIf="summary">
         <mat-card>
           <mat-card-content class="stat-card">
             <mat-icon class="stat-icon" style="color:#1565c0;">today</mat-icon>
@@ -78,10 +84,28 @@ import Chart from 'chart.js/auto';
             </div>
           </mat-card-content>
         </mat-card>
+        <mat-card>
+          <mat-card-content class="stat-card">
+            <mat-icon class="stat-icon" style="color:#00838f;">receipt_long</mat-icon>
+            <div>
+              <div class="stat-label">Ticket promedio (mes)</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.avg_ticket_month | appCurrency) }}</div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card>
+          <mat-card-content class="stat-card">
+            <mat-icon class="stat-icon" style="color:#558b2f;">percent</mat-icon>
+            <div>
+              <div class="stat-label">Tasa de cobro (mes)</div>
+              <div class="stat-value">{{ privacyMode ? '***' : (summary.collection_rate_month + '%') }}</div>
+            </div>
+          </mat-card-content>
+        </mat-card>
       </div>
 
       <!-- Job status counters -->
-      <div class="card-grid" *ngIf="jobStatus">
+      <div class="card-grid status-grid" *ngIf="jobStatus">
         <mat-card>
           <mat-card-content class="stat-card">
             <span class="status-badge status-abierto" style="font-size:14px;padding:8px 16px;">Abiertos: {{ jobStatus.abierto }}</span>
@@ -97,9 +121,114 @@ import Chart from 'chart.js/auto';
             <span class="status-badge status-pagado" style="font-size:14px;padding:8px 16px;">Pagados: {{ jobStatus.pagado }}</span>
           </mat-card-content>
         </mat-card>
+        @if (newClientsData) {
+          <mat-card>
+            <mat-card-content class="stat-card">
+              <mat-icon class="stat-icon" style="color:#1565c0;">person_add</mat-icon>
+              <div>
+                <div class="stat-label">Nuevos clientes (mes)</div>
+                <div class="stat-value">
+                  {{ newClientsData.current_month }}
+                  @if (newClientsData.previous_month > 0) {
+                    <span class="delta" [class.positive]="newClientsData.current_month >= newClientsData.previous_month"
+                          [class.negative]="newClientsData.current_month < newClientsData.previous_month">
+                      {{ newClientsData.current_month >= newClientsData.previous_month ? '+' : '' }}{{ newClientsData.current_month - newClientsData.previous_month }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
       </div>
 
-      <!-- Revenue Chart -->
+      <!-- Section B: Alerts -->
+      @if (overdueDebts.length > 0 || unpaidJobs.length > 0) {
+        <mat-card class="alerts-card mb-16">
+          <mat-card-content>
+            <div class="alerts-header">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <mat-icon style="color:#d32f2f;">warning</mat-icon>
+                <h3 style="margin:0;">Alertas</h3>
+              </div>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:120px;">
+                <mat-label>Dias</mat-label>
+                <input matInput type="number" [(ngModel)]="alertDays" min="1" (change)="loadAlerts()">
+              </mat-form-field>
+            </div>
+
+            @if (overdueDebts.length > 0) {
+              <div class="alert-section">
+                <h4 style="color:#d32f2f;margin:12px 0 8px;">
+                  <mat-icon style="vertical-align:middle;font-size:18px;">account_balance_wallet</mat-icon>
+                  Deudas vencidas ({{ overdueDebts.length }})
+                </h4>
+                <table mat-table [dataSource]="overdueDebts" style="width:100%;">
+                  <ng-container matColumnDef="full_name">
+                    <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                    <td mat-cell *matCellDef="let d">{{ d.full_name }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="saldo">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
+                    <td mat-cell *matCellDef="let d" class="text-right" style="color:#d32f2f;font-weight:500;">
+                      {{ privacyMode ? '***' : (d.saldo | appCurrency) }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="days_overdue">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
+                    <td mat-cell *matCellDef="let d" class="text-right">{{ d.days_overdue }}d</td>
+                  </ng-container>
+                  <ng-container matColumnDef="job_count">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
+                    <td mat-cell *matCellDef="let d" class="text-right">{{ d.job_count }}</td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="['full_name','saldo','days_overdue','job_count']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['full_name','saldo','days_overdue','job_count'];"
+                      class="clickable-row" (click)="goToClient(row.id)"></tr>
+                </table>
+              </div>
+            }
+
+            @if (unpaidJobs.length > 0) {
+              <div class="alert-section" style="margin-top:16px;">
+                <h4 style="color:#e65100;margin:12px 0 8px;">
+                  <mat-icon style="vertical-align:middle;font-size:18px;">pending_actions</mat-icon>
+                  Trabajos terminados sin cobrar ({{ unpaidJobs.length }})
+                </h4>
+                <table mat-table [dataSource]="unpaidJobs" style="width:100%;">
+                  <ng-container matColumnDef="job_number">
+                    <th mat-header-cell *matHeaderCellDef>N.o</th>
+                    <td mat-cell *matCellDef="let j">{{ j.job_number }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="client_name">
+                    <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                    <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="plate_number">
+                    <th mat-header-cell *matHeaderCellDef>Patente</th>
+                    <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="balance">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
+                    <td mat-cell *matCellDef="let j" class="text-right" style="color:#e65100;font-weight:500;">
+                      {{ privacyMode ? '***' : (j.balance | appCurrency) }}
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="days_pending">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
+                    <td mat-cell *matCellDef="let j" class="text-right">{{ j.days_pending }}d</td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="['job_number','client_name','plate_number','balance','days_pending']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','plate_number','balance','days_pending'];"
+                      class="clickable-row" (click)="goToJob(row.id)"></tr>
+                </table>
+              </div>
+            }
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <!-- Section C: Revenue Trend with Tabs -->
       <mat-card class="mb-16">
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
@@ -132,11 +261,81 @@ import Chart from 'chart.js/auto';
               }
             </div>
           </div>
-          <canvas #revenueChart height="80"></canvas>
+
+          <mat-tab-group [(selectedIndex)]="trendTabIndex">
+            <mat-tab label="Grafico">
+              <div style="padding:16px 0;">
+                <canvas #revenueChart height="80"></canvas>
+              </div>
+            </mat-tab>
+            <mat-tab label="Tabla">
+              <div style="padding:16px 0;">
+                <table mat-table [dataSource]="revenueTrendData" style="width:100%;">
+                  <ng-container matColumnDef="period">
+                    <th mat-header-cell *matHeaderCellDef>Periodo</th>
+                    <td mat-cell *matCellDef="let r">{{ r.period }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="total">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Ingresos</th>
+                    <td mat-cell *matCellDef="let r" class="text-right">{{ privacyMode ? '***' : (r.total | appCurrency) }}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="jobs_count">
+                    <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
+                    <td mat-cell *matCellDef="let r" class="text-right">{{ r.jobs_count }}</td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="['period','total','jobs_count']"></tr>
+                  <tr mat-row *matRowDef="let row; columns: ['period','total','jobs_count'];"></tr>
+                </table>
+              </div>
+            </mat-tab>
+          </mat-tab-group>
         </mat-card-content>
       </mat-card>
 
-      <!-- Recent Jobs -->
+      <!-- Insights row: Top Clients + Payment Methods -->
+      <div class="insights-row">
+        <!-- Top 5 Clients -->
+        <mat-card class="mb-16 flex-card">
+          <mat-card-content>
+            <h3>Top 5 clientes por ingresos</h3>
+            @if (topClients.length > 0) {
+              <table mat-table [dataSource]="topClients" style="width:100%;">
+                <ng-container matColumnDef="full_name">
+                  <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                  <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
+                </ng-container>
+                <ng-container matColumnDef="total_paid">
+                  <th mat-header-cell *matHeaderCellDef class="text-right">Total pagado</th>
+                  <td mat-cell *matCellDef="let c" class="text-right">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
+                </ng-container>
+                <ng-container matColumnDef="job_count">
+                  <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
+                  <td mat-cell *matCellDef="let c" class="text-right">{{ c.job_count }}</td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['full_name','total_paid','job_count']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['full_name','total_paid','job_count'];"
+                    class="clickable-row" (click)="goToClient(row.id)"></tr>
+              </table>
+            } @else {
+              <div class="empty-state"><mat-icon>people</mat-icon><p>Sin datos aun</p></div>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Payment Methods -->
+        <mat-card class="mb-16 flex-card">
+          <mat-card-content>
+            <h3>Metodos de pago (mes)</h3>
+            @if (paymentMethodsData.length > 0) {
+              <canvas #paymentChart height="200"></canvas>
+            } @else {
+              <div class="empty-state"><mat-icon>payments</mat-icon><p>Sin pagos este mes</p></div>
+            }
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <!-- Section D: Recent Jobs -->
       <mat-card class="mb-16">
         <mat-card-content>
           <h3>Ultimos 10 trabajos</h3>
@@ -170,7 +369,7 @@ import Chart from 'chart.js/auto';
         </mat-card-content>
       </mat-card>
 
-      <!-- Client Financials / Deudas -->
+      <!-- Section E: Client Financials -->
       <mat-card>
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -245,10 +444,32 @@ import Chart from 'chart.js/auto';
     .stat-icon { font-size: 40px; width: 40px; height: 40px; }
     .stat-label { font-size: 13px; color: #666; }
     .stat-value { font-size: 22px; font-weight: 500; }
+    .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
+    .status-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important; }
+    .delta {
+      font-size: 13px; margin-left: 4px; font-weight: 400;
+    }
+    .delta.positive { color: #2e7d32; }
+    .delta.negative { color: #c62828; }
+    .alerts-card {
+      border-left: 4px solid #d32f2f;
+    }
+    .alerts-header {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .insights-row {
+      display: flex; gap: 16px;
+    }
+    .flex-card { flex: 1; min-width: 0; }
+    @media (max-width: 900px) {
+      .insights-row { flex-direction: column; }
+    }
   `]
 })
 export class DashboardComponent implements OnInit, AfterViewInit {
   @ViewChild('revenueChart') chartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('paymentChart') paymentChartRef!: ElementRef<HTMLCanvasElement>;
+
   summary: DashboardSummary | null = null;
   jobStatus: { abierto: number; terminado: number; pagado: number } | null = null;
   recentJobs: Job[] = [];
@@ -257,13 +478,25 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   debtFilter = '';
   privacyMode = false;
 
-  // Trend chart filters
+  // Alerts
+  overdueDebts: OverdueDebt[] = [];
+  unpaidJobs: UnpaidJob[] = [];
+  alertDays = 30;
+
+  // Trend chart
   trendGranularity: 'week' | 'month' | 'year' = 'month';
   trendDateFrom: Date | null = null;
   trendDateTo: Date | null = null;
+  trendTabIndex = 0;
+  revenueTrendData: RevenueTrendItem[] = [];
+
+  // Insights
+  topClients: TopClient[] = [];
+  paymentMethodsData: PaymentMethodBreakdown[] = [];
+  newClientsData: NewClientsData | null = null;
 
   private chart: Chart | null = null;
-  private revenueTrendData: { period: string; total: number }[] = [];
+  private paymentChart: Chart | null = null;
 
   constructor(private api: ApiService, private router: Router) {}
 
@@ -271,12 +504,24 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.api.getDashboardSummary().subscribe(s => this.summary = s);
     this.api.getJobStatus().subscribe(s => this.jobStatus = s);
     this.api.getRecentJobs().subscribe(j => this.recentJobs = j);
+    this.api.getTopClients().subscribe(c => this.topClients = c);
+    this.api.getNewClients().subscribe(d => this.newClientsData = d);
+    this.api.getPaymentMethods().subscribe(d => {
+      this.paymentMethodsData = d;
+      setTimeout(() => this.renderPaymentChart(), 100);
+    });
     this.loadRevenueTrend();
     this.loadClientFinancials();
+    this.loadAlerts();
   }
 
   ngAfterViewInit() {
     if (this.revenueTrendData.length) this.renderChart();
+  }
+
+  loadAlerts() {
+    this.api.getOverdueDebts(this.alertDays).subscribe(d => this.overdueDebts = d);
+    this.api.getUnpaidJobs(this.alertDays).subscribe(j => this.unpaidJobs = j);
   }
 
   loadRevenueTrend() {
@@ -284,8 +529,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     if (this.trendDateFrom) params['date_from'] = this.formatDate(this.trendDateFrom);
     if (this.trendDateTo) params['date_to'] = this.formatDate(this.trendDateTo);
     this.api.getRevenueTrend(params).subscribe(d => {
-      this.revenueTrendData = d;
-      this.renderChart();
+      this.revenueTrendData = d.map(r => ({
+        period: r.period,
+        total: parseFloat(r.total as any),
+        jobs_count: parseInt(r.jobs_count as any) || 0
+      }));
+      setTimeout(() => this.renderChart(), 50);
     });
   }
 
@@ -304,6 +553,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   onPrivacyToggle() {
     this.renderChart();
+    this.renderPaymentChart();
   }
 
   renderChart() {
@@ -311,17 +561,21 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     if (this.chart) this.chart.destroy();
 
     const labels = this.revenueTrendData.map(d => d.period);
-    const data = this.revenueTrendData.map(d => parseFloat(d.total as any));
+    const data = this.revenueTrendData.map(d => d.total);
 
     this.chart = new Chart(this.chartRef.nativeElement, {
-      type: 'bar',
+      type: 'line',
       data: {
         labels,
         datasets: [{
           label: 'Ingresos',
           data,
-          backgroundColor: '#1565c0',
-          borderRadius: 4,
+          borderColor: '#1565c0',
+          backgroundColor: 'rgba(21, 101, 192, 0.1)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 4,
+          pointBackgroundColor: '#1565c0',
         }]
       },
       options: {
@@ -332,6 +586,42 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             beginAtZero: true,
             display: !this.privacyMode,
             ticks: { callback: (v) => '$ ' + Number(v).toLocaleString('es-UY') }
+          }
+        }
+      }
+    });
+  }
+
+  renderPaymentChart() {
+    if (!this.paymentChartRef?.nativeElement || !this.paymentMethodsData.length) return;
+    if (this.paymentChart) this.paymentChart.destroy();
+
+    const methodLabels: Record<string, string> = {
+      efectivo: 'Efectivo', transferencia: 'Transferencia',
+      credito: 'Credito', cheque: 'Cheque'
+    };
+    const colors = ['#1565c0', '#2e7d32', '#e65100', '#6a1b9a'];
+
+    this.paymentChart = new Chart(this.paymentChartRef.nativeElement, {
+      type: 'doughnut',
+      data: {
+        labels: this.paymentMethodsData.map(d => methodLabels[d.method] || d.method),
+        datasets: [{
+          data: this.paymentMethodsData.map(d => d.total),
+          backgroundColor: colors.slice(0, this.paymentMethodsData.length),
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                if (this.privacyMode) return '***';
+                return ctx.label + ': $ ' + Number(ctx.raw).toLocaleString('es-UY', { minimumFractionDigits: 2 });
+              }
+            }
           }
         }
       }

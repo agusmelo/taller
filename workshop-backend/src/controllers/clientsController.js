@@ -4,20 +4,25 @@ const { validateRut, formatRut } = require('../utils/rut');
 async function list(req, res, next) {
   try {
     const { q, page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
-    const params = q ? [`%${q}%`, parseInt(limit), parseInt(offset)] : [parseInt(limit), parseInt(offset)];
+    const pageInt = parseInt(page);
+    const limitInt = parseInt(limit);
+    const offset = (pageInt - 1) * limitInt;
+    const params = q ? [`%${q}%`, limitInt, offset] : [limitInt, offset];
     const whereClause = q
       ? `AND (c.full_name ILIKE $1 OR c.phone ILIKE $1 OR c.rut ILIKE $1 OR c.email ILIKE $1)`
       : '';
     const r = await pool.query(`
-      SELECT c.*, COUNT(DISTINCT v.id) AS vehicle_count
+      SELECT c.*, COUNT(DISTINCT v.id) AS vehicle_count,
+             COUNT(*) OVER() AS total_count
       FROM clients c
       LEFT JOIN vehicles v ON v.client_id = c.id AND v.deleted_at IS NULL
       WHERE c.deleted_at IS NULL ${whereClause}
       GROUP BY c.id ORDER BY c.full_name
       LIMIT $${q ? 2 : 1} OFFSET $${q ? 3 : 2}
     `, params);
-    res.json(r.rows);
+    const total = r.rows.length > 0 ? parseInt(r.rows[0].total_count) : 0;
+    const data = r.rows.map(row => { const { total_count, ...rest } = row; return rest; });
+    res.json({ data, total, page: pageInt, limit: limitInt });
   } catch (err) { next(err); }
 }
 
@@ -141,4 +146,30 @@ async function getJobs(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, getByRut, checkDuplicate, create, update, remove, getVehicles, getJobs };
+async function getCredit(req, res, next) {
+  try {
+    const r = await pool.query(`
+      SELECT COALESCE(SUM(GREATEST(sub.total_paid - sub.total, 0)), 0) AS credit_available
+      FROM (
+        SELECT j.id,
+               COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
+                 - CASE WHEN j.discount_type = 'percentage'
+                   THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
+                   ELSE j.discount_amount END
+                 + CASE WHEN j.tax_enabled
+                   THEN (COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
+                         - CASE WHEN j.discount_type = 'percentage'
+                           THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
+                           ELSE j.discount_amount END) * j.tax_rate
+                   ELSE 0 END AS total,
+               COALESCE((SELECT SUM(amount) FROM payments WHERE job_id = j.id), 0) AS total_paid
+        FROM jobs j
+        WHERE j.client_id = $1 AND j.deleted_at IS NULL
+      ) sub
+      WHERE sub.total_paid > sub.total
+    `, [req.params.id]);
+    res.json({ credit_available: parseFloat(r.rows[0].credit_available) || 0 });
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, getOne, getByRut, checkDuplicate, create, update, remove, getVehicles, getJobs, getCredit };

@@ -12,10 +12,23 @@ const search    = require('../controllers/searchController');
 const dashboard = require('../controllers/dashboardController');
 const users     = require('../controllers/usersController');
 const pdf       = require('../controllers/pdfController');
+const csv       = require('../controllers/exportController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
 router.get('/auth/me',     authenticate, auth.me);
+
+// Workshop config (public, no auth needed)
+router.get('/config', (req, res) => {
+  res.json({
+    name: process.env.WORKSHOP_NAME || 'Taller Mecanico',
+    address: process.env.WORKSHOP_ADDRESS || '',
+    phone: process.env.WORKSHOP_PHONE || '',
+    email: process.env.WORKSHOP_EMAIL || '',
+    logo_url: process.env.WORKSHOP_LOGO_URL || '/assets/logo.png',
+    services_tagline: process.env.WORKSHOP_SERVICES || ''
+  });
+});
 
 // Search
 router.get('/search', authenticate, search.search);
@@ -30,6 +43,7 @@ router.put('/clients/:id',               authenticate, requireAdminOrRecep, v.up
 router.delete('/clients/:id',            authenticate, requireAdmin, v.uuidParam, clients.remove);
 router.get('/clients/:id/vehicles',      authenticate, v.uuidParam, clients.getVehicles);
 router.get('/clients/:id/jobs',          authenticate, v.uuidParam, clients.getJobs);
+router.get('/clients/:id/credit',        authenticate, v.uuidParam, clients.getCredit);
 
 // Vehicles
 router.get('/vehicles',                        authenticate, vehicles.list);
@@ -69,6 +83,15 @@ router.get('/dashboard/revenue-trend',      authenticate, requireAdmin, dashboar
 router.get('/dashboard/job-status',         authenticate, requireAdmin, dashboard.jobStatus);
 router.get('/dashboard/client-financials',  authenticate, requireAdmin, dashboard.clientFinancials);
 router.get('/dashboard/recent-jobs',        authenticate, requireAdmin, dashboard.recentJobs);
+router.get('/dashboard/overdue-debts',      authenticate, requireAdmin, dashboard.overdueDebts);
+router.get('/dashboard/unpaid-jobs',        authenticate, requireAdmin, dashboard.unpaidJobs);
+router.get('/dashboard/top-clients',        authenticate, requireAdmin, dashboard.topClients);
+router.get('/dashboard/payment-methods',    authenticate, requireAdmin, dashboard.paymentMethods);
+router.get('/dashboard/new-clients',        authenticate, requireAdmin, dashboard.newClients);
+
+// CSV Exports (admin only)
+router.get('/export/jobs',    authenticate, requireAdmin, csv.exportJobs);
+router.get('/export/clients', authenticate, requireAdmin, csv.exportClients);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

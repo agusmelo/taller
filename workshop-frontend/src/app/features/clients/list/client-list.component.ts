@@ -29,11 +29,18 @@ import { ClientFormComponent } from '../form/client-form.component';
     <div class="page-container">
       <div class="page-header">
         <h1>Clientes</h1>
-        @if (auth.isAdminOrRecep()) {
-          <button mat-raised-button color="primary" (click)="openForm()">
-            <mat-icon>add</mat-icon> Nuevo Cliente
-          </button>
-        }
+        <div style="display:flex;gap:8px;">
+          @if (auth.isAdmin()) {
+            <button mat-stroked-button (click)="exportCsv()">
+              <mat-icon>download</mat-icon> CSV
+            </button>
+          }
+          @if (auth.isAdminOrRecep()) {
+            <button mat-raised-button color="primary" (click)="openForm()">
+              <mat-icon>add</mat-icon> Nuevo Cliente
+            </button>
+          }
+        </div>
       </div>
 
       <mat-form-field appearance="outline" class="search-field">
@@ -44,6 +51,12 @@ import { ClientFormComponent } from '../form/client-form.component';
 
       @if (loading) {
         <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
+      } @else if (clients.length === 0) {
+        <div class="empty-state">
+          <mat-icon>people_outline</mat-icon>
+          <p>No hay clientes registrados</p>
+          @if (searchQuery) { <p class="empty-hint">Intenta con otro termino de busqueda</p> }
+        </div>
       } @else {
         <table mat-table [dataSource]="clients" class="mat-elevation-z1">
           <ng-container matColumnDef="full_name">
@@ -70,7 +83,8 @@ import { ClientFormComponent } from '../form/client-form.component';
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"
               class="clickable-row" (click)="goToDetail(row.id)"></tr>
         </table>
-        <mat-paginator [length]="clients.length"
+        <mat-paginator [length]="totalItems"
+                       [pageIndex]="page"
                        [pageSize]="pageSize"
                        [pageSizeOptions]="[10, 20, 50]"
                        (page)="onPage($event)"
@@ -86,6 +100,8 @@ export class ClientListComponent implements OnInit {
   searchQuery = '';
   loading = false;
   pageSize = 20;
+  page = 0;
+  totalItems = 0;
   private searchTimeout: any;
 
   constructor(
@@ -100,26 +116,39 @@ export class ClientListComponent implements OnInit {
 
   load() {
     this.loading = true;
-    const params: Record<string, string> = { limit: String(this.pageSize) };
+    const params: Record<string, string> = { limit: String(this.pageSize), page: String(this.page + 1) };
     if (this.searchQuery) params['q'] = this.searchQuery;
     this.api.getClients(params).subscribe({
-      next: c => { this.clients = c; this.loading = false; },
+      next: res => { this.clients = res.data; this.totalItems = res.total; this.loading = false; },
       error: err => { this.notify.handleError(err); this.loading = false; }
     });
   }
 
   onSearch() {
     clearTimeout(this.searchTimeout);
+    this.page = 0;
     this.searchTimeout = setTimeout(() => this.load(), 300);
   }
 
   onPage(event: PageEvent) {
+    this.page = event.pageIndex;
     this.pageSize = event.pageSize;
     this.load();
   }
 
   goToDetail(id: string) {
     this.router.navigate(['/clientes', id]);
+  }
+
+  exportCsv() {
+    this.api.exportClientsCsv().subscribe(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'clientes.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
   }
 
   openForm(client?: Client) {
