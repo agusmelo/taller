@@ -31,7 +31,7 @@ async function exportJobs(req, res, next) {
     }
 
     const r = await pool.query(`
-      SELECT j.job_number, j.job_date, j.status,
+      SELECT j.job_number, TO_CHAR(j.job_date, 'YYYY-MM-DD') AS job_date, j.status,
              c.full_name AS client_name, c.rut AS client_rut,
              v.plate_number, v.make, v.model,
              j.mileage_at_service,
