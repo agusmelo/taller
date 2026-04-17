@@ -3,6 +3,7 @@
 -- ============================================================
 
 -- 1. Replace date-based job number with simple incremental
+DROP FUNCTION IF EXISTS generate_job_number(date);
 DROP TABLE IF EXISTS job_number_sequences;
 
 CREATE TABLE IF NOT EXISTS job_global_sequence (
