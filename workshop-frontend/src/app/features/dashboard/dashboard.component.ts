@@ -442,7 +442,7 @@ import Chart from 'chart.js/auto';
     </div>
   `,
   styles: [`
-    .stat-card { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
+    .stat-card { display: flex; align-items: center; gap: 16px; padding: 8px 0; justify-content: center; }
     .stat-icon { font-size: 40px; width: 40px; height: 40px; }
     .stat-label { font-size: 13px; color: #666; }
     .stat-value { font-size: 22px; font-weight: 500; }
