@@ -98,7 +98,7 @@ export interface Payment {
   id: string;
   job_id: string;
   amount: number;
-  method: 'efectivo' | 'transferencia' | 'credito';
+  method: 'efectivo' | 'transferencia' | 'credito' | 'cheque';
   reference: string | null;
   notes: string | null;
   paid_at: string;
@@ -151,16 +151,24 @@ export interface OwnershipHistory {
 }
 
 export interface DashboardSummary {
-  revenue_today: number;
-  revenue_month: number;
-  revenue_year: number;
-  jobs_today: number;
+  facturado_month: number;
+  cobrado_month: number;
+  pendiente_total: number;
   jobs_month: number;
+  active_jobs: number;
+  collection_rate_month: number;
 }
 
 export interface ClientFinancials {
   clients: ClientFinancialRow[];
   totals: { total_facturado: number; total_pagado: number; total_pendiente: number };
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface ClientFinancialRow {
@@ -171,4 +179,128 @@ export interface ClientFinancialRow {
   total_facturado: number;
   total_pagado: number;
   saldo: number;
+}
+
+export interface WorkshopConfig {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  logo_url: string;
+  services_tagline: string;
+}
+
+export interface OverdueDebt {
+  id: string;
+  full_name: string;
+  rut: string | null;
+  phone: string | null;
+  saldo: number;
+  job_count: number;
+  oldest_unpaid_date: string;
+  days_overdue: number;
+}
+
+export interface UnpaidJob {
+  id: string;
+  job_number: string;
+  job_date: string;
+  total: number;
+  paid: number;
+  balance: number;
+  days_pending: number;
+  client_name: string;
+  client_id: string;
+  plate_number: string;
+}
+
+export interface TopClient {
+  id: string;
+  full_name: string;
+  rut: string | null;
+  total_paid: number;
+  job_count: number;
+}
+
+export interface PaymentMethodBreakdown {
+  method: string;
+  total: number;
+  count: number;
+}
+
+export interface NewClientsData {
+  current_month: number;
+  previous_month: number;
+}
+
+export interface RevenueTrendItem {
+  period: string;
+  total: number;
+  jobs_count: number;
+}
+
+export interface JobWithBalance {
+  id: string;
+  job_number: string;
+  job_date: string;
+  status: string;
+  client_name: string;
+  client_id: string;
+  client_rut: string | null;
+  plate_number: string;
+  total: number;
+  total_paid: number;
+  balance: number;
+  last_payment_date: string | null;
+  last_payment_method: string | null;
+}
+
+export interface RecentPayment {
+  id: string;
+  amount: number;
+  method: string;
+  paid_at: string;
+  payment_date: string;
+  reference: string | null;
+  job_id: string;
+  job_number: string;
+  client_id: string;
+  client_name: string;
+}
+
+export interface AgingBucket {
+  job_count: number;
+  total_balance: number;
+  client_count: number;
+}
+
+export interface AgingReport {
+  '0-30': AgingBucket;
+  '31-60': AgingBucket;
+  '61-90': AgingBucket;
+  '90+': AgingBucket;
+}
+
+export interface Debtor {
+  id: string;
+  full_name: string;
+  rut: string | null;
+  phone: string | null;
+  total_debt: number;
+  unpaid_jobs: number;
+  oldest_unpaid_date: string;
+  days_overdue: number;
+}
+
+export interface PaymentsSummary {
+  cobrado_month: number;
+  pendiente_total: number;
+  deudores_count: number;
+  by_method: PaymentMethodBreakdown[];
+}
+
+export interface AppSettings {
+  debt_alert_threshold: string;
+  unpaid_days_threshold: string;
+  [key: string]: string;
 }

@@ -137,7 +137,7 @@ export class VehicleFormComponent {
     this.searching = true;
     this.searchTimeout = setTimeout(() => {
       this.api.getClients({ q: this.clientSearch }).subscribe({
-        next: c => { this.clientResults = c; this.searching = false; },
+        next: res => { this.clientResults = res.data; this.searching = false; },
         error: () => { this.clientResults = []; this.searching = false; }
       });
     }, 300);

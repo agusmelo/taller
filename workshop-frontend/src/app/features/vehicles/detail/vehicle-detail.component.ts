@@ -167,7 +167,7 @@ export class VehicleDetailComponent implements OnInit {
       error: err => { this.notify.handleError(err); this.loading = false; }
     });
     this.api.getOwnershipHistory(id).subscribe(h => this.history = h);
-    this.api.getJobs({ vehicle_id: id }).subscribe(j => this.jobs = j);
+    this.api.getJobs({ vehicle_id: id }).subscribe(res => this.jobs = res.data);
   }
 
   edit() {
@@ -182,7 +182,7 @@ export class VehicleDetailComponent implements OnInit {
 
   searchTransferClients() {
     if (this.transferSearch.length < 2) return;
-    this.api.getClients({ q: this.transferSearch }).subscribe(c => this.transferClients = c);
+    this.api.getClients({ q: this.transferSearch }).subscribe(res => this.transferClients = res.data);
   }
 
   selectTransferClient(event: any) { this.transferClientId = event.option.value; }

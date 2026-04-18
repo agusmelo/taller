@@ -2,17 +2,25 @@ const pool = require('../config/database');
 
 async function list(req, res, next) {
   try {
-    const { q, client_id } = req.query;
+    const { q, client_id, page = 1, limit = 20 } = req.query;
+    const pageInt = parseInt(page);
+    const limitInt = parseInt(limit);
+    const offset = (pageInt - 1) * limitInt;
     const where = ['v.deleted_at IS NULL'];
     const params = [];
     if (client_id) { params.push(client_id); where.push(`v.client_id = $${params.length}`); }
     if (q) { params.push(`%${q}%`); where.push(`(v.plate_number ILIKE $${params.length} OR v.make ILIKE $${params.length} OR v.model ILIKE $${params.length})`); }
+    params.push(limitInt, offset);
     const r = await pool.query(
-      `SELECT v.*, c.full_name AS client_name, c.phone AS client_phone
+      `SELECT v.*, c.full_name AS client_name, c.phone AS client_phone,
+              COUNT(*) OVER() AS total_count
        FROM vehicles v JOIN clients c ON c.id = v.client_id
-       WHERE ${where.join(' AND ')} ORDER BY v.created_at DESC`, params
+       WHERE ${where.join(' AND ')} ORDER BY v.created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`, params
     );
-    res.json(r.rows);
+    const total = r.rows.length > 0 ? parseInt(r.rows[0].total_count) : 0;
+    const data = r.rows.map(row => { const { total_count, ...rest } = row; return rest; });
+    res.json({ data, total, page: pageInt, limit: limitInt });
   } catch (err) { next(err); }
 }
 

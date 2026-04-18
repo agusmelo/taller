@@ -15,6 +15,8 @@ const migrations = [
   'schema.sql',
   '002_fase3.sql',
   '003_job_number_date.sql',
+  '004_polish.sql',
+  '005_settings.sql',
 ];
 
 async function run() {
