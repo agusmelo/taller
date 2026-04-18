@@ -63,9 +63,21 @@ import { SearchResults } from '../core/models';
             <span>Vehiculos</span>
           </a>
           @if (auth.isAdmin()) {
+            <a mat-list-item routerLink="/pagos" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon matListItemIcon>payments</mat-icon>
+              <span>Pagos</span>
+            </a>
+          }
+          @if (auth.isAdmin()) {
             <a mat-list-item routerLink="/usuarios" routerLinkActive="active" (click)="onNavClick()">
               <mat-icon matListItemIcon>manage_accounts</mat-icon>
               <span>Usuarios</span>
+            </a>
+          }
+          @if (auth.isAdmin()) {
+            <a mat-list-item routerLink="/ajustes" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon matListItemIcon>settings</mat-icon>
+              <span>Ajustes</span>
             </a>
           }
         </mat-nav-list>

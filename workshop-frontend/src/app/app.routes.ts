@@ -51,6 +51,16 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/users/user-list.component').then(m => m.UserListComponent)
       },
+      {
+        path: 'pagos',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/payments/payments-page.component').then(m => m.PaymentsPageComponent)
+      },
+      {
+        path: 'ajustes',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }

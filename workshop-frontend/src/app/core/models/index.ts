@@ -238,3 +238,69 @@ export interface RevenueTrendItem {
   total: number;
   jobs_count: number;
 }
+
+export interface JobWithBalance {
+  id: string;
+  job_number: string;
+  job_date: string;
+  status: string;
+  client_name: string;
+  client_id: string;
+  client_rut: string | null;
+  plate_number: string;
+  total: number;
+  total_paid: number;
+  balance: number;
+  last_payment_date: string | null;
+  last_payment_method: string | null;
+}
+
+export interface RecentPayment {
+  id: string;
+  amount: number;
+  method: string;
+  paid_at: string;
+  payment_date: string;
+  reference: string | null;
+  job_id: string;
+  job_number: string;
+  client_id: string;
+  client_name: string;
+}
+
+export interface AgingBucket {
+  job_count: number;
+  total_balance: number;
+  client_count: number;
+}
+
+export interface AgingReport {
+  '0-30': AgingBucket;
+  '31-60': AgingBucket;
+  '61-90': AgingBucket;
+  '90+': AgingBucket;
+}
+
+export interface Debtor {
+  id: string;
+  full_name: string;
+  rut: string | null;
+  phone: string | null;
+  total_debt: number;
+  unpaid_jobs: number;
+  oldest_unpaid_date: string;
+  days_overdue: number;
+}
+
+export interface PaymentsSummary {
+  cobrado_month: number;
+  pendiente_total: number;
+  deudores_count: number;
+  by_method: PaymentMethodBreakdown[];
+}
+
+export interface AppSettings {
+  debt_alert_threshold: string;
+  unpaid_days_threshold: string;
+  [key: string]: string;
+}

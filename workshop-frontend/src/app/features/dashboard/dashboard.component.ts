@@ -512,9 +512,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       this.paymentMethodsData = d;
       setTimeout(() => this.renderPaymentChart(), 100);
     });
+    this.api.getSettings().subscribe(s => {
+      this.alertDays = parseInt(s.unpaid_days_threshold) || 30;
+      this.loadAlerts();
+    });
     this.loadRevenueTrend();
     this.loadClientFinancials();
-    this.loadAlerts();
   }
 
   ngAfterViewInit() {

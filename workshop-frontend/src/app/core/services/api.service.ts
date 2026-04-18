@@ -8,7 +8,8 @@ import {
   VehicleSearchResult, DuplicateCheckResult,
   PaginatedResponse, OverdueDebt, UnpaidJob,
   TopClient, PaymentMethodBreakdown, NewClientsData,
-  RevenueTrendItem
+  RevenueTrendItem, JobWithBalance, RecentPayment,
+  AgingReport, Debtor, PaymentsSummary, AppSettings
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -100,6 +101,21 @@ export class ApiService {
   getTopClients(limit = 5) { return this.http.get<TopClient[]>(`${this.url}/dashboard/top-clients`, { params: { limit: limit.toString() } }); }
   getPaymentMethods() { return this.http.get<PaymentMethodBreakdown[]>(`${this.url}/dashboard/payment-methods`); }
   getNewClients() { return this.http.get<NewClientsData>(`${this.url}/dashboard/new-clients`); }
+
+  // Payments page
+  getPaymentsSummary() { return this.http.get<PaymentsSummary>(`${this.url}/payments-page/summary`); }
+  getJobsWithBalances(params?: Record<string, string>) {
+    return this.http.get<PaginatedResponse<JobWithBalance>>(`${this.url}/payments-page/jobs`, { params });
+  }
+  getRecentPaymentsList(limit = 20) {
+    return this.http.get<RecentPayment[]>(`${this.url}/payments-page/recent`, { params: { limit: limit.toString() } });
+  }
+  getAgingReport() { return this.http.get<AgingReport>(`${this.url}/payments-page/aging`); }
+  getDebtors() { return this.http.get<Debtor[]>(`${this.url}/payments-page/debtors`); }
+
+  // Settings
+  getSettings() { return this.http.get<AppSettings>(`${this.url}/settings`); }
+  updateSettings(data: Partial<AppSettings>) { return this.http.put<AppSettings>(`${this.url}/settings`, data); }
 
   // Exports
   exportJobsCsv(params?: Record<string, string>) {
