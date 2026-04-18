@@ -53,7 +53,7 @@ services:
       DB_PASSWORD: workshop123
       JWT_SECRET: CAMBIA-ESTO-EN-PRODUCCION
       JWT_EXPIRES_IN: 24h
-      WORKSHOP_NAME: La Llave - Mecanica Integral
+      WORKSHOP_NAME: Taller La Llave
       WORKSHOP_ADDRESS: Ildemaro Ribas 1320, Sarandi Grande, Uruguay
       WORKSHOP_PHONE: "+598 99 354 032"
       WORKSHOP_EMAIL: lallavetaller@gmail.com
