@@ -304,3 +304,34 @@ export interface AppSettings {
   unpaid_days_threshold: string;
   [key: string]: string;
 }
+
+export interface MonthlyClosingTotals {
+  count: number;
+  subtotal: number;
+  tax: number;
+  total: number;
+  paid: number;
+  balance: number;
+}
+
+export interface MonthlyClosingJob {
+  id: string;
+  job_number: string;
+  client_name: string;
+  job_date: string;
+  status: string;
+  tax_enabled: boolean;
+  subtotal: number;
+  tax: number;
+  total: number;
+  paid: number;
+  balance: number;
+}
+
+export interface MonthlyClosing {
+  month: string;
+  all: MonthlyClosingTotals;
+  iva: MonthlyClosingTotals;
+  no_iva: MonthlyClosingTotals;
+  jobs: MonthlyClosingJob[];
+}

@@ -75,6 +75,12 @@ import { SearchResults } from '../core/models';
             </a>
           }
           @if (auth.isAdmin()) {
+            <a mat-list-item routerLink="/importar" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon matListItemIcon>upload_file</mat-icon>
+              <span>Importar</span>
+            </a>
+          }
+          @if (auth.isAdmin()) {
             <a mat-list-item routerLink="/ajustes" routerLinkActive="active" (click)="onNavClick()">
               <mat-icon matListItemIcon>settings</mat-icon>
               <span>Ajustes</span>

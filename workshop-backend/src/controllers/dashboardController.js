@@ -286,4 +286,79 @@ async function newClients(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { summary, revenueTrend, jobStatus, clientFinancials, recentJobs, overdueDebts, unpaidJobs, topClients, paymentMethods, newClients };
+async function monthlyClosing(req, res, next) {
+  try {
+    const { month } = req.query;
+    let monthStart, monthEnd;
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      monthStart = month + '-01';
+      const [y, m] = month.split('-').map(Number);
+      const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+      monthEnd = nextMonth;
+    } else {
+      const now = new Date();
+      monthStart = now.toISOString().slice(0, 7) + '-01';
+      const y = now.getFullYear();
+      const m = now.getMonth() + 1;
+      monthEnd = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+    }
+
+    const r = await pool.query(`
+      SELECT
+        j.id, j.job_number, j.tax_enabled, j.status, j.job_date,
+        c.full_name AS client_name,
+        COALESCE(SUM(ji.quantity * ji.unit_price), 0) AS subtotal,
+        COALESCE(p.paid, 0) AS total_paid
+      FROM jobs j
+      JOIN clients c ON c.id = j.client_id
+      LEFT JOIN job_items ji ON ji.job_id = j.id
+      LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
+      WHERE j.deleted_at IS NULL
+        AND j.job_date >= $1 AND j.job_date < $2
+      GROUP BY j.id, j.job_number, j.tax_enabled, j.status, j.job_date, c.full_name, p.paid
+      ORDER BY j.job_date
+    `, [monthStart, monthEnd]);
+
+    const jobs = r.rows.map(row => {
+      const subtotal = parseFloat(row.subtotal);
+      const tax = row.tax_enabled ? Math.round(subtotal * 0.22 * 100) / 100 : 0;
+      const total = subtotal + tax;
+      const paid = parseFloat(row.total_paid);
+      return {
+        id: row.id,
+        job_number: row.job_number,
+        client_name: row.client_name,
+        job_date: row.job_date,
+        status: row.status,
+        tax_enabled: row.tax_enabled,
+        subtotal,
+        tax,
+        total,
+        paid,
+        balance: Math.round((total - paid) * 100) / 100,
+      };
+    });
+
+    const calc = (list) => ({
+      count: list.length,
+      subtotal: list.reduce((s, j) => s + j.subtotal, 0),
+      tax: list.reduce((s, j) => s + j.tax, 0),
+      total: list.reduce((s, j) => s + j.total, 0),
+      paid: list.reduce((s, j) => s + j.paid, 0),
+      balance: list.reduce((s, j) => s + j.balance, 0),
+    });
+
+    const ivaJobs = jobs.filter(j => j.tax_enabled);
+    const noIvaJobs = jobs.filter(j => !j.tax_enabled);
+
+    res.json({
+      month: monthStart.slice(0, 7),
+      all: calc(jobs),
+      iva: calc(ivaJobs),
+      no_iva: calc(noIvaJobs),
+      jobs,
+    });
+  } catch (err) { next(err); }
+}
+
+module.exports = { summary, revenueTrend, jobStatus, clientFinancials, recentJobs, overdueDebts, unpaidJobs, topClients, paymentMethods, newClients, monthlyClosing };

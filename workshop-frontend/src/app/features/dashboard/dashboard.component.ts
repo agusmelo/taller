@@ -19,7 +19,8 @@ import { ApiService } from '../../core/services/api.service';
 import {
   DashboardSummary, ClientFinancialRow, Job,
   OverdueDebt, UnpaidJob, TopClient,
-  PaymentMethodBreakdown, NewClientsData, RevenueTrendItem
+  NewClientsData, RevenueTrendItem,
+  MonthlyClosing, MonthlyClosingJob
 } from '../../core/models';
 import { StatusLabelPipe } from '../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
@@ -294,48 +295,128 @@ import Chart from 'chart.js/auto';
         </mat-card-content>
       </mat-card>
 
-      <!-- Insights row: Top Clients + Payment Methods -->
-      <div class="insights-row">
-        <!-- Top 5 Clients -->
-        <mat-card class="mb-16 flex-card">
+      <!-- Monthly Closing -->
+      @if (monthlyClosing) {
+        <mat-card class="mb-16">
           <mat-card-content>
-            <h3>Top 5 clientes por ingresos</h3>
-            @if (topClients.length > 0) {
-              <table mat-table [dataSource]="topClients" style="width:100%;">
-                <ng-container matColumnDef="full_name">
-                  <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                  <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
-                </ng-container>
-                <ng-container matColumnDef="total_paid">
-                  <th mat-header-cell *matHeaderCellDef class="text-right">Total pagado</th>
-                  <td mat-cell *matCellDef="let c" class="text-right">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
-                </ng-container>
-                <ng-container matColumnDef="job_count">
-                  <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
-                  <td mat-cell *matCellDef="let c" class="text-right">{{ c.job_count }}</td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['full_name','total_paid','job_count']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['full_name','total_paid','job_count'];"
-                    class="clickable-row" (click)="goToClient(row.id)"></tr>
-              </table>
-            } @else {
-              <div class="empty-state"><mat-icon>people</mat-icon><p>Sin datos aun</p></div>
-            }
-          </mat-card-content>
-        </mat-card>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+              <h3 style="margin:0;">Cierre mensual</h3>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:160px;">
+                <mat-label>Mes</mat-label>
+                <input matInput type="month" [(ngModel)]="closingMonth" (change)="loadMonthlyClosing()">
+              </mat-form-field>
+            </div>
 
-        <!-- Payment Methods -->
-        <mat-card class="mb-16 flex-card">
-          <mat-card-content>
-            <h3>Metodos de pago (mes)</h3>
-            @if (paymentMethodsData.length > 0) {
-              <canvas #paymentChart height="200"></canvas>
-            } @else {
-              <div class="empty-state"><mat-icon>payments</mat-icon><p>Sin pagos este mes</p></div>
-            }
+            <mat-tab-group>
+              <mat-tab label="Todos">
+                <ng-template matTabContent>
+                  <div style="padding:16px 0;">
+                    <div class="closing-summary">
+                      <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.all.count }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.all.subtotal | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">IVA</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.all.tax | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.all.total | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:#2e7d32;">{{ privacyMode ? '***' : (monthlyClosing.all.paid | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:#c62828;">{{ privacyMode ? '***' : (monthlyClosing.all.balance | appCurrency) }}</span></div>
+                    </div>
+                    <table mat-table [dataSource]="monthlyClosing.jobs" style="width:100%;">
+                      <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
+                      <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
+                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
+                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
+                      <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
+                      <tr mat-header-row *matHeaderRowDef="closingColumns"></tr>
+                      <tr mat-row *matRowDef="let row; columns: closingColumns;" class="clickable-row" (click)="goToJob(row.id)"></tr>
+                    </table>
+                  </div>
+                </ng-template>
+              </mat-tab>
+              <mat-tab label="Con IVA">
+                <ng-template matTabContent>
+                  <div style="padding:16px 0;">
+                    <div class="closing-summary">
+                      <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.iva.count }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.iva.subtotal | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">IVA</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.iva.tax | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.iva.total | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:#2e7d32;">{{ privacyMode ? '***' : (monthlyClosing.iva.paid | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:#c62828;">{{ privacyMode ? '***' : (monthlyClosing.iva.balance | appCurrency) }}</span></div>
+                    </div>
+                    <table mat-table [dataSource]="closingIvaJobs" style="width:100%;">
+                      <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
+                      <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
+                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
+                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
+                      <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
+                      <tr mat-header-row *matHeaderRowDef="closingColumns"></tr>
+                      <tr mat-row *matRowDef="let row; columns: closingColumns;" class="clickable-row" (click)="goToJob(row.id)"></tr>
+                    </table>
+                  </div>
+                </ng-template>
+              </mat-tab>
+              <mat-tab label="Sin IVA">
+                <ng-template matTabContent>
+                  <div style="padding:16px 0;">
+                    <div class="closing-summary">
+                      <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.no_iva.count }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.no_iva.subtotal | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.total | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:#2e7d32;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.paid | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:#c62828;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.balance | appCurrency) }}</span></div>
+                    </div>
+                    <table mat-table [dataSource]="closingNoIvaJobs" style="width:100%;">
+                      <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
+                      <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
+                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
+                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
+                      <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
+                      <tr mat-header-row *matHeaderRowDef="closingColumns"></tr>
+                      <tr mat-row *matRowDef="let row; columns: closingColumns;" class="clickable-row" (click)="goToJob(row.id)"></tr>
+                    </table>
+                  </div>
+                </ng-template>
+              </mat-tab>
+            </mat-tab-group>
           </mat-card-content>
         </mat-card>
-      </div>
+      }
+
+      <!-- Top 5 Clients -->
+      <mat-card class="mb-16">
+        <mat-card-content>
+          <h3>Top 5 clientes por ingresos</h3>
+          @if (topClients.length > 0) {
+            <table mat-table [dataSource]="topClients" style="width:100%;">
+              <ng-container matColumnDef="full_name">
+                <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="total_paid">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Total pagado</th>
+                <td mat-cell *matCellDef="let c" class="text-right">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="job_count">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
+                <td mat-cell *matCellDef="let c" class="text-right">{{ c.job_count }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['full_name','total_paid','job_count']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['full_name','total_paid','job_count'];"
+                  class="clickable-row" (click)="goToClient(row.id)"></tr>
+            </table>
+          } @else {
+            <div class="empty-state"><mat-icon>people</mat-icon><p>Sin datos aun</p></div>
+          }
+        </mat-card-content>
+      </mat-card>
 
       <!-- Section D: Recent Jobs -->
       <mat-card class="mb-16">
@@ -453,24 +534,23 @@ import Chart from 'chart.js/auto';
     }
     .delta.positive { color: #2e7d32; }
     .delta.negative { color: #c62828; }
+    .closing-summary {
+      display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
+      padding: 12px; background: #f5f5f5; border-radius: 4px;
+    }
+    .closing-stat { display: flex; flex-direction: column; min-width: 100px; }
+    .closing-label { font-size: 12px; color: #666; }
+    .closing-value { font-size: 18px; font-weight: 500; }
     .alerts-card {
       border-left: 4px solid #d32f2f;
     }
     .alerts-header {
       display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
     }
-    .insights-row {
-      display: flex; gap: 16px;
-    }
-    .flex-card { flex: 1; min-width: 0; }
-    @media (max-width: 900px) {
-      .insights-row { flex-direction: column; }
-    }
   `]
 })
 export class DashboardComponent implements OnInit, AfterViewInit {
   @ViewChild('revenueChart') chartRef!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('paymentChart') paymentChartRef!: ElementRef<HTMLCanvasElement>;
 
   summary: DashboardSummary | null = null;
   jobStatus: { abierto: number; terminado: number; pagado: number } | null = null;
@@ -492,13 +572,18 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   trendTabIndex = 0;
   revenueTrendData: RevenueTrendItem[] = [];
 
+  // Monthly closing
+  monthlyClosing: MonthlyClosing | null = null;
+  closingMonth = new Date().toISOString().slice(0, 7);
+  closingColumns = ['job_number', 'client_name', 'job_date', 'status', 'iva', 'total', 'paid', 'balance'];
+  closingIvaJobs: MonthlyClosingJob[] = [];
+  closingNoIvaJobs: MonthlyClosingJob[] = [];
+
   // Insights
   topClients: TopClient[] = [];
-  paymentMethodsData: PaymentMethodBreakdown[] = [];
   newClientsData: NewClientsData | null = null;
 
   private chart: Chart | null = null;
-  private paymentChart: Chart | null = null;
 
   constructor(private api: ApiService, private router: Router) {}
 
@@ -508,15 +593,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.api.getRecentJobs().subscribe(j => this.recentJobs = j);
     this.api.getTopClients().subscribe(c => this.topClients = c);
     this.api.getNewClients().subscribe(d => this.newClientsData = d);
-    this.api.getPaymentMethods().subscribe(d => {
-      this.paymentMethodsData = d;
-      setTimeout(() => this.renderPaymentChart(), 100);
-    });
     this.api.getSettings().subscribe(s => {
       this.alertDays = parseInt(s.unpaid_days_threshold) || 30;
       this.loadAlerts();
     });
     this.loadRevenueTrend();
+    this.loadMonthlyClosing();
     this.loadClientFinancials();
   }
 
@@ -549,6 +631,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     this.loadRevenueTrend();
   }
 
+  loadMonthlyClosing() {
+    this.api.getMonthlyClosing(this.closingMonth).subscribe(d => {
+      this.monthlyClosing = d;
+      this.closingIvaJobs = d.jobs.filter(j => j.tax_enabled);
+      this.closingNoIvaJobs = d.jobs.filter(j => !j.tax_enabled);
+    });
+  }
+
   loadClientFinancials() {
     this.api.getClientFinancials(this.debtFilter || undefined).subscribe(r => {
       this.clientFinancials = r.clients;
@@ -558,7 +648,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   onPrivacyToggle() {
     this.renderChart();
-    this.renderPaymentChart();
   }
 
   renderChart() {
@@ -591,42 +680,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
             beginAtZero: true,
             display: !this.privacyMode,
             ticks: { callback: (v) => '$ ' + Number(v).toLocaleString('es-UY') }
-          }
-        }
-      }
-    });
-  }
-
-  renderPaymentChart() {
-    if (!this.paymentChartRef?.nativeElement || !this.paymentMethodsData.length) return;
-    if (this.paymentChart) this.paymentChart.destroy();
-
-    const methodLabels: Record<string, string> = {
-      efectivo: 'Efectivo', transferencia: 'Transferencia',
-      credito: 'Credito', cheque: 'Cheque'
-    };
-    const colors = ['#1565c0', '#2e7d32', '#e65100', '#6a1b9a'];
-
-    this.paymentChart = new Chart(this.paymentChartRef.nativeElement, {
-      type: 'doughnut',
-      data: {
-        labels: this.paymentMethodsData.map(d => methodLabels[d.method] || d.method),
-        datasets: [{
-          data: this.paymentMethodsData.map(d => d.total),
-          backgroundColor: colors.slice(0, this.paymentMethodsData.length),
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'bottom' },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                if (this.privacyMode) return '***';
-                return ctx.label + ': $ ' + Number(ctx.raw).toLocaleString('es-UY', { minimumFractionDigits: 2 });
-              }
-            }
           }
         }
       }

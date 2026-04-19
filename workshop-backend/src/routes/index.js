@@ -15,6 +15,7 @@ const pdf       = require('../controllers/pdfController');
 const csv       = require('../controllers/exportController');
 const settings  = require('../controllers/settingsController');
 const paymentsPage = require('../controllers/paymentsPageController');
+const importCtrl   = require('../controllers/importController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -90,6 +91,7 @@ router.get('/dashboard/unpaid-jobs',        authenticate, requireAdmin, dashboar
 router.get('/dashboard/top-clients',        authenticate, requireAdmin, dashboard.topClients);
 router.get('/dashboard/payment-methods',    authenticate, requireAdmin, dashboard.paymentMethods);
 router.get('/dashboard/new-clients',        authenticate, requireAdmin, dashboard.newClients);
+router.get('/dashboard/monthly-closing',   authenticate, requireAdmin, dashboard.monthlyClosing);
 
 // Payments page (admin only)
 router.get('/payments-page/summary',       authenticate, requireAdmin, paymentsPage.paymentsSummary);
@@ -105,6 +107,10 @@ router.put('/settings',  authenticate, requireAdmin, settings.update);
 // CSV Exports (admin only)
 router.get('/export/jobs',    authenticate, requireAdmin, csv.exportJobs);
 router.get('/export/clients', authenticate, requireAdmin, csv.exportClients);
+
+// Import (admin only)
+router.post('/import/preview', authenticate, requireAdmin, importCtrl.preview);
+router.post('/import/execute', authenticate, requireAdmin, importCtrl.execute);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);
