@@ -61,6 +61,11 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/settings/settings.component').then(m => m.SettingsComponent)
       },
+      {
+        path: 'importar',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/import/import.component').then(m => m.ImportComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }

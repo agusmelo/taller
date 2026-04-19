@@ -17,6 +17,7 @@ const migrations = [
   '003_job_number_date.sql',
   '004_polish.sql',
   '005_settings.sql',
+  '006_import_source.sql',
 ];
 
 async function run() {

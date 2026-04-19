@@ -165,31 +165,81 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
           <table mat-table [dataSource]="job.items || []" style="width:100%;">
             <ng-container matColumnDef="item_type">
               <th mat-header-cell *matHeaderCellDef>Tipo</th>
-              <td mat-cell *matCellDef="let i">{{ i.item_type | itemType }}</td>
+              <td mat-cell *matCellDef="let i">
+                @if (editingItemId === i.id) {
+                  <mat-form-field appearance="outline" style="width:130px;" subscriptSizing="dynamic">
+                    <mat-select [(ngModel)]="editItem.item_type">
+                      <mat-option value="mano_de_obra">Mano de obra</mat-option>
+                      <mat-option value="repuesto">Repuesto</mat-option>
+                      <mat-option value="otro">Otro</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                } @else {
+                  {{ i.item_type | itemType }}
+                }
+              </td>
             </ng-container>
             <ng-container matColumnDef="description">
               <th mat-header-cell *matHeaderCellDef>Descripcion</th>
               <td mat-cell *matCellDef="let i">
-                {{ i.description }}
-                @if (i.supplier) { <small style="color:#888;"> ({{ i.supplier }})</small> }
+                @if (editingItemId === i.id) {
+                  <mat-form-field appearance="outline" style="width:100%;" subscriptSizing="dynamic">
+                    <input matInput [(ngModel)]="editItem.description">
+                  </mat-form-field>
+                } @else {
+                  {{ i.description }}
+                  @if (i.supplier) { <small style="color:#888;"> ({{ i.supplier }})</small> }
+                }
               </td>
             </ng-container>
             <ng-container matColumnDef="quantity">
               <th mat-header-cell *matHeaderCellDef class="text-right">Cant.</th>
-              <td mat-cell *matCellDef="let i" class="text-right">{{ i.quantity }}</td>
+              <td mat-cell *matCellDef="let i" class="text-right">
+                @if (editingItemId === i.id) {
+                  <mat-form-field appearance="outline" style="width:70px;" subscriptSizing="dynamic">
+                    <input matInput [(ngModel)]="editItem.quantity" type="number" min="1">
+                  </mat-form-field>
+                } @else {
+                  {{ i.quantity }}
+                }
+              </td>
             </ng-container>
             <ng-container matColumnDef="unit_price">
               <th mat-header-cell *matHeaderCellDef class="text-right">Precio</th>
-              <td mat-cell *matCellDef="let i" class="text-right">{{ i.unit_price | appCurrency }}</td>
+              <td mat-cell *matCellDef="let i" class="text-right">
+                @if (editingItemId === i.id) {
+                  <mat-form-field appearance="outline" style="width:100px;" subscriptSizing="dynamic">
+                    <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
+                  </mat-form-field>
+                } @else {
+                  {{ i.unit_price | appCurrency }}
+                }
+              </td>
             </ng-container>
             <ng-container matColumnDef="total">
               <th mat-header-cell *matHeaderCellDef class="text-right">Total</th>
-              <td mat-cell *matCellDef="let i" class="text-right">{{ i.quantity * i.unit_price | appCurrency }}</td>
+              <td mat-cell *matCellDef="let i" class="text-right">
+                @if (editingItemId === i.id) {
+                  {{ editItem.quantity * editItem.unit_price | appCurrency }}
+                } @else {
+                  {{ i.quantity * i.unit_price | appCurrency }}
+                }
+              </td>
             </ng-container>
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let i">
-                @if (auth.isAdminOrRecep() && !job.is_locked) {
+                @if (editingItemId === i.id) {
+                  <button mat-icon-button color="primary" (click)="saveEditItem()" [disabled]="savingItem">
+                    <mat-icon>check</mat-icon>
+                  </button>
+                  <button mat-icon-button (click)="cancelEditItem()">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                } @else if (canEditItems()) {
+                  <button mat-icon-button (click)="startEditItem(i)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
                   <button mat-icon-button color="warn" (click)="confirmDeleteItem(i.id, i.description)">
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -326,6 +376,8 @@ export class JobDetailComponent implements OnInit {
   newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '', payment_date: new Date() };
   clientCredit = 0;
+  editingItemId: string | null = null;
+  editItem: any = {};
 
   constructor(
     private route: ActivatedRoute,
@@ -434,6 +486,42 @@ export class JobDetailComponent implements OnInit {
         this.showAddItem = false;
         this.savingItem = false;
         this.notify.success('Item agregado');
+        this.load();
+      },
+      error: err => { this.notify.handleError(err); this.savingItem = false; }
+    });
+  }
+
+  canEditItems(): boolean {
+    if (!this.job) return false;
+    return this.auth.isAdmin() && !this.job.is_locked && this.job.status !== 'pagado';
+  }
+
+  startEditItem(item: any) {
+    this.editingItemId = item.id;
+    this.editItem = {
+      item_type: item.item_type,
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      supplier: item.supplier || ''
+    };
+  }
+
+  cancelEditItem() {
+    this.editingItemId = null;
+    this.editItem = {};
+  }
+
+  saveEditItem() {
+    if (!this.editingItemId || !this.editItem.description) return;
+    this.savingItem = true;
+    this.api.updateJobItem(this.job!.id, this.editingItemId, this.editItem).subscribe({
+      next: () => {
+        this.editingItemId = null;
+        this.editItem = {};
+        this.savingItem = false;
+        this.notify.success('Item actualizado');
         this.load();
       },
       error: err => { this.notify.handleError(err); this.savingItem = false; }

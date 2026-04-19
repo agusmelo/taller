@@ -9,7 +9,8 @@ import {
   PaginatedResponse, OverdueDebt, UnpaidJob,
   TopClient, PaymentMethodBreakdown, NewClientsData,
   RevenueTrendItem, JobWithBalance, RecentPayment,
-  AgingReport, Debtor, PaymentsSummary, AppSettings
+  AgingReport, Debtor, PaymentsSummary, AppSettings,
+  MonthlyClosing
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -101,6 +102,11 @@ export class ApiService {
   getTopClients(limit = 5) { return this.http.get<TopClient[]>(`${this.url}/dashboard/top-clients`, { params: { limit: limit.toString() } }); }
   getPaymentMethods() { return this.http.get<PaymentMethodBreakdown[]>(`${this.url}/dashboard/payment-methods`); }
   getNewClients() { return this.http.get<NewClientsData>(`${this.url}/dashboard/new-clients`); }
+  getMonthlyClosing(month?: string) {
+    const params: Record<string, string> = {};
+    if (month) params['month'] = month;
+    return this.http.get<MonthlyClosing>(`${this.url}/dashboard/monthly-closing`, { params });
+  }
 
   // Payments page
   getPaymentsSummary() { return this.http.get<PaymentsSummary>(`${this.url}/payments-page/summary`); }
@@ -124,6 +130,10 @@ export class ApiService {
   exportClientsCsv() {
     return this.http.get(`${this.url}/export/clients`, { responseType: 'blob' });
   }
+
+  // Import
+  importPreview(content: string) { return this.http.post<any>(`${this.url}/import/preview`, { content }); }
+  importExecute(content: string) { return this.http.post<any>(`${this.url}/import/execute`, { content }); }
 
   // Users
   getUsers() { return this.http.get<User[]>(`${this.url}/users`); }
