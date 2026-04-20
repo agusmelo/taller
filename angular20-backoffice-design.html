@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angular 20 Backoffice — Implementation Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f7f5;--surface:#fff;--navy:#111827;--navy2:#1f2937;
+  --slate:#64748b;--border:#e5e7eb;--border2:#f3f4f6;
+  --amber:#d97706;--amber-lt:#fef9ee;
+  --blue:#2563eb;--blue-lt:#eff6ff;
+  --green:#16a34a;--green-lt:#f0fdf4;
+  --red:#dc2626;--red-lt:#fef2f2;
+  --purple:#7c3aed;--purple-lt:#f5f3ff;
+  --teal:#0d9488;--teal-lt:#f0fdfa;
+  --text-1:#111827;--text-2:#6b7280;--text-3:#9ca3af;
+  --code-bg:#f8fafc;--code-border:#e2e8f0;
+  --r:10px;
+}
+html,body{height:100%;font-size:14px}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text-1);line-height:1.6}
+.layout{display:flex;min-height:100vh}
+
+/* ── TOC ── */
+.toc{width:248px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--border);padding:20px 0}
+.toc-logo{padding:0 20px 16px;border-bottom:1px solid var(--border2);margin-bottom:8px}
+.toc-logo-mark{display:flex;align-items:center;gap:8px}
+.toc-icon{width:24px;height:24px;background:var(--navy);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.toc-icon span{color:#fff;font-size:12px}
+.toc-prod{font-size:13px;font-weight:700;letter-spacing:-.02em}
+.toc-ver{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--green);background:var(--green-lt);padding:2px 6px;border-radius:20px;margin-left:auto}
+.toc-section{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);padding:10px 20px 4px;display:block}
+.toc a{display:block;font-size:12px;font-weight:500;color:var(--text-2);text-decoration:none;padding:5px 20px;border-left:2px solid transparent;transition:all .12s}
+.toc a:hover{color:var(--navy);background:var(--bg)}
+.toc a.active-link{color:var(--navy);border-left-color:var(--navy);font-weight:600}
+.toc a.sub{padding-left:32px;font-size:11px}
+.toc-sep{height:1px;background:var(--border2);margin:8px 20px}
+
+/* ── Content ── */
+.content{flex:1;max-width:880px;padding:48px 52px;overflow-y:auto}
+
+h1{font-size:28px;font-weight:700;letter-spacing:-.04em;color:var(--navy);margin-bottom:6px}
+.doc-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.meta-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.04em}
+.mp-ver{background:var(--green-lt);color:var(--green)}
+.mp-date{background:var(--blue-lt);color:var(--blue)}
+.mp-from{background:var(--amber-lt);color:var(--amber)}
+.subtitle{font-size:15px;color:var(--text-2);margin-bottom:44px;line-height:1.6;max-width:640px}
+
+h2{font-size:17px;font-weight:700;letter-spacing:-.02em;color:var(--navy);margin:44px 0 14px;padding-top:12px;border-top:1px solid var(--border2)}
+h3{font-size:14px;font-weight:700;color:var(--navy2);margin:26px 0 10px;letter-spacing:-.01em}
+h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin:18px 0 8px}
+p{color:var(--text-2);margin-bottom:12px;line-height:1.7}
+p strong{color:var(--text-1);font-weight:600}
+
+/* ── Migration badge ── */
+.v20-new{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--teal-lt);color:var(--teal);padding:1px 7px;border-radius:20px;border:1px solid #99f6e4;margin-left:6px;vertical-align:middle}
+.v20-changed{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--amber-lt);color:var(--amber);padding:1px 7px;border-radius:20px;border:1px solid #fde68a;margin-left:6px;vertical-align:middle}
+.v20-stable{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:var(--green-lt);color:var(--green);padding:1px 7px;border-radius:20px;border:1px solid #bbf7d0;margin-left:6px;vertical-align:middle}
+
+/* ── Code ── */
+pre{background:#0f172a;color:#cbd5e1;border-radius:var(--r);padding:20px 22px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;overflow-x:auto;margin:10px 0 18px;position:relative;border:1px solid #1e293b}
+.pre-label{position:absolute;top:10px;right:14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;font-family:'Plus Jakarta Sans',sans-serif}
+code{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--code-bg);border:1px solid var(--code-border);padding:1px 5px;border-radius:4px;color:#0f172a}
+pre code{background:none;border:none;padding:0;color:inherit;font-size:inherit}
+.kw{color:#93c5fd}.cl{color:#fde68a}.fn{color:#6ee7b7}.st{color:#fca5a5}
+.cm{color:#475569}.dc{color:#a5f3fc}.nm{color:#c4b5fd}.op{color:#64748b}
+.pr{color:#e2e8f0}.tp{color:#f9a8d4}.hl{background:#1e3a5f;border-radius:3px}
+
+/* ── Diff-style code ── */
+.diff-add{background:#052e16;color:#86efac;display:block;margin:0 -22px;padding:0 22px}
+.diff-del{background:#450a0a;color:#fca5a5;display:block;margin:0 -22px;padding:0 22px;opacity:.7}
+
+/* ── Callouts ── */
+.callout{border-radius:var(--r);padding:14px 16px;margin:14px 0 18px;border-left:3px solid;border:1px solid}
+.ci{background:var(--blue-lt);border-color:#bfdbfe;border-left:3px solid var(--blue)}
+.ci p{color:#1e40af}.ci .ct{color:var(--blue)}
+.cw{background:var(--amber-lt);border-color:#fde68a;border-left:3px solid var(--amber)}
+.cw p{color:#92400e}.cw .ct{color:var(--amber)}
+.cg{background:var(--green-lt);border-color:#bbf7d0;border-left:3px solid var(--green)}
+.cg p{color:#14532d}.cg .ct{color:var(--green)}
+.ct2{background:var(--teal-lt);border-color:#99f6e4;border-left:3px solid var(--teal)}
+.ct2 p{color:#134e4a}.ct2 .ct{color:var(--teal)}
+.ct{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;display:block}
+
+/* ── File tree ── */
+.tree{background:var(--code-bg);border:1px solid var(--code-border);border-radius:var(--r);padding:18px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.9;margin:10px 0 18px;overflow-x:auto}
+.tr-d{color:var(--navy2);font-weight:600}.tr-f{color:var(--text-2)}.tr-n{color:var(--text-3);font-size:11px}
+.tr-new{color:var(--teal);font-weight:600}
+
+/* ── Compare grid ── */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0 18px}
+.compare-box{border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
+.compare-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:6px 14px;display:block}
+.compare-label.old{background:#fef2f2;color:var(--red);border-bottom:1px solid #fecaca}
+.compare-label.new{background:var(--teal-lt);color:var(--teal);border-bottom:1px solid #99f6e4}
+.compare-box pre{border-radius:0;margin:0;border:none;font-size:11.5px}
+
+/* ── Spec table ── */
+.spec-table{width:100%;border-collapse:collapse;margin:10px 0 18px;font-size:12px}
+.spec-table th{text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);padding:0 12px 8px 0;border-bottom:1px solid var(--border)}
+.spec-table td{padding:8px 12px 8px 0;border-bottom:1px solid var(--border2);color:var(--text-2);vertical-align:top}
+.spec-table td:first-child{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--navy2);font-weight:500}
+.spec-table tr:last-child td{border:none}
+
+/* ── Component cards ── */
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 18px}
+.comp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.comp-name{font-size:12px;font-weight:700;color:var(--navy);font-family:'JetBrains Mono',monospace;margin-bottom:3px}
+.comp-path{font-size:10px;color:var(--text-3);margin-bottom:8px}
+.comp-desc{font-size:11px;color:var(--text-2);line-height:1.5}
+.comp-inputs{margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)}
+.io-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-bottom:4px}
+.io-item{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--slate);margin-bottom:2px}
+.io-item em{color:var(--text-3);font-style:normal}
+
+/* ── Steps ── */
+.steps{counter-reset:s}
+.step{counter-increment:s;display:flex;gap:14px;margin-bottom:18px;align-items:flex-start}
+.sn{flex-shrink:0;width:24px;height:24px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;margin-top:2px}
+.sb h4{margin:0 0 3px;font-size:13px;font-weight:700;color:var(--navy);text-transform:none;letter-spacing:0}
+.sb p{margin:0;font-size:12px}
+
+/* ── Pill labels ── */
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.03em;margin-right:4px;margin-bottom:3px}
+.p-core{background:var(--blue-lt);color:var(--blue)}
+.p-feat{background:var(--purple-lt);color:var(--purple)}
+.p-shared{background:var(--green-lt);color:var(--green)}
+.p-layout{background:var(--amber-lt);color:var(--amber)}
+.p-new{background:var(--teal-lt);color:var(--teal)}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ── TOC ── -->
+<nav class="toc">
+  <div class="toc-logo">
+    <div class="toc-logo-mark">
+      <div class="toc-icon"><span>🔧</span></div>
+      <span class="toc-prod">AutoShop</span>
+      <span class="toc-ver">v20</span>
+    </div>
+  </div>
+
+  <span class="toc-section">Overview</span>
+  <a href="#what-changed">What changed in v20</a>
+  <a href="#stack">Tech stack</a>
+  <a href="#setup">Project setup</a>
+
+  <div class="toc-sep"></div>
+  <span class="toc-section">Architecture</span>
+  <a href="#structure">Folder structure</a>
+  <a href="#routing">Routing</a>
+
+  <div class="toc-sep"></div>
+  <span class="toc-section">Data layer</span>
+  <a href="#models">Models</a>
+  <a href="#httpresource">httpResource</a>
+  <a href="#store">DashboardStore</a>
+  <a href="#services">Mutation services</a>
+
+  <div class="toc-sep"></div>
+  <span class="toc-section">Layout</span>
+  <a href="#shell">Shell</a>
+  <a href="#sidebar">Sidebar</a>
+  <a href="#topbar">Topbar</a>
+
+  <div class="toc-sep"></div>
+  <span class="toc-section">Shared components</span>
+  <a href="#inputs-outputs">input() / output()</a>
+  <a href="#kpi">KpiCard</a>
+  <a href="#badge">Badge</a>
+  <a href="#sparkbar">SparkBar</a>
+  <a href="#datatable">DataTable</a>
+  <a href="#alertitem">AlertItem</a>
+
+  <div class="toc-sep"></div>
+  <span class="toc-section">Feature pages</span>
+  <a href="#feat-overview">Overview</a>
+  <a href="#feat-workorders">Work orders</a>
+  <a href="#feat-inventory">Inventory</a>
+
+  <div class="toc-sep"></div>
+  <span class="toc-section">Polish</span>
+  <a href="#charts">Charts</a>
+  <a href="#templates">Template syntax</a>
+  <a href="#styles">Styling</a>
+  <a href="#checklist">Build checklist</a>
+</nav>
+
+<!-- ── CONTENT ── -->
+<article class="content">
+
+<h1>Angular 20 Backoffice</h1>
+<div class="doc-meta">
+  <span class="meta-pill mp-ver">Angular 20.x</span>
+  <span class="meta-pill mp-date">Released May 28, 2025</span>
+  <span class="meta-pill mp-from">Updated from v17 guide</span>
+</div>
+<p class="subtitle">Complete implementation design for the mechanic shop manager dashboard — rewritten for Angular 20, with signal-based inputs/outputs, <code>httpResource()</code> for data fetching, stable <code>effect()</code> + <code>linkedSignal()</code>, and zoneless change detection.</p>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="what-changed">What changed from Angular 17 → 20</h2>
+
+<p>Angular 20 is a focused polish release. No architecture revolution — but several APIs that were experimental are now stable, and one new API (<code>httpResource()</code>) fundamentally changes how you fetch data.</p>
+
+<table class="spec-table">
+  <thead><tr><th>Area</th><th>Angular 17</th><th>Angular 20</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>signal(), computed()</td><td>Stable</td><td>Stable</td><td><span class="v20-stable">stable</span></td></tr>
+    <tr><td>input() / output()</td><td>Stable (v17.1)</td><td>Stable</td><td><span class="v20-stable">stable</span></td></tr>
+    <tr><td>effect()</td><td>Developer preview</td><td><strong>Stable</strong></td><td><span class="v20-stable">now stable</span></td></tr>
+    <tr><td>linkedSignal()</td><td>Not available</td><td><strong>Stable</strong></td><td><span class="v20-new">new + stable</span></td></tr>
+    <tr><td>toSignal()</td><td>Stable</td><td>Stable (refined)</td><td><span class="v20-stable">stable</span></td></tr>
+    <tr><td>httpResource()</td><td>Not available</td><td>Experimental</td><td><span class="v20-new">new</span></td></tr>
+    <tr><td>resource() / rxResource()</td><td>Not available</td><td>Experimental (overhauled)</td><td><span class="v20-changed">changed</span></td></tr>
+    <tr><td>Zoneless</td><td>Experimental</td><td>Developer preview (stable in v20.2)</td><td><span class="v20-changed">promoted</span></td></tr>
+    <tr><td>@if / @for / @switch</td><td>Stable</td><td>Stable</td><td><span class="v20-stable">stable</span></td></tr>
+    <tr><td>@let template variable</td><td>Not available</td><td>Stable</td><td><span class="v20-new">new</span></td></tr>
+    <tr><td>Template string literals</td><td>Not available</td><td>Stable</td><td><span class="v20-new">new</span></td></tr>
+    <tr><td>Host binding type checking</td><td>No</td><td>Yes</td><td><span class="v20-new">new</span></td></tr>
+    <tr><td>NgModules</td><td>Optional</td><td>Fully deprecated pattern</td><td><span class="v20-changed">avoid</span></td></tr>
+  </tbody>
+</table>
+
+<div class="callout ct2">
+  <span class="ct">The big one: httpResource()</span>
+  <p><code>httpResource()</code> is a reactive wrapper around <code>HttpClient</code> that exposes request state — value, loading, error, headers — all as signals. It replaces the <code>service.getAll().subscribe(data => signal.set(data))</code> pattern with a single declarative line. It's experimental in v20 but production-safe with predictable semantics.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="stack">Tech stack</h2>
+
+<table class="spec-table">
+  <thead><tr><th>Package</th><th>Purpose</th><th>Version</th></tr></thead>
+  <tbody>
+    <tr><td>@angular/core</td><td>Framework — signals, httpResource, zoneless</td><td>^20.x</td></tr>
+    <tr><td>@angular/router</td><td>Lazy-loaded feature routes, withComponentInputBinding</td><td>^20.x</td></tr>
+    <tr><td>@angular/common/http</td><td>HttpClient (used inside httpResource)</td><td>^20.x</td></tr>
+    <tr><td>ng2-charts</td><td>Angular wrapper for Chart.js</td><td>^6.x</td></tr>
+    <tr><td>chart.js</td><td>Chart rendering</td><td>^4.4.x</td></tr>
+    <tr><td>rxjs</td><td>Used only for mutation services and rxResource</td><td>^7.8.x</td></tr>
+  </tbody>
+</table>
+
+<div class="callout cw">
+  <span class="ct">RxJS role in Angular 20</span>
+  <p>RxJS is no longer central to data fetching — <code>httpResource()</code> handles that reactively with signals. Keep RxJS only for <strong>mutations</strong> (POST/PUT/DELETE via <code>HttpClient</code>) and complex multi-stream operations. GET calls should use <code>httpResource()</code>.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="setup">Project setup</h2>
+
+<pre><span class="cm"># Angular 20 CLI creates standalone + zoneless by default</span>
+ng new autoshop-backoffice <span class="op">\</span>
+  --routing <span class="op">\</span>
+  --style scss <span class="op">\</span>
+  --ssr false
+
+npm install ng2-charts chart.js
+<div class="pre-label">terminal</div></pre>
+
+<pre><span class="cm">// app.config.ts — Angular 20</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="cl">ApplicationConfig</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/core'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="fn">provideRouter</span><span class="op">,</span> <span class="fn">withComponentInputBinding</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/router'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="fn">provideHttpClient</span><span class="op">,</span> <span class="fn">withFetch</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/common/http'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span>
+  <span class="fn">provideExperimentalZonelessChangeDetection</span>  <span class="cm">// developer preview in v20.0</span>
+<span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/core'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="fn">provideCharts</span><span class="op">,</span> <span class="fn">withDefaultRegisterables</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'ng2-charts'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="pr">routes</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'./app.routes'</span><span class="op">;</span>
+
+<span class="kw">export const</span> <span class="pr">appConfig</span><span class="op">:</span> <span class="cl">ApplicationConfig</span> <span class="op">= {</span>
+  <span class="pr">providers</span><span class="op">: [</span>
+    <span class="fn">provideRouter</span><span class="op">(</span><span class="pr">routes</span><span class="op">,</span> <span class="fn">withComponentInputBinding</span><span class="op">()),</span>
+    <span class="fn">provideHttpClient</span><span class="op">(</span><span class="fn">withFetch</span><span class="op">()),</span>
+    <span class="fn">provideExperimentalZonelessChangeDetection</span><span class="op">(),</span>  <span class="cm">// use provideZonelessChangeDetection() in v20.2+</span>
+    <span class="fn">provideCharts</span><span class="op">(</span><span class="fn">withDefaultRegisterables</span><span class="op">()),</span>
+  <span class="op">]</span>
+<span class="op">};</span>
+<div class="pre-label">app.config.ts</div></pre>
+
+<div class="callout cg">
+  <span class="ct">Zoneless in v20.2+</span>
+  <p>In Angular v20.2 (September 2025), zoneless became fully stable. Replace <code>provideExperimentalZonelessChangeDetection()</code> with <code>provideZonelessChangeDetection()</code> and remove <code>zone.js</code> from <code>polyfills</code> in <code>angular.json</code>. Zoneless means faster rendering, smaller bundles, and cleaner stack traces.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="structure">Folder structure</h2>
+
+<div class="tree">
+<span class="tr-d">src/app/</span>
+├── <span class="tr-d">core/</span>
+│   ├── <span class="tr-d">models/</span>
+│   │   ├── work-order.model.ts
+│   │   ├── customer.model.ts
+│   │   ├── inventory.model.ts
+│   │   ├── technician.model.ts
+│   │   └── index.ts
+│   ├── <span class="tr-d">services/</span>           <span class="tr-n">← mutations only (POST/PATCH/DELETE)</span>
+│   │   ├── work-order.service.ts
+│   │   ├── customer.service.ts
+│   │   └── inventory.service.ts
+│   └── <span class="tr-d">store/</span>
+│       └── dashboard.store.ts    <span class="tr-n">← httpResource + computed signals</span>
+│
+├── <span class="tr-d">layout/</span>
+│   ├── shell/shell.component.ts
+│   ├── sidebar/sidebar.component.ts
+│   └── topbar/topbar.component.ts
+│
+├── <span class="tr-d">shared/</span>
+│   ├── <span class="tr-d">components/</span>
+│   │   ├── kpi-card/kpi-card.component.ts
+│   │   ├── badge/badge.component.ts
+│   │   ├── spark-bar/spark-bar.component.ts
+│   │   ├── data-table/data-table.component.ts
+│   │   └── alert-item/alert-item.component.ts
+│   └── index.ts
+│
+├── <span class="tr-d">features/</span>
+│   ├── overview/overview.component.ts
+│   ├── work-orders/work-orders.component.ts
+│   ├── customers/customers.component.ts
+│   ├── inventory/inventory.component.ts
+│   └── staff/staff.component.ts
+│
+├── app.component.ts
+├── app.config.ts
+└── app.routes.ts
+</div>
+
+<div class="callout ci">
+  <span class="ct">Services now: mutations only</span>
+  <p>In Angular 17, services returned Observables for GET requests which were then subscribed to in the store. In Angular 20, <strong>GET calls move into <code>httpResource()</code> inside the store</strong>. Services now only handle mutations (POST, PATCH, DELETE) using <code>HttpClient</code> directly. This is simpler and more reactive.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="routing">Routing</h2>
+
+<pre><span class="cm">// app.routes.ts — unchanged from v17</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="cl">Routes</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/router'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="cl">ShellComponent</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@layout/shell/shell.component'</span><span class="op">;</span>
+
+<span class="kw">export const</span> <span class="pr">routes</span><span class="op">:</span> <span class="cl">Routes</span> <span class="op">= [</span>
+  <span class="op">{</span>
+    <span class="pr">path</span><span class="op">:</span> <span class="st">''</span><span class="op">,</span>
+    <span class="pr">component</span><span class="op">:</span> <span class="cl">ShellComponent</span><span class="op">,</span>
+    <span class="pr">children</span><span class="op">: [</span>
+      <span class="op">{</span> <span class="pr">path</span><span class="op">:</span> <span class="st">''</span><span class="op">,</span> <span class="pr">redirectTo</span><span class="op">:</span> <span class="st">'overview'</span><span class="op">,</span> <span class="pr">pathMatch</span><span class="op">:</span> <span class="st">'full'</span> <span class="op">},</span>
+      <span class="op">{</span>
+        <span class="pr">path</span><span class="op">:</span> <span class="st">'overview'</span><span class="op">,</span>
+        <span class="pr">loadComponent</span><span class="op">:</span> <span class="op">()</span> <span class="op">=></span> <span class="kw">import</span><span class="op">(</span><span class="st">'@features/overview/overview.component'</span><span class="op">)</span>
+          <span class="op">.</span><span class="fn">then</span><span class="op">(</span><span class="pr">m</span> <span class="op">=></span> <span class="pr">m</span><span class="op">.</span><span class="cl">OverviewComponent</span><span class="op">),</span>
+        <span class="pr">title</span><span class="op">:</span> <span class="st">'Overview — AutoShop'</span>
+      <span class="op">},</span>
+      <span class="op">{</span> <span class="pr">path</span><span class="op">:</span> <span class="st">'work-orders'</span><span class="op">,</span> <span class="pr">loadComponent</span><span class="op">:</span> <span class="op">()</span> <span class="op">=></span> <span class="kw">import</span><span class="op">(</span><span class="st">'@features/work-orders/work-orders.component'</span><span class="op">).</span><span class="fn">then</span><span class="op">(</span><span class="pr">m</span> <span class="op">=></span> <span class="pr">m</span><span class="op">.</span><span class="cl">WorkOrdersComponent</span><span class="op">),</span> <span class="pr">title</span><span class="op">:</span> <span class="st">'Work Orders'</span> <span class="op">},</span>
+      <span class="op">{</span> <span class="pr">path</span><span class="op">:</span> <span class="st">'customers'</span><span class="op">,</span>   <span class="pr">loadComponent</span><span class="op">:</span> <span class="op">()</span> <span class="op">=></span> <span class="kw">import</span><span class="op">(</span><span class="st">'@features/customers/customers.component'</span><span class="op">).</span><span class="fn">then</span><span class="op">(</span><span class="pr">m</span> <span class="op">=></span> <span class="pr">m</span><span class="op">.</span><span class="cl">CustomersComponent</span><span class="op">)</span> <span class="op">},</span>
+      <span class="op">{</span> <span class="pr">path</span><span class="op">:</span> <span class="st">'inventory'</span><span class="op">,</span>   <span class="pr">loadComponent</span><span class="op">:</span> <span class="op">()</span> <span class="op">=></span> <span class="kw">import</span><span class="op">(</span><span class="st">'@features/inventory/inventory.component'</span><span class="op">).</span><span class="fn">then</span><span class="op">(</span><span class="pr">m</span> <span class="op">=></span> <span class="pr">m</span><span class="op">.</span><span class="cl">InventoryComponent</span><span class="op">)</span> <span class="op">},</span>
+      <span class="op">{</span> <span class="pr">path</span><span class="op">:</span> <span class="st">'staff'</span><span class="op">,</span>       <span class="pr">loadComponent</span><span class="op">:</span> <span class="op">()</span> <span class="op">=></span> <span class="kw">import</span><span class="op">(</span><span class="st">'@features/staff/staff.component'</span><span class="op">).</span><span class="fn">then</span><span class="op">(</span><span class="pr">m</span> <span class="op">=></span> <span class="pr">m</span><span class="op">.</span><span class="cl">StaffComponent</span><span class="op">)</span> <span class="op">},</span>
+    <span class="op">]</span>
+  <span class="op">}</span>
+<span class="op">];</span>
+<div class="pre-label">app.routes.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="models">Models (interfaces)</h2>
+
+<p>Same as v17 — models are pure TypeScript interfaces with no framework dependencies. No change needed here.</p>
+
+<pre><span class="cm">// core/models/work-order.model.ts</span>
+<span class="kw">export type</span> <span class="cl">WorkOrderStatus</span> <span class="op">=</span>
+  <span class="op">|</span> <span class="st">'in-progress'</span>
+  <span class="op">|</span> <span class="st">'waiting-parts'</span>
+  <span class="op">|</span> <span class="st">'ready'</span>
+  <span class="op">|</span> <span class="st">'urgent'</span><span class="op">;</span>
+
+<span class="kw">export interface</span> <span class="cl">WorkOrder</span> <span class="op">{</span>
+  <span class="pr">id</span><span class="op">:</span>            <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">vehicle</span><span class="op">:</span>       <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">customerName</span><span class="op">:</span>  <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">service</span><span class="op">:</span>       <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">technicianId</span><span class="op">:</span>  <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">value</span><span class="op">:</span>         <span class="tp">number</span><span class="op">;</span>
+  <span class="pr">status</span><span class="op">:</span>        <span class="cl">WorkOrderStatus</span><span class="op">;</span>
+  <span class="pr">estimatedDone</span><span class="op">:</span> <span class="tp">string</span> <span class="op">|</span> <span class="cl">Date</span><span class="op">;</span>
+  <span class="pr">createdAt</span><span class="op">:</span>     <span class="cl">Date</span><span class="op">;</span>
+<span class="op">}</span>
+<div class="pre-label">work-order.model.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="httpresource">httpResource() — reactive data fetching <span class="v20-new">new in v20</span></h2>
+
+<p><code>httpResource()</code> replaces the <code>service.getAll().subscribe()</code> pattern. It wraps <code>HttpClient</code> and exposes the response, loading state, and errors as signals you can use directly in templates and computed signals.</p>
+
+<h3>Core API</h3>
+
+<pre><span class="cm">// How httpResource works</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="fn">httpResource</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/common/http'</span><span class="op">;</span>
+
+<span class="cm">// Static URL</span>
+<span class="pr">workOrders</span> <span class="op">=</span> <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">[]&gt;(</span><span class="st">'/api/work-orders'</span><span class="op">);</span>
+
+<span class="cm">// Reactive URL — re-fetches when the signal changes</span>
+<span class="pr">selectedId</span> <span class="op">=</span> <span class="fn">signal</span><span class="op">(</span><span class="st">'WO-441'</span><span class="op">);</span>
+<span class="pr">detail</span> <span class="op">=</span> <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">&gt;(</span>
+  <span class="op">()</span> <span class="op">=></span> <span class="st">`/api/work-orders/</span><span class="op">${</span><span class="kw">this</span><span class="op">.</span><span class="fn">selectedId</span><span class="op">()}</span><span class="st">`</span>
+<span class="op">);</span>
+
+<span class="cm">// Reading the resource signals in a template or computed</span>
+<span class="kw">const</span> <span class="pr">data</span>      <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">.</span><span class="fn">value</span><span class="op">();</span>       <span class="cm">// WorkOrder[] | undefined</span>
+<span class="kw">const</span> <span class="pr">isLoading</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">.</span><span class="fn">isLoading</span><span class="op">();</span>  <span class="cm">// boolean</span>
+<span class="kw">const</span> <span class="pr">error</span>     <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">.</span><span class="fn">error</span><span class="op">();</span>      <span class="cm">// unknown | undefined</span>
+<span class="kw">const</span> <span class="pr">hasValue</span>  <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">.</span><span class="fn">hasValue</span><span class="op">();</span>   <span class="cm">// boolean</span>
+<div class="pre-label">httpResource API</div></pre>
+
+<div class="callout cw">
+  <span class="ct">httpResource is for GET only</span>
+  <p>Use <code>httpResource()</code> for GET (read) requests. For mutations — creating work orders, updating status — continue using <code>HttpClient</code> directly in a service, returning an Observable. Call <code>.reload()</code> on the resource after a mutation to re-fetch fresh data.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="store">DashboardStore <span class="v20-changed">rewritten for v20</span></h2>
+
+<p>The store is completely rewritten. Instead of injecting services and calling <code>forkJoin().subscribe()</code>, it declares <code>httpResource()</code> instances and exposes computed signals. The store becomes <strong>declarative</strong> rather than imperative.</p>
+
+<div class="compare">
+  <div class="compare-box">
+    <span class="compare-label old">Angular 17 — imperative</span>
+    <pre style="font-size:11.5px;padding:14px 16px"><span class="kw">export class</span> <span class="cl">DashboardStore</span> <span class="op">{</span>
+  <span class="pr">woSvc</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">WorkOrderService</span><span class="op">);</span>
+
+  <span class="pr">workOrders</span> <span class="op">=</span> <span class="fn">signal</span><span class="op">&lt;</span><span class="cl">WO</span><span class="op">[]&gt;([]);</span>
+
+  <span class="fn">loadAll</span><span class="op">() {</span>
+    <span class="fn">forkJoin</span><span class="op">({</span>
+      <span class="pr">workOrders</span><span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="pr">woSvc</span><span class="op">.</span><span class="fn">getAll</span><span class="op">()</span>
+    <span class="op">}).</span><span class="fn">subscribe</span><span class="op">(</span><span class="pr">d</span> <span class="op">=></span>
+      <span class="kw">this</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">.</span><span class="fn">set</span><span class="op">(</span><span class="pr">d</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">)
+    );</span>
+  <span class="op">}</span>
+<span class="op">}</span></pre>
+  </div>
+  <div class="compare-box">
+    <span class="compare-label new">Angular 20 — declarative</span>
+    <pre style="font-size:11.5px;padding:14px 16px"><span class="kw">export class</span> <span class="cl">DashboardStore</span> <span class="op">{</span>
+  <span class="cm">// Declare resource — it fetches on init</span>
+  <span class="kw">private</span> <span class="pr">woRes</span> <span class="op">=</span>
+    <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">WO</span><span class="op">[]&gt;(</span><span class="st">'/api/work-orders'</span><span class="op">);</span>
+
+  <span class="cm">// Expose with fallback</span>
+  <span class="pr">workOrders</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">woRes</span><span class="op">.</span><span class="fn">value</span><span class="op">() ??</span> <span class="op">[]</span>
+  <span class="op">);</span>
+  <span class="cm">// No loadAll() needed!</span>
+<span class="op">}</span></pre>
+  </div>
+</div>
+
+<h3>Full DashboardStore</h3>
+
+<pre><span class="cm">// core/store/dashboard.store.ts</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="cl">Injectable</span><span class="op">,</span> <span class="fn">computed</span><span class="op">,</span> <span class="fn">inject</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/core'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="op">{</span> <span class="fn">httpResource</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@angular/common/http'</span><span class="op">;</span>
+<span class="kw">import</span> <span class="kw">type</span> <span class="op">{</span> <span class="cl">WorkOrder</span><span class="op">,</span> <span class="cl">Customer</span><span class="op">,</span> <span class="cl">InventoryItem</span><span class="op">,</span> <span class="cl">Technician</span> <span class="op">}</span> <span class="kw">from</span> <span class="st">'@core/models'</span><span class="op">;</span>
+
+<span class="dc">@Injectable</span><span class="op">({</span> <span class="pr">providedIn</span><span class="op">:</span> <span class="st">'root'</span> <span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">DashboardStore</span> <span class="op">{</span>
+
+  <span class="cm">// ── HTTP Resources (fetched automatically on init) ──────────</span>
+  <span class="kw">private readonly</span> <span class="pr">woResource</span>   <span class="op">=</span> <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">[]&gt;(</span><span class="st">'/api/work-orders'</span><span class="op">);</span>
+  <span class="kw">private readonly</span> <span class="pr">custResource</span> <span class="op">=</span> <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">Customer</span><span class="op">[]&gt;(</span><span class="st">'/api/customers'</span><span class="op">);</span>
+  <span class="kw">private readonly</span> <span class="pr">invResource</span>  <span class="op">=</span> <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">InventoryItem</span><span class="op">[]&gt;(</span><span class="st">'/api/inventory'</span><span class="op">);</span>
+  <span class="kw">private readonly</span> <span class="pr">techResource</span> <span class="op">=</span> <span class="fn">httpResource</span><span class="op">&lt;</span><span class="cl">Technician</span><span class="op">[]&gt;(</span><span class="st">'/api/technicians'</span><span class="op">);</span>
+
+  <span class="cm">// ── Public data signals (with empty fallbacks) ──────────────</span>
+  <span class="pr">workOrders</span>  <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">woResource</span><span class="op">.</span><span class="fn">value</span><span class="op">() ??</span> <span class="op">[]);</span>
+  <span class="pr">customers</span>   <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">custResource</span><span class="op">.</span><span class="fn">value</span><span class="op">() ??</span> <span class="op">[]);</span>
+  <span class="pr">inventory</span>   <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">invResource</span><span class="op">.</span><span class="fn">value</span><span class="op">() ??</span> <span class="op">[]);</span>
+  <span class="pr">technicians</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">techResource</span><span class="op">.</span><span class="fn">value</span><span class="op">() ??</span> <span class="op">[]);</span>
+
+  <span class="cm">// ── Global loading state ─────────────────────────────────────</span>
+  <span class="pr">loading</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">woResource</span><span class="op">.</span><span class="fn">isLoading</span><span class="op">()</span> <span class="op">||</span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">custResource</span><span class="op">.</span><span class="fn">isLoading</span><span class="op">()</span> <span class="op">||</span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">invResource</span><span class="op">.</span><span class="fn">isLoading</span><span class="op">()</span>
+  <span class="op">);</span>
+
+  <span class="cm">// ── Computed aggregates ─────────────────────────────────────</span>
+  <span class="pr">urgentCount</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">().</span><span class="fn">filter</span><span class="op">(</span><span class="pr">wo</span> <span class="op">=></span> <span class="pr">wo</span><span class="op">.</span><span class="pr">status</span> <span class="op">===</span> <span class="st">'urgent'</span><span class="op">).</span><span class="pr">length</span>
+  <span class="op">);</span>
+
+  <span class="pr">lowStockItems</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="fn">inventory</span><span class="op">().</span><span class="fn">filter</span><span class="op">(</span><span class="pr">i</span> <span class="op">=></span> <span class="pr">i</span><span class="op">.</span><span class="pr">quantity</span> <span class="op">&lt;</span> <span class="pr">i</span><span class="op">.</span><span class="pr">minQuantity</span><span class="op">)</span>
+  <span class="op">);</span>
+
+  <span class="pr">monthlyRevenue</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">().</span><span class="fn">reduce</span><span class="op">((</span><span class="pr">acc</span><span class="op">,</span> <span class="pr">wo</span><span class="op">)</span> <span class="op">=></span> <span class="pr">acc</span> <span class="op">+</span> <span class="pr">wo</span><span class="op">.</span><span class="pr">value</span><span class="op">,</span> <span class="nm">0</span><span class="op">)</span>
+  <span class="op">);</span>
+
+  <span class="pr">avgTechUtilization</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="op">{</span>
+    <span class="kw">const</span> <span class="pr">t</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fn">technicians</span><span class="op">();</span>
+    <span class="kw">return</span> <span class="pr">t</span><span class="op">.</span><span class="pr">length</span>
+      <span class="op">?</span> <span class="pr">t</span><span class="op">.</span><span class="fn">reduce</span><span class="op">((</span><span class="pr">a</span><span class="op">,</span> <span class="pr">t</span><span class="op">)</span> <span class="op">=></span> <span class="pr">a</span> <span class="op">+</span> <span class="pr">t</span><span class="op">.</span><span class="pr">utilization</span><span class="op">,</span> <span class="nm">0</span><span class="op">)</span> <span class="op">/</span> <span class="pr">t</span><span class="op">.</span><span class="pr">length</span>
+      <span class="op">:</span> <span class="nm">0</span><span class="op">;</span>
+  <span class="op">});</span>
+
+  <span class="cm">// ── Reload (call after mutations) ────────────────────────────</span>
+  <span class="fn">reloadWorkOrders</span><span class="op">()</span> <span class="op">{</span> <span class="kw">this</span><span class="op">.</span><span class="pr">woResource</span><span class="op">.</span><span class="fn">reload</span><span class="op">(); }</span>
+  <span class="fn">reloadInventory</span><span class="op">()</span>   <span class="op">{</span> <span class="kw">this</span><span class="op">.</span><span class="pr">invResource</span><span class="op">.</span><span class="fn">reload</span><span class="op">(); }</span>
+<span class="op">}</span>
+<div class="pre-label">dashboard.store.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="services">Mutation services <span class="v20-changed">simplified in v20</span></h2>
+
+<p>Services no longer need to expose <code>getAll()</code> — that moved to <code>httpResource()</code> in the store. Services now only handle write operations and call <code>store.reload*()</code> when done.</p>
+
+<pre><span class="cm">// core/services/work-order.service.ts</span>
+<span class="dc">@Injectable</span><span class="op">({</span> <span class="pr">providedIn</span><span class="op">:</span> <span class="st">'root'</span> <span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">WorkOrderService</span> <span class="op">{</span>
+  <span class="kw">private</span> <span class="pr">http</span>  <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">HttpClient</span><span class="op">);</span>
+  <span class="kw">private</span> <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>
+  <span class="kw">private readonly</span> <span class="pr">base</span> <span class="op">=</span> <span class="st">'/api/work-orders'</span><span class="op">;</span>
+
+  <span class="cm">// Mutations only — GET is handled by httpResource in the store</span>
+
+  <span class="fn">create</span><span class="op">(</span><span class="pr">wo</span><span class="op">:</span> <span class="cl">Partial</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">&gt;):</span> <span class="cl">Observable</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">&gt; {</span>
+    <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="pr">http</span><span class="op">.</span><span class="fn">post</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">&gt;(</span><span class="kw">this</span><span class="op">.</span><span class="pr">base</span><span class="op">,</span> <span class="pr">wo</span><span class="op">).</span><span class="fn">pipe</span><span class="op">(</span>
+      <span class="fn">tap</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">reloadWorkOrders</span><span class="op">())</span>   <span class="cm">// refresh store</span>
+    <span class="op">);</span>
+  <span class="op">}</span>
+
+  <span class="fn">updateStatus</span><span class="op">(</span><span class="pr">id</span><span class="op">:</span> <span class="tp">string</span><span class="op">,</span> <span class="pr">status</span><span class="op">:</span> <span class="cl">WorkOrderStatus</span><span class="op">):</span> <span class="cl">Observable</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">&gt; {</span>
+    <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="pr">http</span><span class="op">.</span><span class="fn">patch</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">&gt;(`</span><span class="st">${this.base}/${id}</span><span class="op">`,</span> <span class="op">{</span> <span class="pr">status</span> <span class="op">}).</span><span class="fn">pipe</span><span class="op">(</span>
+      <span class="fn">tap</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">reloadWorkOrders</span><span class="op">())</span>
+    <span class="op">);</span>
+  <span class="op">}</span>
+<span class="op">}</span>
+<div class="pre-label">work-order.service.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="shell">Shell — no more loadAll()</h2>
+
+<p>Because <code>httpResource()</code> fetches automatically when the store is created, the shell no longer needs to call <code>store.loadAll()</code>. It just renders the layout.</p>
+
+<div class="compare">
+  <div class="compare-box">
+    <span class="compare-label old">Angular 17 — manual load</span>
+    <pre style="font-size:11.5px;padding:14px 16px"><span class="kw">export class</span> <span class="cl">ShellComponent</span>
+  <span class="kw">implements</span> <span class="cl">OnInit</span> <span class="op">{</span>
+  <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>
+
+  <span class="fn">ngOnInit</span><span class="op">() {</span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">loadAll</span><span class="op">();</span>
+  <span class="op">}</span>
+<span class="op">}</span></pre>
+  </div>
+  <div class="compare-box">
+    <span class="compare-label new">Angular 20 — auto-fetched</span>
+    <pre style="font-size:11.5px;padding:14px 16px"><span class="kw">export class</span> <span class="cl">ShellComponent</span> <span class="op">{</span>
+  <span class="cm">// No OnInit, no loadAll()</span>
+  <span class="cm">// httpResource fetches on first inject</span>
+<span class="op">}</span></pre>
+  </div>
+</div>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-shell'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span><span class="cl">RouterOutlet</span><span class="op">,</span> <span class="cl">SidebarComponent</span><span class="op">,</span> <span class="cl">TopbarComponent</span><span class="op">],</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    &lt;div class="shell"&gt;
+      &lt;app-sidebar /&gt;
+      &lt;div class="shell-main"&gt;
+        &lt;app-topbar /&gt;
+        &lt;main class="shell-content"&gt;
+          @if (store.loading()) {
+            &lt;div class="loading-bar"&gt;&lt;/div&gt;
+          }
+          &lt;router-outlet /&gt;
+        &lt;/main&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  `</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">ShellComponent</span> <span class="op">{</span>
+  <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>  <span class="cm">// inject triggers httpResource fetches</span>
+<span class="op">}</span>
+<div class="pre-label">shell.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="sidebar">Sidebar</h2>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-sidebar'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span><span class="cl">RouterLink</span><span class="op">,</span> <span class="cl">RouterLinkActive</span><span class="op">],</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    &lt;aside class="sidebar"&gt;
+      &lt;div class="logo"&gt;...&lt;/div&gt;
+      &lt;nav class="nav"&gt;
+        &lt;a routerLink="/overview" routerLinkActive="active" class="nav-item"&gt;
+          Overview
+        &lt;/a&gt;
+        &lt;a routerLink="/work-orders" routerLinkActive="active" class="nav-item"&gt;
+          Work orders
+          @if (store.urgentCount() &gt; 0) {
+            &lt;span class="nav-badge"&gt;{{ store.urgentCount() }}&lt;/span&gt;
+          }
+        &lt;/a&gt;
+        &lt;a routerLink="/inventory" routerLinkActive="active" class="nav-item"&gt;
+          Inventory
+          @if (store.lowStockItems().length &gt; 0) {
+            &lt;span class="nav-badge"&gt;{{ store.lowStockItems().length }}&lt;/span&gt;
+          }
+        &lt;/a&gt;
+        &lt;a routerLink="/customers" routerLinkActive="active" class="nav-item"&gt;Customers&lt;/a&gt;
+        &lt;a routerLink="/staff" routerLinkActive="active" class="nav-item"&gt;Staff&lt;/a&gt;
+      &lt;/nav&gt;
+    &lt;/aside&gt;
+  `</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">SidebarComponent</span> <span class="op">{</span>
+  <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>
+<span class="op">}</span>
+<div class="pre-label">sidebar.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="inputs-outputs">signal-based input() / output() <span class="v20-stable">stable</span></h2>
+
+<p>All shared components use <code>input()</code> and <code>output()</code> instead of <code>@Input()</code> and <code>@Output()</code> decorators. The values returned by <code>input()</code> are signals — you call them with <code>()</code> to read them.</p>
+
+<div class="compare">
+  <div class="compare-box">
+    <span class="compare-label old">Angular 17 — decorators</span>
+    <pre style="font-size:11.5px;padding:14px 16px"><span class="kw">export class</span> <span class="cl">KpiCardComponent</span> <span class="op">{</span>
+  <span class="dc">@Input</span><span class="op">({</span><span class="pr">required</span><span class="op">:</span><span class="nm">true</span><span class="op">})</span>
+  <span class="pr">label</span><span class="op">!:</span> <span class="tp">string</span><span class="op">;</span>
+
+  <span class="dc">@Input</span><span class="op">()</span>
+  <span class="pr">trend</span><span class="op">:</span> <span class="st">'up'</span><span class="op">|</span><span class="st">'down'</span><span class="op">|</span><span class="st">'neutral'</span>
+    <span class="op">=</span> <span class="st">'neutral'</span><span class="op">;</span>
+
+  <span class="dc">@Output</span><span class="op">()</span>
+  <span class="pr">clicked</span> <span class="op">=</span> <span class="kw">new</span> <span class="cl">EventEmitter</span><span class="op">&lt;</span><span class="nm">void</span><span class="op">&gt;();</span>
+<span class="op">}</span></pre>
+  </div>
+  <div class="compare-box">
+    <span class="compare-label new">Angular 20 — signals</span>
+    <pre style="font-size:11.5px;padding:14px 16px"><span class="kw">export class</span> <span class="cl">KpiCardComponent</span> <span class="op">{</span>
+  <span class="pr">label</span> <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="tp">string</span><span class="op">&gt;();</span>
+
+  <span class="pr">trend</span> <span class="op">=</span> <span class="fn">input</span><span class="op">&lt;</span><span class="st">'up'</span><span class="op">|</span><span class="st">'down'</span><span class="op">|</span><span class="st">'neutral'</span><span class="op">&gt;(</span>
+    <span class="st">'neutral'</span>
+  <span class="op">);</span>
+
+  <span class="pr">clicked</span> <span class="op">=</span> <span class="fn">output</span><span class="op">&lt;</span><span class="nm">void</span><span class="op">&gt;();</span>
+<span class="op">}</span></pre>
+  </div>
+</div>
+
+<div class="callout ci">
+  <span class="ct">Reading inputs in the class vs template</span>
+  <p>Input signals are read by calling them: <code>this.label()</code> in the class, or <code>{{ label() }}</code> in the template. In computed signals they participate in dependency tracking automatically: <code>computed(() => this.label().toUpperCase())</code> re-runs whenever the parent passes a new value.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="kpi">KpiCard component</h2>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-kpi-card'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span><span class="cl">NgClass</span><span class="op">],</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    &lt;div class="kpi" [class.kpi--accent]="accent()"&gt;
+      &lt;div class="kpi__label"&gt;{{ label() }}&lt;/div&gt;
+      &lt;div class="kpi__value"&gt;{{ value() }}&lt;/div&gt;
+      @if (delta(); as d) {
+        &lt;div class="kpi__delta" [ngClass]="trend()"&gt;
+          @let arrow = trend() === 'up' ? '↑' : trend() === 'down' ? '↓' : '';
+          {{ arrow }} {{ d }}
+        &lt;/div&gt;
+      }
+    &lt;/div&gt;
+  `</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">KpiCardComponent</span> <span class="op">{</span>
+  <span class="pr">label</span>  <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="tp">string</span><span class="op">&gt;();</span>
+  <span class="pr">value</span>  <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="tp">string</span> <span class="op">|</span> <span class="tp">number</span><span class="op">&gt;();</span>
+  <span class="pr">delta</span>  <span class="op">=</span> <span class="fn">input</span><span class="op">&lt;</span><span class="tp">string</span><span class="op">&gt;();</span>            <span class="cm">// optional → undefined by default</span>
+  <span class="pr">trend</span>  <span class="op">=</span> <span class="fn">input</span><span class="op">&lt;</span><span class="st">'up'</span><span class="op">|</span><span class="st">'down'</span><span class="op">|</span><span class="st">'neutral'</span><span class="op">&gt;(</span><span class="st">'neutral'</span><span class="op">);</span>
+  <span class="pr">accent</span> <span class="op">=</span> <span class="fn">input</span><span class="op">(</span><span class="nm">false</span><span class="op">);</span>
+<span class="op">}</span>
+<div class="pre-label">kpi-card.component.ts</div></pre>
+
+<h4>Usage in a feature template</h4>
+<pre><span class="cm">&lt;!-- Notice: no square brackets needed for string literals --&gt;</span>
+<span class="op">&lt;</span><span class="cl">app-kpi-card</span>
+  <span class="pr">label</span><span class="op">=</span><span class="st">"Revenue — June"</span>
+  <span class="op">[</span><span class="pr">value</span><span class="op">]</span><span class="op">=</span><span class="st">"store.monthlyRevenue() | currency:'USD':'symbol':'1.0-0'"</span>
+  <span class="pr">delta</span><span class="op">=</span><span class="st">"12% vs last month"</span>
+  <span class="pr">trend</span><span class="op">=</span><span class="st">"up"</span>
+  <span class="op">[</span><span class="pr">accent</span><span class="op">]</span><span class="op">=</span><span class="st">"true"</span>
+<span class="op">/&gt;</span></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="badge">Badge component</h2>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-badge'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    &lt;span class="badge" [ngClass]="cssClass()"&gt;
+      {{ label() }}
+    &lt;/span&gt;
+  `</span><span class="op">,</span>
+  <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span><span class="cl">NgClass</span><span class="op">]</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">BadgeComponent</span> <span class="op">{</span>
+  <span class="pr">status</span> <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="cl">WorkOrderStatus</span> <span class="op">|</span> <span class="st">'new'</span> <span class="op">|</span> <span class="st">'vip'</span> <span class="op">|</span> <span class="st">'regular'</span><span class="op">&gt;();</span>
+
+  <span class="kw">private readonly</span> <span class="pr">MAP</span><span class="op">:</span> <span class="cl">Record</span><span class="op">&lt;</span><span class="tp">string</span><span class="op">,</span> <span class="op">[</span><span class="tp">string</span><span class="op">,</span><span class="tp">string</span><span class="op">]&gt; = {</span>
+    <span class="st">'in-progress'</span><span class="op">:</span>    <span class="op">[</span><span class="st">'b-pro'</span><span class="op">,</span>  <span class="st">'In progress'</span><span class="op">],</span>
+    <span class="st">'waiting-parts'</span><span class="op">:</span>  <span class="op">[</span><span class="st">'b-wait'</span><span class="op">,</span> <span class="st">'Waiting parts'</span><span class="op">],</span>
+    <span class="st">'ready'</span><span class="op">:</span>          <span class="op">[</span><span class="st">'b-done'</span><span class="op">,</span> <span class="st">'Ready'</span><span class="op">],</span>
+    <span class="st">'urgent'</span><span class="op">:</span>         <span class="op">[</span><span class="st">'b-urg'</span><span class="op">,</span>  <span class="st">'Urgent'</span><span class="op">],</span>
+    <span class="st">'new'</span><span class="op">:</span>            <span class="op">[</span><span class="st">'b-new'</span><span class="op">,</span>  <span class="st">'New'</span><span class="op">],</span>
+    <span class="st">'vip'</span><span class="op">:</span>            <span class="op">[</span><span class="st">'b-vip'</span><span class="op">,</span>  <span class="st">'VIP'</span><span class="op">],</span>
+    <span class="st">'regular'</span><span class="op">:</span>        <span class="op">[</span><span class="st">'b-reg'</span><span class="op">,</span>  <span class="st">'Regular'</span><span class="op">],</span>
+  <span class="op">};</span>
+
+  <span class="cm">// Computed signals can derive from input signals</span>
+  <span class="pr">cssClass</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">MAP</span><span class="op">[</span><span class="kw">this</span><span class="op">.</span><span class="fn">status</span><span class="op">()]?.[</span><span class="nm">0</span><span class="op">] ??</span> <span class="st">''</span><span class="op">);</span>
+  <span class="pr">label</span>    <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">MAP</span><span class="op">[</span><span class="kw">this</span><span class="op">.</span><span class="fn">status</span><span class="op">()]?.[</span><span class="nm">1</span><span class="op">] ??</span> <span class="kw">this</span><span class="op">.</span><span class="fn">status</span><span class="op">());</span>
+<span class="op">}</span>
+<div class="pre-label">badge.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="sparkbar">SparkBar component</h2>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-spark-bar'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span><span class="cl">NgStyle</span><span class="op">],</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    &lt;div class="spark-bar"&gt;
+      &lt;span class="spark-bar__label"&gt;{{ label() }}&lt;/span&gt;
+      &lt;div class="spark-bar__track"&gt;
+        &lt;div class="spark-bar__fill {{ colorClass() }}"
+             [ngStyle]="{ width: value() + '%' }"&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;span class="spark-bar__pct"&gt;{{ value() }}%&lt;/span&gt;
+    &lt;/div&gt;
+  `</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">SparkBarComponent</span> <span class="op">{</span>
+  <span class="pr">label</span> <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="tp">string</span><span class="op">&gt;();</span>
+  <span class="pr">value</span> <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="tp">number</span><span class="op">&gt;();</span>
+
+  <span class="pr">colorClass</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="fn">value</span><span class="op">()</span> <span class="op">&gt;=</span> <span class="nm">75</span> <span class="op">?</span> <span class="st">'spark-bar__fill--high'</span>
+    <span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="fn">value</span><span class="op">()</span> <span class="op">&gt;=</span> <span class="nm">50</span> <span class="op">?</span> <span class="st">'spark-bar__fill--mid'</span>
+    <span class="op">:</span> <span class="st">'spark-bar__fill--low'</span>
+  <span class="op">);</span>
+<span class="op">}</span>
+<div class="pre-label">spark-bar.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="datatable">DataTable component</h2>
+
+<pre><span class="kw">export interface</span> <span class="cl">ColumnDef</span><span class="op">&lt;</span><span class="cl">T</span><span class="op">&gt; {</span>
+  <span class="pr">key</span><span class="op">:</span>       <span class="kw">keyof</span> <span class="cl">T</span><span class="op">;</span>
+  <span class="pr">header</span><span class="op">:</span>    <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">render</span><span class="op">?:</span>   <span class="op">(</span><span class="pr">val</span><span class="op">:</span> <span class="cl">T</span><span class="op">[</span><span class="kw">keyof</span> <span class="cl">T</span><span class="op">],</span> <span class="pr">row</span><span class="op">:</span> <span class="cl">T</span><span class="op">)</span> <span class="op">=></span> <span class="tp">string</span><span class="op">;</span>
+  <span class="pr">sortable</span><span class="op">?:</span> <span class="tp">boolean</span><span class="op">;</span>
+<span class="op">}</span>
+
+<span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-data-table'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    &lt;table class="tbl"&gt;
+      &lt;thead&gt;&lt;tr&gt;
+        @for (col of columns(); track col.key) {
+          &lt;th (click)="col.sortable && sort(col.key)"
+              [class.sortable]="col.sortable"&gt;
+            {{ col.header }}
+            @if (sortKey() === col.key) {
+              {{ sortAsc() ? '↑' : '↓' }}
+            }
+          &lt;/th&gt;
+        }
+      &lt;/tr&gt;&lt;/thead&gt;
+      &lt;tbody&gt;
+        @for (row of sortedRows(); track $index) {
+          &lt;tr (click)="rowClick.emit(row)"&gt;
+            @for (col of columns(); track col.key) {
+              @let val = row[col.key];
+              &lt;td&gt;{{ col.render ? col.render(val, row) : val }}&lt;/td&gt;
+            }
+          &lt;/tr&gt;
+        }
+      &lt;/tbody&gt;
+    &lt;/table&gt;
+  `</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">DataTableComponent</span><span class="op">&lt;</span><span class="cl">T</span><span class="op">&gt; {</span>
+  <span class="pr">columns</span> <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="cl">ColumnDef</span><span class="op">&lt;</span><span class="cl">T</span><span class="op">&gt;[]&gt;();</span>
+  <span class="pr">rows</span>    <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="cl">T</span><span class="op">[]&gt;();</span>
+  <span class="pr">rowClick</span> <span class="op">=</span> <span class="fn">output</span><span class="op">&lt;</span><span class="cl">T</span><span class="op">&gt;();</span>
+
+  <span class="cm">// Local sort state — private signals</span>
+  <span class="pr">sortKey</span> <span class="op">=</span> <span class="fn">signal</span><span class="op">&lt;</span><span class="kw">keyof</span> <span class="cl">T</span> <span class="op">|</span> <span class="nm">null</span><span class="op">&gt;(</span><span class="nm">null</span><span class="op">);</span>
+  <span class="pr">sortAsc</span> <span class="op">=</span> <span class="fn">signal</span><span class="op">(</span><span class="nm">true</span><span class="op">);</span>
+
+  <span class="pr">sortedRows</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="op">{</span>
+    <span class="kw">const</span> <span class="pr">k</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fn">sortKey</span><span class="op">();</span>
+    <span class="kw">if</span> <span class="op">(!</span><span class="pr">k</span><span class="op">)</span> <span class="kw">return</span> <span class="kw">this</span><span class="op">.</span><span class="fn">rows</span><span class="op">();</span>
+    <span class="kw">return</span> <span class="op">[...</span><span class="kw">this</span><span class="op">.</span><span class="fn">rows</span><span class="op">()].</span><span class="fn">sort</span><span class="op">((</span><span class="pr">a</span><span class="op">,</span><span class="pr">b</span><span class="op">) =></span>
+      <span class="op">(</span><span class="pr">a</span><span class="op">[</span><span class="pr">k</span><span class="op">] &gt;</span> <span class="pr">b</span><span class="op">[</span><span class="pr">k</span><span class="op">]</span> <span class="op">?</span> <span class="nm">1</span> <span class="op">:</span> <span class="op">-</span><span class="nm">1</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fn">sortAsc</span><span class="op">()</span> <span class="op">?</span> <span class="nm">1</span> <span class="op">:</span> <span class="op">-</span><span class="nm">1</span><span class="op">)</span>
+    <span class="op">);</span>
+  <span class="op">});</span>
+
+  <span class="fn">sort</span><span class="op">(</span><span class="pr">key</span><span class="op">:</span> <span class="kw">keyof</span> <span class="cl">T</span><span class="op">) {</span>
+    <span class="kw">if</span> <span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fn">sortKey</span><span class="op">()</span> <span class="op">===</span> <span class="pr">key</span><span class="op">)</span> <span class="kw">this</span><span class="op">.</span><span class="pr">sortAsc</span><span class="op">.</span><span class="fn">update</span><span class="op">(</span><span class="pr">v</span> <span class="op">=></span> <span class="op">!</span><span class="pr">v</span><span class="op">);</span>
+    <span class="kw">else</span> <span class="op">{</span> <span class="kw">this</span><span class="op">.</span><span class="pr">sortKey</span><span class="op">.</span><span class="fn">set</span><span class="op">(</span><span class="pr">key</span><span class="op">);</span> <span class="kw">this</span><span class="op">.</span><span class="pr">sortAsc</span><span class="op">.</span><span class="fn">set</span><span class="op">(</span><span class="nm">true</span><span class="op">); }</span>
+  <span class="op">}</span>
+<span class="op">}</span>
+<div class="pre-label">data-table.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="alertitem">AlertItem component</h2>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-alert-item'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`
+    @let severity = item().quantity === 0 ? 'critical'
+                  : item().quantity / item().minQuantity &lt; 0.5 ? 'critical'
+                  : 'warning';
+    &lt;div class="alert-item" [class]="severity"&gt;
+      &lt;div&gt;
+        &lt;div class="alert-name"&gt;{{ item().name }}&lt;/div&gt;
+        &lt;div class="alert-meta"&gt;Min: {{ item().minQuantity }} · {{ item().supplier }}&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class="alert-qty"&gt;{{ item().quantity }} left&lt;/div&gt;
+    &lt;/div&gt;
+  `</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">AlertItemComponent</span> <span class="op">{</span>
+  <span class="pr">item</span> <span class="op">=</span> <span class="fn">input.required</span><span class="op">&lt;</span><span class="cl">InventoryItem</span><span class="op">&gt;();</span>
+<span class="op">}</span>
+<div class="pre-label">alert-item.component.ts</div></pre>
+
+<div class="callout ct2">
+  <span class="ct">@let in templates — new in v20</span>
+  <p><code>@let severity = ...</code> declares a local template variable scoped to that block. It can reference signals, pipes, and any template expression. Replaces the pattern of creating a computed property in the class just to use it once in the template.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="feat-overview">Overview feature page</h2>
+
+<pre><span class="dc">@Component</span><span class="op">({</span>
+  <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-overview'</span><span class="op">,</span>
+  <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span>
+  <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span>
+    <span class="cl">KpiCardComponent</span><span class="op">,</span> <span class="cl">SparkBarComponent</span><span class="op">,</span> <span class="cl">BadgeComponent</span><span class="op">,</span>
+    <span class="cl">RevenueChartComponent</span><span class="op">,</span> <span class="cl">JobTypeChartComponent</span><span class="op">,</span>
+    <span class="cl">RouterLink</span><span class="op">,</span> <span class="cl">CurrencyPipe</span>
+  <span class="op">],</span>
+  <span class="pr">templateUrl</span><span class="op">:</span> <span class="st">'./overview.component.html'</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">OverviewComponent</span> <span class="op">{</span>
+  <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>
+
+  <span class="pr">activeOrders</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">()</span>
+      <span class="op">.</span><span class="fn">filter</span><span class="op">(</span><span class="pr">wo</span> <span class="op">=></span> <span class="pr">wo</span><span class="op">.</span><span class="pr">status</span> <span class="op">!==</span> <span class="st">'ready'</span><span class="op">).</span><span class="fn">slice</span><span class="op">(</span><span class="nm">0</span><span class="op">,</span> <span class="nm">5</span><span class="op">)</span>
+  <span class="op">);</span>
+<span class="op">}</span>
+<div class="pre-label">overview.component.ts</div></pre>
+
+<h4>Template (showing @let and httpResource loading state)</h4>
+<pre><span class="cm">&lt;!-- overview.component.html --&gt;</span>
+<span class="op">@</span><span class="kw">if</span> <span class="op">(</span><span class="pr">store</span><span class="op">.</span><span class="fn">loading</span><span class="op">()) {</span>
+  <span class="op">&lt;</span><span class="kw">div</span> <span class="pr">class</span><span class="op">=</span><span class="st">"skeleton-grid"</span><span class="op">&gt;</span>
+    <span class="cm">&lt;!-- placeholder cards --&gt;</span>
+  <span class="op">&lt;/</span><span class="kw">div</span><span class="op">&gt;</span>
+<span class="op">} @</span><span class="kw">else</span> <span class="op">{</span>
+  <span class="op">@</span><span class="kw">let</span> <span class="pr">revenue</span> <span class="op">=</span> <span class="pr">store</span><span class="op">.</span><span class="fn">monthlyRevenue</span><span class="op">();</span>
+  <span class="op">@</span><span class="kw">let</span> <span class="pr">openCount</span> <span class="op">=</span> <span class="pr">store</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">().</span><span class="pr">length</span><span class="op">;</span>
+
+  <span class="op">&lt;</span><span class="kw">div</span> <span class="pr">class</span><span class="op">=</span><span class="st">"kpi-row"</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="cl">app-kpi-card</span>
+      <span class="pr">label</span><span class="op">=</span><span class="st">"Revenue — June"</span>
+      <span class="op">[</span><span class="pr">value</span><span class="op">]</span><span class="op">=</span><span class="st">"revenue | currency:'USD':'symbol':'1.0-0'"</span>
+      <span class="pr">delta</span><span class="op">=</span><span class="st">"12% vs last month"</span>
+      <span class="pr">trend</span><span class="op">=</span><span class="st">"up"</span>
+      <span class="op">[</span><span class="pr">accent</span><span class="op">]</span><span class="op">=</span><span class="st">"true"</span>
+    <span class="op">/&gt;</span>
+    <span class="op">&lt;</span><span class="cl">app-kpi-card</span>
+      <span class="pr">label</span><span class="op">=</span><span class="st">"Open orders"</span>
+      <span class="op">[</span><span class="pr">value</span><span class="op">]</span><span class="op">=</span><span class="st">"openCount"</span>
+      <span class="op">[</span><span class="pr">delta</span><span class="op">]</span><span class="op">=</span><span class="st">`${store.urgentCount()} urgent`</span>
+      <span class="pr">trend</span><span class="op">=</span><span class="st">"neutral"</span>
+    <span class="op">/&gt;</span>
+  <span class="op">&lt;/</span><span class="kw">div</span><span class="op">&gt;</span>
+
+  <span class="op">&lt;</span><span class="kw">div</span> <span class="pr">class</span><span class="op">=</span><span class="st">"card"</span><span class="op">&gt;</span>
+    <span class="op">@</span><span class="kw">for</span> <span class="op">(</span><span class="pr">tech</span> <span class="kw">of</span> <span class="pr">store</span><span class="op">.</span><span class="fn">technicians</span><span class="op">();</span> <span class="kw">track</span> <span class="pr">tech</span><span class="op">.</span><span class="pr">id</span><span class="op">) {</span>
+      <span class="op">&lt;</span><span class="cl">app-spark-bar</span>
+        <span class="op">[</span><span class="pr">label</span><span class="op">]</span><span class="op">=</span><span class="st">"tech.name"</span>
+        <span class="op">[</span><span class="pr">value</span><span class="op">]</span><span class="op">=</span><span class="st">"tech.utilization"</span>
+      <span class="op">/&gt;</span>
+    <span class="op">}</span>
+  <span class="op">&lt;/</span><span class="kw">div</span><span class="op">&gt;</span>
+<span class="op">}</span></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="feat-workorders">Work Orders page — linkedSignal for filter</h2>
+
+<p><code>linkedSignal()</code> is now stable in Angular 20. It creates a writable signal whose <strong>default value is derived from another signal</strong>, but which can also be mutated locally. It's perfect for filter state that should reset if the underlying data changes.</p>
+
+<pre><span class="dc">@Component</span><span class="op">({</span> <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-work-orders'</span><span class="op">,</span> <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span> <span class="cm">/* ... */</span> <span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">WorkOrdersComponent</span> <span class="op">{</span>
+  <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>
+
+  <span class="cm">// linkedSignal — resets to 'all' when workOrders data changes</span>
+  <span class="pr">activeFilter</span> <span class="op">=</span> <span class="fn">linkedSignal</span><span class="op">&lt;</span><span class="cl">WorkOrder</span><span class="op">[], </span><span class="cl">WorkOrderStatus</span> <span class="op">|</span> <span class="st">'all'</span><span class="op">&gt;({</span>
+    <span class="pr">source</span><span class="op">:</span> <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="pr">workOrders</span><span class="op">,</span>           <span class="cm">// trigger: re-run on new data</span>
+    <span class="pr">computation</span><span class="op">:</span> <span class="op">()</span> <span class="op">=></span> <span class="st">'all'</span> <span class="kw">as const</span>        <span class="cm">// always reset to 'all'</span>
+  <span class="op">});</span>
+
+  <span class="pr">filtered</span> <span class="op">=</span> <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="op">{</span>
+    <span class="kw">const</span> <span class="pr">f</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="fn">activeFilter</span><span class="op">();</span>
+    <span class="kw">const</span> <span class="pr">all</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">();</span>
+    <span class="kw">return</span> <span class="pr">f</span> <span class="op">===</span> <span class="st">'all'</span> <span class="op">?</span> <span class="pr">all</span> <span class="op">:</span> <span class="pr">all</span><span class="op">.</span><span class="fn">filter</span><span class="op">(</span><span class="pr">wo</span> <span class="op">=></span> <span class="pr">wo</span><span class="op">.</span><span class="pr">status</span> <span class="op">===</span> <span class="pr">f</span><span class="op">);</span>
+  <span class="op">});</span>
+
+  <span class="pr">countByStatus</span> <span class="op">=</span> <span class="op">(</span><span class="pr">s</span><span class="op">:</span> <span class="cl">WorkOrderStatus</span><span class="op">)</span> <span class="op">=></span>
+    <span class="fn">computed</span><span class="op">(()</span> <span class="op">=></span> <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">().</span><span class="fn">filter</span><span class="op">(</span><span class="pr">w</span> <span class="op">=></span> <span class="pr">w</span><span class="op">.</span><span class="pr">status</span> <span class="op">===</span> <span class="pr">s</span><span class="op">).</span><span class="pr">length</span><span class="op">);</span>
+
+  <span class="fn">setFilter</span><span class="op">(</span><span class="pr">f</span><span class="op">:</span> <span class="cl">WorkOrderStatus</span> <span class="op">|</span> <span class="st">'all'</span><span class="op">) {</span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">activeFilter</span><span class="op">.</span><span class="fn">set</span><span class="op">(</span><span class="pr">f</span><span class="op">);</span>   <span class="cm">// linkedSignal is writable</span>
+  <span class="op">}</span>
+<span class="op">}</span>
+<div class="pre-label">work-orders.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="feat-inventory">Inventory page — error state handling</h2>
+
+<p>With <code>httpResource()</code>, each resource exposes an <code>error()</code> signal. The inventory page shows an alert if the request fails, without any try/catch boilerplate.</p>
+
+<pre><span class="cm">&lt;!-- inventory.component.html --&gt;</span>
+<span class="op">@</span><span class="kw">if</span> <span class="op">(</span><span class="pr">store</span><span class="op">.</span><span class="fn">loading</span><span class="op">()) {</span>
+  <span class="op">&lt;</span><span class="kw">p</span><span class="op">&gt;</span>Loading inventory...<span class="op">&lt;/</span><span class="kw">p</span><span class="op">&gt;</span>
+<span class="op">} @</span><span class="kw">else</span> <span class="op">{</span>
+  <span class="op">@</span><span class="kw">let</span> <span class="pr">criticalItems</span> <span class="op">=</span> <span class="pr">store</span><span class="op">.</span><span class="fn">lowStockItems</span><span class="op">();</span>
+
+  <span class="op">&lt;</span><span class="kw">div</span> <span class="pr">class</span><span class="op">=</span><span class="st">"kpi-row"</span><span class="op">&gt;</span>
+    <span class="op">&lt;</span><span class="cl">app-kpi-card</span> <span class="pr">label</span><span class="op">=</span><span class="st">"Low stock alerts"</span>
+      <span class="op">[</span><span class="pr">value</span><span class="op">]</span><span class="op">=</span><span class="st">"criticalItems.length"</span>
+      <span class="pr">delta</span><span class="op">=</span><span class="st">"reorder needed"</span> <span class="pr">trend</span><span class="op">=</span><span class="st">"down"</span> <span class="op">/&gt;</span>
+  <span class="op">&lt;/</span><span class="kw">div</span><span class="op">&gt;</span>
+
+  <span class="op">@</span><span class="kw">for</span> <span class="op">(</span><span class="pr">item</span> <span class="kw">of</span> <span class="pr">criticalItems</span><span class="op">;</span> <span class="kw">track</span> <span class="pr">item</span><span class="op">.</span><span class="pr">id</span><span class="op">) {</span>
+    <span class="op">&lt;</span><span class="cl">app-alert-item</span> <span class="op">[</span><span class="pr">item</span><span class="op">]</span><span class="op">=</span><span class="st">"item"</span> <span class="op">/&gt;</span>
+  <span class="op">}</span>
+<span class="op">}</span></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="charts">Charts (ng2-charts)</h2>
+
+<p>No change from the v17 approach. Each chart is its own standalone component. Use <code>effect()</code> (now stable) to update chart data reactively when store signals change.</p>
+
+<pre><span class="dc">@Component</span><span class="op">({</span> <span class="pr">selector</span><span class="op">:</span> <span class="st">'app-revenue-chart'</span><span class="op">,</span> <span class="pr">standalone</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span> <span class="pr">imports</span><span class="op">:</span> <span class="op">[</span><span class="cl">BaseChartDirective</span><span class="op">],</span>
+  <span class="pr">template</span><span class="op">:</span> <span class="st">`&lt;canvas baseChart [data]="chartData" [options]="opts" [type]="'bar'"&gt;&lt;/canvas&gt;`</span>
+<span class="op">})</span>
+<span class="kw">export class</span> <span class="cl">RevenueChartComponent</span> <span class="op">{</span>
+  <span class="kw">private</span> <span class="pr">store</span> <span class="op">=</span> <span class="fn">inject</span><span class="op">(</span><span class="cl">DashboardStore</span><span class="op">);</span>
+
+  <span class="pr">chartData</span> <span class="op">=</span> <span class="fn">signal</span><span class="op">&lt;</span><span class="cl">ChartData</span><span class="op">&lt;</span><span class="st">'bar'</span><span class="op">&gt;&gt;({</span>
+    <span class="pr">labels</span><span class="op">:</span> <span class="op">[</span><span class="st">'Jan'</span><span class="op">,</span><span class="st">'Feb'</span><span class="op">,</span><span class="st">'Mar'</span><span class="op">,</span><span class="st">'Apr'</span><span class="op">,</span><span class="st">'May'</span><span class="op">,</span><span class="st">'Jun'</span><span class="op">],</span>
+    <span class="pr">datasets</span><span class="op">: [{</span> <span class="pr">label</span><span class="op">:</span> <span class="st">'Revenue'</span><span class="op">,</span> <span class="pr">data</span><span class="op">:</span> <span class="op">[]</span> <span class="op">}]</span>
+  <span class="op">});</span>
+
+  <span class="cm">// effect() is now STABLE — use it without reservations</span>
+  <span class="kw">private</span> <span class="pr">_ </span><span class="op">=</span> <span class="fn">effect</span><span class="op">(()</span> <span class="op">=></span> <span class="op">{</span>
+    <span class="kw">const</span> <span class="pr">wo</span> <span class="op">=</span> <span class="kw">this</span><span class="op">.</span><span class="pr">store</span><span class="op">.</span><span class="fn">workOrders</span><span class="op">();</span>
+    <span class="kw">this</span><span class="op">.</span><span class="pr">chartData</span><span class="op">.</span><span class="fn">update</span><span class="op">(</span><span class="pr">d</span> <span class="op">=></span> <span class="op">({</span>
+      <span class="op">...</span><span class="pr">d</span><span class="op">,</span>
+      <span class="pr">datasets</span><span class="op">: [{</span> <span class="pr">label</span><span class="op">:</span> <span class="st">'Revenue'</span><span class="op">,</span> <span class="pr">data</span><span class="op">:</span> <span class="fn">groupByMonth</span><span class="op">(</span><span class="pr">wo</span><span class="op">) }]</span>
+    <span class="op">}));</span>
+  <span class="op">});</span>
+
+  <span class="pr">opts</span><span class="op">:</span> <span class="cl">ChartOptions</span><span class="op">&lt;</span><span class="st">'bar'</span><span class="op">&gt; = {</span>
+    <span class="pr">responsive</span><span class="op">:</span> <span class="nm">true</span><span class="op">,</span> <span class="pr">maintainAspectRatio</span><span class="op">:</span> <span class="nm">false</span><span class="op">,</span>
+    <span class="pr">plugins</span><span class="op">:</span> <span class="op">{</span> <span class="pr">legend</span><span class="op">:</span> <span class="op">{</span> <span class="pr">display</span><span class="op">:</span> <span class="nm">false</span> <span class="op">}</span> <span class="op">},</span>
+    <span class="pr">scales</span><span class="op">:</span> <span class="op">{</span>
+      <span class="pr">x</span><span class="op">:</span> <span class="op">{</span> <span class="pr">grid</span><span class="op">:</span> <span class="op">{</span><span class="pr">display</span><span class="op">:</span><span class="nm">false</span><span class="op">},</span> <span class="pr">border</span><span class="op">:</span><span class="op">{</span><span class="pr">display</span><span class="op">:</span><span class="nm">false</span><span class="op">}</span> <span class="op">},</span>
+      <span class="pr">y</span><span class="op">:</span> <span class="op">{</span> <span class="pr">ticks</span><span class="op">:</span> <span class="op">{</span> <span class="pr">callback</span><span class="op">:</span> <span class="pr">v</span> <span class="op">=></span> <span class="st">'$'</span> <span class="op">+</span> <span class="op">(</span><span class="pr">v</span> <span class="kw">as</span> <span class="tp">number</span><span class="op">/</span><span class="nm">1000</span><span class="op">).</span><span class="fn">toFixed</span><span class="op">(</span><span class="nm">0</span><span class="op">) +</span> <span class="st">'k'</span> <span class="op">}</span> <span class="op">}</span>
+    <span class="op">}</span>
+  <span class="op">};</span>
+<span class="op">}</span>
+<div class="pre-label">revenue-chart.component.ts</div></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="templates">Template syntax in Angular 20</h2>
+
+<h3>Template string literals <span class="v20-new">new in v20</span></h3>
+<pre><span class="cm">&lt;!-- Before (v17): string concatenation --&gt;</span>
+<span class="op">&lt;</span><span class="kw">app-kpi-card</span> <span class="op">[</span><span class="pr">delta</span><span class="op">]</span><span class="op">=</span><span class="st">"urgentCount() + ' urgent orders'"</span> <span class="op">/&gt;</span>
+
+<span class="cm">&lt;!-- After (v20): template literal --&gt;</span>
+<span class="op">&lt;</span><span class="kw">app-kpi-card</span> <span class="op">[</span><span class="pr">delta</span><span class="op">]</span><span class="op">=</span><span class="st">`${urgentCount()} urgent orders`</span> <span class="op">/&gt;</span></pre>
+
+<h3>@let for local template variables <span class="v20-new">new in v20</span></h3>
+<pre><span class="cm">&lt;!-- Use @let to avoid repeating long signal call chains --&gt;</span>
+<span class="op">@</span><span class="kw">let</span> <span class="pr">techs</span> <span class="op">=</span> <span class="pr">store</span><span class="op">.</span><span class="fn">technicians</span><span class="op">();</span>
+<span class="op">@</span><span class="kw">let</span> <span class="pr">avgUtil</span> <span class="op">=</span> <span class="pr">store</span><span class="op">.</span><span class="fn">avgTechUtilization</span><span class="op">();</span>
+
+<span class="op">&lt;</span><span class="kw">p</span><span class="op">&gt;</span>{{ techs.length }} technicians, avg {{ avgUtil | number:'1.0-0' }}% utilization<span class="op">&lt;/</span><span class="kw">p</span><span class="op">&gt;</span>
+
+<span class="op">@</span><span class="kw">for</span> <span class="op">(</span><span class="pr">tech</span> <span class="kw">of</span> <span class="pr">techs</span><span class="op">;</span> <span class="kw">track</span> <span class="pr">tech</span><span class="op">.</span><span class="pr">id</span><span class="op">) {</span>
+  <span class="op">&lt;</span><span class="cl">app-spark-bar</span> <span class="op">[</span><span class="pr">label</span><span class="op">]</span><span class="op">=</span><span class="st">"tech.name"</span> <span class="op">[</span><span class="pr">value</span><span class="op">]</span><span class="op">=</span><span class="st">"tech.utilization"</span> <span class="op">/&gt;</span>
+<span class="op">}</span></pre>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="styles">Styling</h2>
+
+<p>No change from v17. SCSS tokens in <code>src/styles/_tokens.scss</code>, BEM inside component stylesheets, path alias via <code>stylePreprocessorOptions</code> in <code>angular.json</code>.</p>
+
+<div class="callout cg">
+  <span class="ct">Tip: remove zone.js from polyfills</span>
+  <p>In <code>angular.json</code> under <code>architect.build.options.polyfills</code>, remove <code>"zone.js"</code> once you switch to <code>provideZonelessChangeDetection()</code>. This reduces your bundle by ~30KB and eliminates Zone.js patching of browser APIs.</p>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<h2 id="checklist">Build checklist</h2>
+
+<div class="steps">
+  <div class="step"><div class="sn">1</div><div class="sb"><h4>Scaffold + config</h4><p>Run <code>ng new</code>, set up <code>tsconfig</code> path aliases, add <code>_tokens.scss</code>, configure <code>app.config.ts</code> with zoneless + httpClient + charts providers.</p></div></div>
+  <div class="step"><div class="sn">2</div><div class="sb"><h4>Models</h4><p>Write all interfaces. Create <code>MOCK_*</code> constants for development. This is the shared contract everything depends on.</p></div></div>
+  <div class="step"><div class="sn">3</div><div class="sb"><h4>DashboardStore with mock httpResource</h4><p>Implement the store with <code>httpResource()</code>. During development, Angular's <code>provideHttpClient(withInterceptors([mockInterceptor]))</code> pattern lets you intercept and return mock data without changing the store code.</p></div></div>
+  <div class="step"><div class="sn">4</div><div class="sb"><h4>Shell + routing</h4><p>Build shell, sidebar, topbar. Set up all routes. Confirm navigation works with empty feature stubs.</p></div></div>
+  <div class="step"><div class="sn">5</div><div class="sb"><h4>Shared components with input()</h4><p>Build <code>KpiCardComponent</code>, <code>BadgeComponent</code>, <code>SparkBarComponent</code>, <code>AlertItemComponent</code>, <code>DataTableComponent</code>. All use <code>input()</code> / <code>output()</code>. Test in isolation.</p></div></div>
+  <div class="step"><div class="sn">6</div><div class="sb"><h4>Overview page first</h4><p>Build the full Overview layout — uses all shared components and validates the architecture end to end before you build the other pages.</p></div></div>
+  <div class="step"><div class="sn">7</div><div class="sb"><h4>Chart components with effect()</h4><p>Build each chart component. Use <code>effect()</code> (now stable) to reactively update <code>chartData</code> signal when store data changes.</p></div></div>
+  <div class="step"><div class="sn">8</div><div class="sb"><h4>Remaining feature pages</h4><p>Work Orders (with <code>linkedSignal</code> filter) → Customers → Inventory → Staff. Each follows the same inject-store, compute-local, compose-shared pattern.</p></div></div>
+  <div class="step"><div class="sn">9</div><div class="sb"><h4>Mutation services</h4><p>Add POST/PATCH/DELETE methods to services. Wire the "New work order" button. After each mutation, call <code>store.reloadWorkOrders()</code> to refresh via <code>httpResource</code>.</p></div></div>
+  <div class="step"><div class="sn">10</div><div class="sb"><h4>Swap mock interceptor for real API</h4><p>Remove the mock HTTP interceptor. Point <code>httpResource()</code> URLs at the real backend. Nothing else changes — that's the payoff of the resource pattern.</p></div></div>
+  <div class="step"><div class="sn">11</div><div class="sb"><h4>Enable zoneless</h4><p>Switch to <code>provideZonelessChangeDetection()</code>, remove <code>zone.js</code> from polyfills, run the app, fix any change detection issues (components that mutated state outside signals — rare if you built signal-first from the start).</p></div></div>
+</div>
+
+<div class="callout ct2" style="margin-top:32px">
+  <span class="ct">Core Angular 20 principle</span>
+  <p><strong>Declare, don't subscribe.</strong> In Angular 20, the ideal component has no <code>ngOnInit</code>, no <code>subscribe()</code>, and no manual <code>.set()</code> calls for data loading. Data comes in through <code>httpResource()</code>, flows through <code>computed()</code>, and renders through signal reads in templates. Side effects use <code>effect()</code> only when truly necessary.</p>
+</div>
+
+</article>
+</div>
+</body>
+</html>

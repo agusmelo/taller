@@ -9,21 +9,38 @@ function clean(rut) {
 }
 
 function validateRut(rut) {
-  if (!rut) return true;
-  const cleaned = clean(rut);
-  if (!/^\d{8,9}$/.test(cleaned)) return false;
+  try {
+    if (!rut || rut.length !== 12) {
+      return false;
+    }
 
-  const digits  = cleaned.slice(0, -1);
-  const checker = cleaned.slice(-1);
-  const weights = [2, 9, 8, 7, 6, 3, 4];
-  let sum = 0;
+    const digitC = Number.parseInt(rut.substr(11, 1));
+    const rest = rut.substr(0, 11);
 
-  for (let i = 0; i < digits.length; i++) {
-    sum += parseInt(digits[digits.length - 1 - i]) * weights[i];
+    let total = 0;
+    let factor = 2;
+
+    for (let i = 10; i >= 0; i--) {
+      const n = Number.parseInt(rest.substr(i, 1));
+      total += factor * n;
+      if (factor === 9) {
+        factor = 2;
+      } else {
+        factor++;
+      }
+    }
+
+    let digitV = 11 - (total % 11);
+    if (digitV === 11) {
+      digitV = 0;
+    } else if (digitV === 10) {
+      digitV = 1;
+    }
+
+    return digitV === digitC;
+  } catch {
+    return false;
   }
-
-  const expected = String((10 - (sum % 10)) % 10);
-  return checker === expected;
 }
 
 function formatRut(rut) {
