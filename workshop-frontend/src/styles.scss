@@ -1,39 +1,70 @@
-// ============================
-// THEME VARIABLES (centralized)
-// ============================
+// ======================================================
+// DESIGN TOKENS
+// Sourced from mechanic_backoffice_pro.html reference.
+// ======================================================
 :root {
-  --color-primary: #1A2B5F;
-  --color-primary-light: #2A3D7F;
-  --color-primary-dark: #111D40;
-  --color-accent: #C41E2A;
-  --color-accent-light: #E8363F;
-  --color-accent-dark: #9A1620;
-  --color-bg: #FAFAFA;
-  --color-surface: #FFFFFF;
-  --color-text: #212121;
-  --color-text-secondary: #616161;
-  --color-border: #E0E0E0;
-  --color-success: #2E7D32;
-  --color-warning: #E65100;
-  --color-error: #C62828;
+  // — New design system palette
+  --bg:         #f4f4f1;
+  --surface:    #ffffff;
+  --navy:       #111827;
+  --navy2:      #1f2937;
+  --amber:      #d97706;
+  --amber-lt:   #fef3c7;
+  --blue:       #2563eb;
+  --blue-lt:    #eff6ff;
+  --green:      #16a34a;
+  --green-lt:   #f0fdf4;
+  --red:        #dc2626;
+  --red-lt:     #fef2f2;
+  --slate:      #64748b;
+  --text-1:     #111827;
+  --text-2:     #6b7280;
+  --text-3:     #9ca3af;
+  --border:     #e5e7eb;
+  --border2:    #f3f4f6;
+  --shadow:     0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --r:          10px;
+  --r-sm:       6px;
+
+  // — Backward-compatible aliases (keep old names, new values)
+  --color-primary:        #111827;
+  --color-primary-light:  #1f2937;
+  --color-primary-dark:   #0d1117;
+  --color-accent:         #dc2626;
+  --color-accent-light:   #ef4444;
+  --color-accent-dark:    #b91c1c;
+  --color-bg:             #f4f4f1;
+  --color-surface:        #ffffff;
+  --color-text:           #111827;
+  --color-text-secondary: #6b7280;
+  --color-border:         #e5e7eb;
+  --color-success:        #16a34a;
+  --color-warning:        #d97706;
+  --color-error:          #dc2626;
 }
 
-// ============================
+// ======================================================
 // BASE
-// ============================
+// ======================================================
+*, *::before, *::after { box-sizing: border-box; }
+
 html, body {
   height: 100%;
   margin: 0;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  background-color: var(--bg);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
 }
 
-// ============================
+// ======================================================
 // LAYOUT
-// ============================
+// ======================================================
 .page-container {
-  padding: 24px;
+  padding: 24px 28px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -42,179 +73,418 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 12px;
 }
 
 .page-header h1 {
   margin: 0;
-  font-size: 24px;
-  font-weight: 500;
-  color: var(--color-primary);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  color: var(--text-1);
 }
 
+// ======================================================
+// CARDS
+// ======================================================
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-// ============================
+// ds-card: the new canonical card class
+.ds-card {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border2);
+  transition: box-shadow .15s;
+
+  &:hover { box-shadow: var(--shadow-md); }
+}
+
+.ds-card-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.ds-card-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+}
+
+.ds-card-link {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--navy);
+  cursor: pointer;
+  opacity: .7;
+  transition: opacity .12s;
+
+  &:hover { opacity: 1; }
+}
+
+// Override Material cards globally
+.mat-mdc-card {
+  background: var(--surface) !important;
+  border-radius: var(--r) !important;
+  border: 1px solid var(--border2) !important;
+  box-shadow: var(--shadow) !important;
+  transition: box-shadow .15s !important;
+
+  &:hover {
+    box-shadow: var(--shadow-md) !important;
+  }
+}
+
+// ======================================================
+// KPI CARDS
+// ======================================================
+.kpi-row {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
+.kpi-row-5 { grid-template-columns: repeat(5, 1fr); }
+
+.kpi {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border2);
+  transition: box-shadow .15s;
+
+  &:hover { box-shadow: var(--shadow-md); }
+}
+
+.kpi-accent { border-top: 2px solid var(--navy); }
+
+.kpi-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+.kpi-val {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.04em;
+  color: var(--text-1);
+  line-height: 1;
+}
+
+.kpi-delta {
+  font-size: 10px;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 500;
+}
+
+.kpi-up   { color: var(--green); }
+.kpi-dn   { color: var(--red); }
+.kpi-nt   { color: var(--text-3); }
+
+// ======================================================
 // FORMS
-// ============================
+// ======================================================
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 16px;
+
+  .full-width { grid-column: 1 / -1; }
 }
 
-.form-grid .full-width {
-  grid-column: 1 / -1;
-}
-
-.form-section {
-  margin-bottom: 24px;
-}
+.form-section { margin-bottom: 24px; }
 
 .form-section-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: .08em;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border);
 }
 
 @media (max-width: 600px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
+  .form-grid { grid-template-columns: 1fr; }
+  .kpi-row-4 { grid-template-columns: repeat(2, 1fr); }
+  .kpi-row-5 { grid-template-columns: repeat(2, 1fr); }
 }
 
-// ============================
+// ======================================================
 // STATUS BADGES
-// ============================
+// ======================================================
 .status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
   text-transform: uppercase;
 }
 
-.status-abierto { background: #e3f2fd; color: #1565c0; }
-.status-terminado { background: #fff3e0; color: var(--color-warning); }
-.status-pagado { background: #e8f5e9; color: var(--color-success); }
+.status-abierto   { background: var(--blue-lt);   color: var(--blue); }
+.status-terminado { background: var(--amber-lt);  color: var(--amber); }
+.status-pagado    { background: var(--green-lt);  color: var(--green); }
 
-// ============================
-// FINANCIAL
-// ============================
-.balance-positive { color: var(--color-error); font-weight: 500; }
-.balance-zero { color: var(--color-success); font-weight: 500; }
-.balance-overpaid { color: #6a1b9a; font-weight: 500; }
+// Additional badge types (matching reference)
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
 
-// ============================
+.b-pro  { background: var(--blue-lt);   color: var(--blue); }
+.b-wait { background: var(--amber-lt);  color: var(--amber); }
+.b-done { background: var(--green-lt);  color: var(--green); }
+.b-urg  { background: var(--red-lt);    color: var(--red); }
+.b-new  { background: #f5f3ff;          color: #7c3aed; }
+
+// ======================================================
+// FINANCIAL STATUS
+// ======================================================
+.balance-positive { color: var(--red);    font-weight: 600; }
+.balance-zero     { color: var(--green);  font-weight: 600; }
+.balance-overpaid { color: #7c3aed;       font-weight: 600; }
+
+// ======================================================
 // TABLES
-// ============================
+// ======================================================
 .mat-mdc-table {
   width: 100%;
+  background: var(--surface) !important;
+  border-radius: var(--r) !important;
+  overflow: hidden;
+  border: 1px solid var(--border2) !important;
 }
 
 .mat-mdc-header-row {
-  background: var(--color-primary) !important;
+  background: var(--border2) !important;
+  min-height: 36px !important;
 }
 
 .mat-mdc-header-cell {
-  color: white !important;
-  font-weight: 500 !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .08em !important;
+  color: var(--text-3) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.mat-mdc-row {
+  min-height: 40px !important;
+}
+
+.mat-mdc-cell {
+  font-size: 12px !important;
+  color: var(--text-1) !important;
+  border-bottom: 1px solid var(--border2) !important;
 }
 
 .clickable-row {
   cursor: pointer;
+  transition: background .1s;
+
+  &:hover td { background: var(--border2); }
 }
 
 .clickable-row:hover {
-  background-color: #f0f4ff;
+  background-color: var(--border2);
 }
 
-// ============================
-// CARDS
-// ============================
-.mat-mdc-card {
-  border: 1px solid var(--color-border);
-  transition: box-shadow 0.2s;
+// ======================================================
+// FILTER BAR
+// ======================================================
+.filter-bar {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
-.mat-mdc-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.filt {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .12s;
+
+  &:hover  { border-color: var(--navy); color: var(--navy); }
+  &.active { background: var(--navy); color: #fff; border-color: var(--navy); }
 }
 
-// ============================
-// SEARCH
-// ============================
-.search-field {
-  width: 100%;
-  max-width: 400px;
+// ======================================================
+// BUTTONS
+// ======================================================
+.btn {
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: inherit;
+  transition: all .12s;
+  letter-spacing: -.01em;
+
+  &:hover { background: var(--bg); }
 }
 
-// ============================
+.btn-primary {
+  background: var(--navy);
+  color: #fff;
+  border-color: var(--navy);
+
+  &:hover { background: var(--navy2); }
+}
+
+// Angular Material button overrides
+.mat-mdc-raised-button.mat-primary {
+  background-color: var(--navy) !important;
+  color: white !important;
+  border-radius: var(--r-sm) !important;
+}
+
+.mat-mdc-raised-button.mat-accent {
+  background-color: var(--navy2) !important;
+  color: white !important;
+  border-radius: var(--r-sm) !important;
+}
+
+.mat-mdc-raised-button.mat-warn {
+  background-color: var(--red) !important;
+  color: white !important;
+  border-radius: var(--r-sm) !important;
+}
+
+.mat-mdc-raised-button,
+.mat-mdc-stroked-button,
+.mat-mdc-button {
+  border-radius: var(--r-sm) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: -.01em !important;
+}
+
+// ======================================================
+// ALERTS (inline message boxes)
+// ======================================================
+.error-msg {
+  background: var(--red-lt);
+  color: var(--red);
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--red);
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.warning-msg {
+  background: var(--amber-lt);
+  color: var(--amber);
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--amber);
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+.info-msg {
+  background: var(--blue-lt);
+  color: var(--blue);
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--blue);
+  margin-bottom: 14px;
+  font-size: 12px;
+}
+
+// Alert items (used in inventory/overdue lists)
+.alert-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  margin-bottom: 7px;
+  border-left: 3px solid transparent;
+}
+
+.alert-item.crit { border-left-color: var(--red);   background: var(--red-lt); }
+.alert-item.warn { border-left-color: var(--amber); background: var(--amber-lt); }
+
+// ======================================================
 // EMPTY STATE
-// ============================
+// ======================================================
 .empty-state {
   text-align: center;
   padding: 48px 16px;
-  color: var(--color-text-secondary);
+  color: var(--text-3);
+
   mat-icon {
     font-size: 48px;
     width: 48px;
     height: 48px;
     opacity: 0.4;
+    display: block;
+    margin: 0 auto 12px;
   }
-  p { margin: 8px 0; }
-  .empty-hint { font-size: 13px; opacity: 0.7; }
+
+  p { margin: 8px 0; color: var(--text-2); }
+  .empty-hint { font-size: 11px; opacity: 0.7; }
 }
 
-// ============================
-// UTILITIES
-// ============================
-.spacer { flex: 1 1 auto; }
-.text-right { text-align: right; }
-.text-center { text-align: center; }
-.mt-16 { margin-top: 16px; }
-.mb-16 { margin-bottom: 16px; }
-.mr-8 { margin-right: 8px; }
-
-// ============================
-// BUTTONS
-// ============================
-.mat-mdc-raised-button.mat-primary {
-  background-color: var(--color-accent) !important;
-  color: white !important;
-}
-
-.mat-mdc-raised-button.mat-accent {
-  background-color: var(--color-primary) !important;
-  color: white !important;
-}
-
-// ============================
+// ======================================================
 // SNACKBAR
-// ============================
+// ======================================================
 .snack-success .mdc-snackbar__surface {
-  background-color: var(--color-success) !important;
-}
-.snack-error .mdc-snackbar__surface {
-  background-color: var(--color-error) !important;
+  background-color: var(--green) !important;
 }
 
-// ============================
+.snack-error .mdc-snackbar__surface {
+  background-color: var(--red) !important;
+}
+
+// ======================================================
 // LOADING
-// ============================
+// ======================================================
 .loading-overlay {
   display: flex;
   justify-content: center;
@@ -222,69 +492,118 @@ html, body {
   padding: 48px;
 }
 
-// ============================
-// ALERTS
-// ============================
-.error-msg {
-  background: #ffebee;
-  color: var(--color-error);
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-.warning-msg {
-  background: #fff8e1;
-  color: #f57f17;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-.info-msg {
-  background: #e3f2fd;
-  color: #1565c0;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-// ============================
+// ======================================================
 // LOCK BANNER
-// ============================
+// ======================================================
 .lock-banner {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: #fff3e0;
-  color: var(--color-warning);
+  background: var(--amber-lt);
+  color: var(--amber);
   padding: 12px 16px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  font-weight: 500;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--amber);
+  margin-bottom: 14px;
+  font-weight: 600;
+  font-size: 12px;
 }
 
-// ============================
+// ======================================================
 // TOTALS PANEL
-// ============================
+// ======================================================
 .totals-panel {
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
 }
 
 .totals-panel .total-row {
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--border2);
+  font-size: 12px;
+
+  &:last-child { border: none; }
 }
 
 .totals-panel .total-row.grand-total {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-primary);
-  border-top: 2px solid var(--color-border);
-  padding-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  border-top: 2px solid var(--border);
+  padding-top: 10px;
   margin-top: 4px;
+  border-bottom: none;
+}
+
+// ======================================================
+// SPARKBAR
+// ======================================================
+.sbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.sbar-name { font-size: 11px; font-weight: 500; color: var(--text-2); width: 72px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbar-bg { flex: 1; height: 4px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.sbar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+.sbar-val { font-size: 11px; font-weight: 600; width: 32px; text-align: right; flex-shrink: 0; }
+
+// ======================================================
+// SECTION DIVIDER
+// ======================================================
+.section-divider {
+  height: 1px;
+  background: var(--border2);
+  margin: 16px 0;
+}
+
+// ======================================================
+// UTILITIES
+// ======================================================
+.spacer         { flex: 1 1 auto; }
+.text-right     { text-align: right; }
+.text-center    { text-align: center; }
+.text-muted     { color: var(--text-2) !important; }
+.text-sm        { font-size: 11px !important; }
+.mt-16          { margin-top: 16px; }
+.mb-16          { margin-bottom: 16px; }
+.mr-8           { margin-right: 8px; }
+.search-field   { width: 100%; max-width: 400px; }
+
+// ======================================================
+// SEARCH FIELD (global override for mat-form-field)
+// ======================================================
+.mat-mdc-form-field {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 12px !important;
+}
+
+// ======================================================
+// PAGINATOR
+// ======================================================
+.mat-mdc-paginator {
+  background: var(--surface) !important;
+  border-top: 1px solid var(--border2) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 12px !important;
+}
+
+// ======================================================
+// DIALOG
+// ======================================================
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: var(--r) !important;
+}
+
+// ======================================================
+// GRID LAYOUTS (from reference)
+// ======================================================
+.g-2-1   { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 16px; }
+.g-3-2   { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; }
+.g-1-1   { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.g-3-4-3 { display: grid; grid-template-columns: 3fr 4fr 3fr; gap: 14px; margin-bottom: 16px; }
+
+@media (max-width: 900px) {
+  .g-2-1, .g-3-2, .g-1-1, .g-3-4-3 { grid-template-columns: 1fr; }
 }

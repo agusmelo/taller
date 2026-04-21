@@ -48,102 +48,66 @@ import Chart from 'chart.js/auto';
       </div>
 
       <!-- Section A: KPI Cards -->
-      <div class="card-grid kpi-grid" *ngIf="summary">
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#1565c0;">request_quote</mat-icon>
-            <div>
-              <div class="stat-label">Facturado (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.facturado_month | appCurrency) }}</div>
+      @if (summary) {
+        <div class="kpi-row kpi-row-4" style="margin-bottom:12px;">
+          <div class="kpi kpi-accent">
+            <div class="kpi-label">Facturado (mes)</div>
+            <div class="kpi-val">{{ privacyMode ? '· · ·' : (summary.facturado_month | appCurrency) }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Cobrado (mes)</div>
+            <div class="kpi-val" style="color:var(--green);">{{ privacyMode ? '· · ·' : (summary.cobrado_month | appCurrency) }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Pendiente total</div>
+            <div class="kpi-val" [style.color]="summary.pendiente_total > 0 ? 'var(--red)' : 'var(--green)'">
+              {{ privacyMode ? '· · ·' : (summary.pendiente_total | appCurrency) }}
             </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#2e7d32;">payments</mat-icon>
-            <div>
-              <div class="stat-label">Cobrado (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.cobrado_month | appCurrency) }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#e65100;">account_balance_wallet</mat-icon>
-            <div>
-              <div class="stat-label">Pendiente total</div>
-              <div class="stat-value" [style.color]="summary.pendiente_total > 0 ? '#c62828' : '#2e7d32'">
-                {{ privacyMode ? '***' : (summary.pendiente_total | appCurrency) }}
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#6a1b9a;">build_circle</mat-icon>
-            <div>
-              <div class="stat-label">Trabajos del mes</div>
-              <div class="stat-value">{{ summary.jobs_month }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#00838f;">engineering</mat-icon>
-            <div>
-              <div class="stat-label">Trabajos activos</div>
-              <div class="stat-value">{{ summary.active_jobs }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#558b2f;">percent</mat-icon>
-            <div>
-              <div class="stat-label">Tasa de cobro (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.collection_rate_month + '%') }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-      </div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Tasa de cobro</div>
+            <div class="kpi-val">{{ privacyMode ? '· · ·' : (summary.collection_rate_month + '%') }}</div>
+          </div>
+        </div>
 
-      <!-- Job status counters -->
-      <div class="card-grid status-grid" *ngIf="jobStatus">
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <span class="status-badge status-abierto" style="font-size:14px;padding:8px 16px;">Abiertos: {{ jobStatus.abierto }}</span>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <span class="status-badge status-terminado" style="font-size:14px;padding:8px 16px;">Terminados: {{ jobStatus.terminado }}</span>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <span class="status-badge status-pagado" style="font-size:14px;padding:8px 16px;">Pagados: {{ jobStatus.pagado }}</span>
-          </mat-card-content>
-        </mat-card>
-        @if (newClientsData) {
-          <mat-card>
-            <mat-card-content class="stat-card">
-              <mat-icon class="stat-icon" style="color:#1565c0;">person_add</mat-icon>
-              <div>
-                <div class="stat-label">Nuevos clientes (mes)</div>
-                <div class="stat-value">
-                  {{ newClientsData.current_month }}
-                  @if (newClientsData.previous_month > 0) {
-                    <span class="delta" [class.positive]="newClientsData.current_month >= newClientsData.previous_month"
-                          [class.negative]="newClientsData.current_month < newClientsData.previous_month">
-                      {{ newClientsData.current_month >= newClientsData.previous_month ? '+' : '' }}{{ newClientsData.current_month - newClientsData.previous_month }}
-                    </span>
-                  }
-                </div>
+        <div class="kpi-row kpi-row-4" style="margin-top:-4px;">
+          <div class="kpi">
+            <div class="kpi-label">Trabajos del mes</div>
+            <div class="kpi-val">{{ summary.jobs_month }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Trabajos activos</div>
+            <div class="kpi-val">{{ summary.active_jobs }}</div>
+          </div>
+          @if (jobStatus) {
+            <div class="kpi">
+              <div class="kpi-label">Estados del mes</div>
+              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+                <span class="status-badge status-abierto">{{ jobStatus.abierto }} abiertos</span>
+                <span class="status-badge status-terminado">{{ jobStatus.terminado }} terminados</span>
+                <span class="status-badge status-pagado">{{ jobStatus.pagado }} pagados</span>
               </div>
-            </mat-card-content>
-          </mat-card>
-        }
-      </div>
+            </div>
+          }
+          @if (newClientsData) {
+            <div class="kpi">
+              <div class="kpi-label">Nuevos clientes (mes)</div>
+              <div class="kpi-val">
+                {{ newClientsData.current_month }}
+                @if (newClientsData.previous_month > 0) {
+                  <span class="kpi-delta"
+                    [class.kpi-up]="newClientsData.current_month >= newClientsData.previous_month"
+                    [class.kpi-dn]="newClientsData.current_month < newClientsData.previous_month">
+                    {{ newClientsData.current_month >= newClientsData.previous_month ? '↑' : '↓' }}
+                    {{ newClientsData.current_month - newClientsData.previous_month | number:'1.0-0' }}
+                    vs mes ant.
+                  </span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
 
       <!-- Section B: Alerts -->
       @if (overdueDebts.length > 0 || unpaidJobs.length > 0) {
@@ -152,7 +116,7 @@ import Chart from 'chart.js/auto';
             <div class="alerts-header">
               <div style="display:flex;align-items:center;gap:8px;">
                 <mat-icon style="color:#d32f2f;">warning</mat-icon>
-                <h3 style="margin:0;">Alertas</h3>
+                <span class="ds-card-title" style="font-size:12px;">Alertas</span>
               </div>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:120px;">
                 <mat-label>Dias</mat-label>
@@ -235,7 +199,7 @@ import Chart from 'chart.js/auto';
       <mat-card class="mb-16">
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
-            <h3 style="margin:0;">Tendencia de ingresos</h3>
+            <span class="ds-card-title" style="font-size:12px;">Tendencia de ingresos</span>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:130px;">
                 <mat-label>Granularidad</mat-label>
@@ -300,7 +264,7 @@ import Chart from 'chart.js/auto';
         <mat-card class="mb-16">
           <mat-card-content>
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
-              <h3 style="margin:0;">Cierre mensual</h3>
+              <span class="ds-card-title" style="font-size:12px;">Cierre mensual</span>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:160px;">
                 <mat-label>Mes</mat-label>
                 <input matInput type="month" [(ngModel)]="closingMonth" (change)="loadMonthlyClosing()">
@@ -393,7 +357,7 @@ import Chart from 'chart.js/auto';
       <!-- Top 5 Clients -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <h3>Top 5 clientes por ingresos</h3>
+          <div class="ds-card-hd"><span class="ds-card-title">Top 5 clientes por ingresos</span></div>
           @if (topClients.length > 0) {
             <table mat-table [dataSource]="topClients" style="width:100%;">
               <ng-container matColumnDef="full_name">
@@ -421,7 +385,7 @@ import Chart from 'chart.js/auto';
       <!-- Section D: Recent Jobs -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <h3>Ultimos 10 trabajos</h3>
+          <div class="ds-card-hd"><span class="ds-card-title">Ultimos 10 trabajos</span></div>
           <table mat-table [dataSource]="recentJobs" style="width:100%;">
             <ng-container matColumnDef="job_number">
               <th mat-header-cell *matHeaderCellDef>Numero</th>
@@ -456,7 +420,7 @@ import Chart from 'chart.js/auto';
       <mat-card>
         <mat-card-content>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-            <h3>Deudas de clientes</h3>
+            <div class="ds-card-hd"><span class="ds-card-title">Deudas de clientes</span></div>
             <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:200px;">
               <mat-select [(ngModel)]="debtFilter" (selectionChange)="loadClientFinancials()">
                 <mat-option value="">Todos</mat-option>
@@ -523,29 +487,82 @@ import Chart from 'chart.js/auto';
     </div>
   `,
   styles: [`
-    .stat-card { display: flex; align-items: center; gap: 16px; padding: 8px 0; justify-content: center; }
-    .stat-icon { font-size: 40px; width: 40px; height: 40px; }
-    .stat-label { font-size: 13px; color: #666; }
-    .stat-value { font-size: 22px; font-weight: 500; }
-    .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
-    .status-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important; }
-    .delta {
-      font-size: 13px; margin-left: 4px; font-weight: 400;
+    /* KPI stat cards */
+    .stat-card {
+      display: flex;
+      flex-direction: column;
+      padding: 4px 2px;
     }
-    .delta.positive { color: #2e7d32; }
-    .delta.negative { color: #c62828; }
+    .stat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      opacity: .7;
+      margin-bottom: 10px;
+    }
+    .stat-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-3);
+      margin-bottom: 6px;
+    }
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      color: var(--text-1);
+      line-height: 1;
+    }
+    .kpi-grid  { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important; }
+    .status-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+
+    .delta { font-size: 10px; margin-top: 6px; font-weight: 500; }
+    .delta.positive { color: var(--green); }
+    .delta.negative { color: var(--red); }
+
+    /* Monthly closing summary */
     .closing-summary {
-      display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
-      padding: 12px; background: #f5f5f5; border-radius: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 16px;
+      padding: 14px 16px;
+      background: var(--bg);
+      border-radius: var(--r-sm);
+      border: 1px solid var(--border2);
     }
-    .closing-stat { display: flex; flex-direction: column; min-width: 100px; }
-    .closing-label { font-size: 12px; color: #666; }
-    .closing-value { font-size: 18px; font-weight: 500; }
+    .closing-stat {
+      display: flex;
+      flex-direction: column;
+      min-width: 100px;
+    }
+    .closing-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-3);
+      margin-bottom: 3px;
+    }
+    .closing-value {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--text-1);
+    }
+
+    /* Alerts card */
     .alerts-card {
-      border-left: 4px solid #d32f2f;
+      border-left: 3px solid var(--red) !important;
     }
     .alerts-header {
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
     }
   `]
 })
@@ -664,12 +681,12 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         datasets: [{
           label: 'Ingresos',
           data,
-          borderColor: '#1565c0',
-          backgroundColor: 'rgba(21, 101, 192, 0.1)',
+          borderColor: '#111827',
+          backgroundColor: 'rgba(17, 24, 39, 0.08)',
           fill: true,
           tension: 0.3,
           pointRadius: 4,
-          pointBackgroundColor: '#1565c0',
+          pointBackgroundColor: '#111827',
         }]
       },
       options: {
