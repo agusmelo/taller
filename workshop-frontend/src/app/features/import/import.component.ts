@@ -47,7 +47,7 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
                   </div>
                 }
                 @if (parseError) {
-                  <div style="color:#c62828;margin-top:12px;">{{ parseError }}</div>
+                  <div class="error-msg" style="margin-top:12px;">{{ parseError }}</div>
                 }
                 <div style="margin-top:16px;">
                   <button mat-raised-button color="primary" (click)="loadPreview()" [disabled]="!fileContent || previewing">
@@ -68,30 +68,24 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
           <ng-template matStepLabel>Revisar datos</ng-template>
           @if (preview) {
             <div style="padding:24px 0;">
-              <div class="card-grid" style="margin-bottom:16px;">
-                <mat-card style="background:#e3f2fd;">
-                  <mat-card-content class="stat-card">
-                    <mat-icon style="color:#1565c0;font-size:32px;width:32px;height:32px;">list_alt</mat-icon>
-                    <div><div class="stat-label">Filas</div><div class="stat-value">{{ preview.row_count }}</div></div>
-                  </mat-card-content>
-                </mat-card>
-                <mat-card style="background:#e8f5e9;">
-                  <mat-card-content class="stat-card">
-                    <mat-icon style="color:#2e7d32;font-size:32px;width:32px;height:32px;">people</mat-icon>
-                    <div><div class="stat-label">Clientes</div><div class="stat-value">{{ preview.unique_clients }}</div></div>
-                  </mat-card-content>
-                </mat-card>
-                <mat-card style="background:#fff3e0;">
-                  <mat-card-content class="stat-card">
-                    <mat-icon style="color:#e65100;font-size:32px;width:32px;height:32px;">directions_car</mat-icon>
-                    <div><div class="stat-label">Vehiculos</div><div class="stat-value">{{ preview.unique_plates }}</div></div>
-                  </mat-card-content>
-                </mat-card>
+              <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);margin-bottom:16px;">
+                <div class="kpi">
+                  <div class="kpi-label">Filas</div>
+                  <div class="kpi-val">{{ preview.row_count }}</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-label">Clientes</div>
+                  <div class="kpi-val">{{ preview.unique_clients }}</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-label">Vehiculos</div>
+                  <div class="kpi-val">{{ preview.unique_plates }}</div>
+                </div>
               </div>
 
               <mat-card>
                 <mat-card-content>
-                  <h3>Vista previa de datos a importar</h3>
+                  <div class="ds-card-hd"><span class="ds-card-title">Vista previa de datos a importar</span></div>
                   <div style="overflow-x:auto;">
                     <table mat-table [dataSource]="preview.rows" style="width:100%;">
                       <ng-container matColumnDef="client_name">
@@ -124,7 +118,7 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
                       </ng-container>
                       <ng-container matColumnDef="balance">
                         <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
-                        <td mat-cell *matCellDef="let r" class="text-right" [style.color]="r.balance > 0 ? '#c62828' : '#2e7d32'">{{ r.balance | appCurrency }}</td>
+                        <td mat-cell *matCellDef="let r" class="text-right" [style.color]="r.balance > 0 ? 'var(--red)' : 'var(--green)'">{{ r.balance | appCurrency }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="previewColumns"></tr>
                       <tr mat-row *matRowDef="let row; columns: previewColumns;"></tr>
@@ -155,8 +149,8 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
               <mat-card style="max-width:600px;">
                 <mat-card-content>
                   <div style="text-align:center;margin-bottom:16px;">
-                    <mat-icon style="font-size:48px;width:48px;height:48px;color:#2e7d32;">check_circle</mat-icon>
-                    <h3>Importacion completada</h3>
+                    <mat-icon style="font-size:48px;width:48px;height:48px;color:var(--green);">check_circle</mat-icon>
+                    <div class="ds-card-hd" style="justify-content:center;margin-top:8px;"><span class="ds-card-title" style="font-size:13px;">Importacion completada</span></div>
                   </div>
 
                   <div class="result-grid">
@@ -188,9 +182,9 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
 
                   @if (importResult.errors && importResult.errors.length > 0) {
                     <mat-divider style="margin:16px 0;"></mat-divider>
-                    <h4 style="color:#c62828;">Errores ({{ importResult.errors.length }})</h4>
+                    <div class="ds-card-hd"><span class="ds-card-title" style="color:var(--red);">Errores ({{ importResult.errors.length }})</span></div>
                     @for (e of importResult.errors; track e.row) {
-                      <div style="font-size:13px;color:#c62828;margin:4px 0;">
+                      <div style="font-size:12px;color:var(--red);margin:4px 0;">
                         Fila {{ e.row }} ({{ e.client }}): {{ e.error }}
                       </div>
                     }
@@ -214,20 +208,18 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
   `,
   styles: [`
     .upload-zone {
-      border: 2px dashed #ccc;
-      border-radius: 8px;
+      border: 2px dashed var(--border);
+      border-radius: var(--r);
       padding: 48px 24px;
       text-align: center;
       cursor: pointer;
       transition: border-color 0.2s;
+      background: var(--bg);
     }
-    .upload-zone:hover { border-color: var(--color-primary); }
-    .stat-card { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-    .stat-label { font-size: 13px; color: #666; }
-    .stat-value { font-size: 20px; font-weight: 500; }
+    .upload-zone:hover { border-color: var(--navy); }
     .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .result-item { display: flex; align-items: center; gap: 8px; }
-    .result-item mat-icon { color: #666; }
+    .result-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+    .result-item mat-icon { color: var(--text-3); font-size: 18px; width: 18px; height: 18px; }
   `]
 })
 export class ImportComponent {

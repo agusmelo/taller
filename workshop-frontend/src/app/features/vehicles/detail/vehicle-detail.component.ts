@@ -89,7 +89,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       </div>
 
       @if (history.length > 0) {
-        <h2>Historial de propiedad</h2>
+        <div class="ds-card-hd" style="margin:16px 0 10px;"><span class="ds-card-title">Historial de propiedad</span></div>
         <table mat-table [dataSource]="history" class="mat-elevation-z1 mb-16">
           <ng-container matColumnDef="client_name">
             <th mat-header-cell *matHeaderCellDef>Dueno</th>
@@ -112,7 +112,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
         </table>
       }
 
-      <h2>Trabajos</h2>
+      <div class="ds-card-hd" style="margin:16px 0 10px;"><span class="ds-card-title">Trabajos</span></div>
       <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
         <ng-container matColumnDef="job_number">
           <th mat-header-cell *matHeaderCellDef>Numero</th>

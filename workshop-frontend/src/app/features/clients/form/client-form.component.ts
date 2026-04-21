@@ -90,11 +90,7 @@ import { Client } from '../../../core/models';
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`
-    .full-width { width: 100%; }
-    .error-msg { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; margin-bottom: 16px; }
-    .warning-msg { background: #fff8e1; color: #f57f17; padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 13px; }
-  `]
+  styles: [`.full-width { width: 100%; }`]
 })
 export class ClientFormComponent {
   isEdit: boolean;

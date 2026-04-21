@@ -59,7 +59,7 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
         </mat-card>
       </div>
 
-      <h2>Vehiculos ({{ vehicles.length }})</h2>
+      <div class="ds-card-hd" style="margin:16px 0 10px;"><span class="ds-card-title">Vehiculos ({{ vehicles.length }})</span></div>
       <table mat-table [dataSource]="vehicles" class="mat-elevation-z1 mb-16">
         <ng-container matColumnDef="plate_number">
           <th mat-header-cell *matHeaderCellDef>Patente</th>
@@ -82,7 +82,7 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
             class="clickable-row" (click)="goToVehicle(row.id)"></tr>
       </table>
 
-      <h2>Trabajos ({{ jobs.length }})</h2>
+      <div class="ds-card-hd" style="margin:16px 0 10px;"><span class="ds-card-title">Trabajos ({{ jobs.length }})</span></div>
       <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
         <ng-container matColumnDef="job_number">
           <th mat-header-cell *matHeaderCellDef>Numero</th>

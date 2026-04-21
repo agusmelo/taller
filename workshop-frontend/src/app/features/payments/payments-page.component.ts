@@ -43,46 +43,31 @@ import Chart from 'chart.js/auto';
       </div>
 
       <!-- KPI Cards -->
-      <div class="card-grid kpi-grid" *ngIf="summary">
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#2e7d32;">payments</mat-icon>
-            <div>
-              <div class="stat-label">Cobrado (mes)</div>
-              <div class="stat-value">{{ summary.cobrado_month | appCurrency }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#c62828;">account_balance_wallet</mat-icon>
-            <div>
-              <div class="stat-label">Pendiente total</div>
-              <div class="stat-value" style="color:#c62828;">{{ summary.pendiente_total | appCurrency }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#e65100;">people</mat-icon>
-            <div>
-              <div class="stat-label">Deudores</div>
-              <div class="stat-value">{{ summary.deudores_count }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card chart-card">
+      @if (summary) {
+        <div class="kpi-row kpi-row-4">
+          <div class="kpi kpi-accent">
+            <div class="kpi-label">Cobrado (mes)</div>
+            <div class="kpi-val" style="color:var(--green);">{{ summary.cobrado_month | appCurrency }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Pendiente total</div>
+            <div class="kpi-val" style="color:var(--red);">{{ summary.pendiente_total | appCurrency }}</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Deudores</div>
+            <div class="kpi-val">{{ summary.deudores_count }}</div>
+          </div>
+          <div class="kpi chart-kpi">
             <canvas #methodChart height="80"></canvas>
-          </mat-card-content>
-        </mat-card>
-      </div>
+          </div>
+        </div>
+      }
 
       <!-- Paid vs Pending visualization -->
       @if (summary && summary.cobrado_month + summary.pendiente_total > 0) {
         <mat-card class="mb-16">
           <mat-card-content>
-            <h3 style="margin-bottom:12px;">Cobrado vs Pendiente</h3>
+            <div class="ds-card-hd"><span class="ds-card-title">Cobrado vs Pendiente</span></div>
             <div class="bar-comparison">
               <div class="bar-row">
                 <span class="bar-label">Cobrado</span>
@@ -109,7 +94,7 @@ import Chart from 'chart.js/auto';
       @if (aging) {
         <mat-card class="mb-16">
           <mat-card-content>
-            <h3 style="margin-bottom:12px;">Antiguedad de deuda</h3>
+            <div class="ds-card-hd"><span class="ds-card-title">Antiguedad de deuda</span></div>
             <div class="aging-grid">
               @for (bucket of agingBuckets; track bucket.label) {
                 <div class="aging-item" [class.aging-danger]="bucket.label === '90+'">
@@ -172,12 +157,12 @@ import Chart from 'chart.js/auto';
                 </ng-container>
                 <ng-container matColumnDef="total_paid">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th>
-                  <td mat-cell *matCellDef="let j" class="text-right" style="color:#2e7d32;">{{ j.total_paid | appCurrency }}</td>
+                  <td mat-cell *matCellDef="let j" class="text-right" style="color:var(--green);">{{ j.total_paid | appCurrency }}</td>
                 </ng-container>
                 <ng-container matColumnDef="balance">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
                   <td mat-cell *matCellDef="let j" class="text-right"
-                      [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'"
+                      [style.color]="j.balance > 0 ? 'var(--red)' : 'var(--green)'"
                       [style.fontWeight]="j.balance > 0 ? '600' : '400'">
                     {{ j.balance | appCurrency }}
                   </td>
@@ -193,7 +178,7 @@ import Chart from 'chart.js/auto';
                   <td mat-cell *matCellDef="let j">
                     @if (j.last_payment_date) {
                       {{ j.last_payment_date | date:'dd/MM/yy' }}
-                      <small style="color:#666;"> ({{ j.last_payment_method | paymentMethod }})</small>
+                      <small style="color:var(--text-2);"> ({{ j.last_payment_method | paymentMethod }})</small>
                     } @else { - }
                   </td>
                 </ng-container>
@@ -237,7 +222,7 @@ import Chart from 'chart.js/auto';
                   <td mat-cell *matCellDef="let d">
                     {{ d.full_name }}
                     @if (isDebtAlert(d)) {
-                      <mat-icon style="color:#c62828;font-size:16px;vertical-align:middle;margin-left:4px;"
+                      <mat-icon style="color:var(--red);font-size:16px;vertical-align:middle;margin-left:4px;"
                                 matTooltip="Deuda supera umbral de alerta">warning</mat-icon>
                     }
                   </td>
@@ -253,7 +238,7 @@ import Chart from 'chart.js/auto';
                 <ng-container matColumnDef="total_debt">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Deuda total</th>
                   <td mat-cell *matCellDef="let d" class="text-right"
-                      [style.color]="isDebtAlert(d) ? '#c62828' : '#e65100'"
+                      [style.color]="isDebtAlert(d) ? 'var(--red)' : 'var(--amber)'"
                       style="font-weight:600;">
                     {{ d.total_debt | appCurrency }}
                   </td>
@@ -265,14 +250,14 @@ import Chart from 'chart.js/auto';
                 <ng-container matColumnDef="days_overdue">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
                   <td mat-cell *matCellDef="let d" class="text-right"
-                      [style.color]="d.days_overdue > unpaidDaysThreshold ? '#c62828' : ''">
+                      [style.color]="d.days_overdue > unpaidDaysThreshold ? 'var(--red)' : ''">
                     {{ d.days_overdue }}d
                   </td>
                 </ng-container>
                 <tr mat-header-row *matHeaderRowDef="['full_name','rut','phone','total_debt','unpaid_jobs','days_overdue']"></tr>
                 <tr mat-row *matRowDef="let row; columns: ['full_name','rut','phone','total_debt','unpaid_jobs','days_overdue'];"
                     class="clickable-row" (click)="goToClient(row.id)"
-                    [style.background]="isDebtAlert(row) ? '#fff5f5' : ''"></tr>
+                    [style.background]="isDebtAlert(row) ? 'var(--red-lt)' : ''"></tr>
               </table>
             }
           </div>
@@ -307,7 +292,7 @@ import Chart from 'chart.js/auto';
                 </ng-container>
                 <ng-container matColumnDef="amount">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Monto</th>
-                  <td mat-cell *matCellDef="let p" class="text-right" style="color:#2e7d32;font-weight:500;">
+                  <td mat-cell *matCellDef="let p" class="text-right" style="color:var(--green);font-weight:600;">
                     {{ p.amount | appCurrency }}
                   </td>
                 </ng-container>
@@ -322,32 +307,27 @@ import Chart from 'chart.js/auto';
     </div>
   `,
   styles: [`
-    .stat-card { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
-    .stat-icon { font-size: 40px; width: 40px; height: 40px; }
-    .stat-label { font-size: 13px; color: #666; }
-    .stat-value { font-size: 22px; font-weight: 500; }
-    .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
-    .chart-card { justify-content: center; }
+    .chart-kpi { display: flex; align-items: center; justify-content: center; padding: 4px; }
     .bar-comparison { display: flex; flex-direction: column; gap: 12px; }
     .bar-row { display: flex; align-items: center; gap: 12px; }
-    .bar-label { width: 80px; font-size: 13px; color: #666; text-align: right; }
-    .bar-track { flex: 1; background: #f0f0f0; border-radius: 4px; height: 32px; overflow: hidden; }
+    .bar-label { width: 80px; font-size: 11px; color: var(--text-2); text-align: right; font-weight: 500; }
+    .bar-track { flex: 1; background: var(--border2); border-radius: var(--r-sm); height: 28px; overflow: hidden; }
     .bar-fill { height: 100%; display: flex; align-items: center; padding: 0 12px;
-                font-size: 12px; font-weight: 500; color: white; min-width: fit-content;
-                transition: width 0.5s ease; border-radius: 4px; }
-    .bar-paid { background: #2e7d32; }
-    .bar-pending { background: #c62828; }
+                font-size: 11px; font-weight: 600; color: white; min-width: fit-content;
+                transition: width 0.5s ease; border-radius: var(--r-sm); }
+    .bar-paid    { background: var(--green); }
+    .bar-pending { background: var(--red); }
     .aging-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
     @media (max-width: 768px) { .aging-grid { grid-template-columns: repeat(2, 1fr); } }
-    .aging-item { text-align: center; padding: 16px; border-radius: 8px; background: #f5f5f5; }
-    .aging-item.aging-danger { background: #ffebee; }
-    .aging-label { font-size: 13px; color: #666; font-weight: 500; }
-    .aging-amount { font-size: 20px; font-weight: 600; margin: 4px 0; }
-    .aging-danger .aging-amount { color: #c62828; }
-    .aging-meta { font-size: 11px; color: #999; }
+    .aging-item { text-align: center; padding: 16px; border-radius: var(--r); background: var(--bg); border: 1px solid var(--border2); }
+    .aging-item.aging-danger { background: var(--red-lt); border-color: #fecaca; }
+    .aging-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+    .aging-amount { font-size: 18px; font-weight: 700; letter-spacing: -.03em; margin: 6px 0; color: var(--text-1); }
+    .aging-danger .aging-amount { color: var(--red); }
+    .aging-meta { font-size: 10px; color: var(--text-3); }
     .tab-badge {
-      background: #c62828; color: white; border-radius: 10px;
-      padding: 2px 7px; font-size: 11px; margin-left: 6px;
+      background: var(--red); color: white; border-radius: 10px;
+      padding: 1px 6px; font-size: 10px; font-weight: 700; margin-left: 6px;
     }
   `]
 })
@@ -487,7 +467,7 @@ export class PaymentsPageComponent implements OnInit {
       efectivo: 'Efectivo', transferencia: 'Transferencia',
       credito: 'Credito', cheque: 'Cheque'
     };
-    const colors = ['#2e7d32', '#1565c0', '#e65100', '#6a1b9a'];
+    const colors = ['#111827', '#374151', '#6b7280', '#9ca3af'];
     this.methodChart = new Chart(this.methodChartRef.nativeElement, {
       type: 'doughnut',
       data: {

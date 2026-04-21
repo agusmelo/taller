@@ -31,10 +31,12 @@ import { AppSettings } from '../../core/models';
       } @else if (settings) {
         <mat-card style="max-width:600px;">
           <mat-card-content>
-            <h3 style="margin-bottom:16px;">
-              <mat-icon style="vertical-align:middle;margin-right:8px;">notifications_active</mat-icon>
-              Alertas
-            </h3>
+            <div class="ds-card-hd" style="margin-bottom:16px;">
+              <span class="ds-card-title">
+                <mat-icon style="vertical-align:middle;margin-right:6px;font-size:14px;width:14px;height:14px;">notifications_active</mat-icon>
+                Alertas
+              </span>
+            </div>
 
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Umbral de alerta de deuda (monto minimo)</mat-label>

@@ -20,43 +20,50 @@ import { WorkshopConfigService } from '../../../core/services/workshop-config.se
   ],
   template: `
     <div class="login-wrapper">
-      <mat-card class="login-card">
-        <mat-card-header>
-          <mat-icon mat-card-avatar class="login-icon">build</mat-icon>
-          <mat-card-title>{{ workshopConfig.config()?.name || 'Taller Mecanico' }}</mat-card-title>
-          <mat-card-subtitle>Iniciar sesion</mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content>
-          @if (error) {
-            <div class="error-msg">{{ error }}</div>
-          }
-          <form (ngSubmit)="onLogin()">
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Usuario</mat-label>
-              <input matInput [(ngModel)]="username" name="username" required autofocus>
-              <mat-icon matPrefix>person</mat-icon>
-            </mat-form-field>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Contrasena</mat-label>
-              <input matInput [type]="hidePassword ? 'password' : 'text'"
-                     [(ngModel)]="password" name="password" required>
-              <mat-icon matPrefix>lock</mat-icon>
-              <button mat-icon-button matSuffix type="button"
-                      (click)="hidePassword = !hidePassword">
-                <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
-              </button>
-            </mat-form-field>
-            <button mat-raised-button color="primary" class="full-width login-btn"
-                    type="submit" [disabled]="loading">
-              @if (loading) {
-                <mat-spinner diameter="20"></mat-spinner>
-              } @else {
-                Entrar
-              }
+      <div class="login-card">
+        <!-- Logo mark -->
+        <div class="login-logo">
+          <div class="logo-mark">
+            <mat-icon class="logo-icon">build</mat-icon>
+          </div>
+          <div>
+            <div class="logo-name">{{ workshopConfig.config()?.name || 'AutoShop' }}</div>
+            <div class="logo-sub">Manager</div>
+          </div>
+        </div>
+
+        <h2 class="login-title">Iniciar sesion</h2>
+
+        @if (error) {
+          <div class="error-msg" style="text-align:center;">{{ error }}</div>
+        }
+
+        <form (ngSubmit)="onLogin()">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Usuario</mat-label>
+            <input matInput [(ngModel)]="username" name="username" required autofocus>
+            <mat-icon matPrefix style="color:var(--text-3);font-size:18px;">person</mat-icon>
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Contrasena</mat-label>
+            <input matInput [type]="hidePassword ? 'password' : 'text'"
+                   [(ngModel)]="password" name="password" required>
+            <mat-icon matPrefix style="color:var(--text-3);font-size:18px;">lock</mat-icon>
+            <button mat-icon-button matSuffix type="button"
+                    (click)="hidePassword = !hidePassword" style="color:var(--text-3);">
+              <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
             </button>
-          </form>
-        </mat-card-content>
-      </mat-card>
+          </mat-form-field>
+          <button mat-raised-button color="primary" class="full-width login-btn"
+                  type="submit" [disabled]="loading">
+            @if (loading) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              Entrar
+            }
+          </button>
+        </form>
+      </div>
     </div>
   `,
   styles: [`
@@ -65,28 +72,43 @@ import { WorkshopConfigService } from '../../../core/services/workshop-config.se
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+      background: var(--bg);
     }
     .login-card {
-      width: 400px;
-      padding: 24px;
+      width: 380px;
+      background: var(--surface);
+      border-radius: var(--r);
+      padding: 36px 32px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border2);
     }
-    .login-icon {
-      font-size: 40px;
-      width: 40px;
-      height: 40px;
-      color: #1a237e;
+    .login-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .logo-mark {
+      width: 34px;
+      height: 34px;
+      background: var(--navy);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-icon { color: #fff; font-size: 18px; width: 18px; height: 18px; }
+    .logo-name { font-size: 14px; font-weight: 700; letter-spacing: -.02em; color: var(--navy); }
+    .logo-sub  { font-size: 9px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .08em; margin-top: 1px; }
+    .login-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -.03em;
+      color: var(--text-1);
+      margin: 0 0 20px;
     }
     .full-width { width: 100%; }
-    .login-btn { height: 48px; font-size: 16px; margin-top: 8px; }
-    .error-msg {
-      background: #ffebee;
-      color: #c62828;
-      padding: 12px;
-      border-radius: 4px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
+    .login-btn  { height: 44px; font-size: 13px; font-weight: 700; margin-top: 6px; }
   `]
 })
 export class LoginComponent {

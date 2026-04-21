@@ -25,7 +25,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
   template: `
     <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Usuario</h2>
     <mat-dialog-content>
-      @if (error) { <div style="background:#ffebee;color:#c62828;padding:12px;border-radius:4px;margin-bottom:16px;">{{ error }}</div> }
+      @if (error) { <div class="error-msg">{{ error }}</div> }
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Username</mat-label>
         <input matInput [(ngModel)]="form.username" required [disabled]="isEdit">
@@ -134,7 +134,7 @@ export class UserFormDialogComponent {
           <ng-container matColumnDef="is_active">
             <th mat-header-cell *matHeaderCellDef>Estado</th>
             <td mat-cell *matCellDef="let u">
-              <span [style.color]="u.is_active ? '#2e7d32' : '#c62828'">
+              <span [style.color]="u.is_active ? 'var(--green)' : 'var(--red)'" style="font-weight:600;font-size:11px;">
                 {{ u.is_active ? 'Activo' : 'Inactivo' }}
               </span>
             </td>

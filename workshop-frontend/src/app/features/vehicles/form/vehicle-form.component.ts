@@ -94,7 +94,6 @@ import { Client, Vehicle } from '../../../core/models';
   `,
   styles: [`
     .full-width { width: 100%; }
-    .error-msg { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; margin-bottom: 16px; }
   `]
 })
 export class VehicleFormComponent {
