@@ -1,15 +1,6 @@
-FROM node:20-alpine
+FROM ghcr.io/puppeteer/puppeteer:22
 
-RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
-    ca-certificates \
-    ttf-freefont
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+USER root
 
 WORKDIR /app
 COPY package.json ./
