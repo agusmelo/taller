@@ -1,0 +1,1967 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taller — Migración de diseño</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Core palette — the new design tokens */
+  --bg:       #f4f4f1;
+  --surface:  #ffffff;
+  --sidebar:  #ffffff;
+  --navy:     #111827;
+  --navy2:    #1f2937;
+  --amber:    #d97706;
+  --amber-lt: #fef3c7;
+  --blue:     #2563eb;
+  --blue-lt:  #eff6ff;
+  --green:    #16a34a;
+  --green-lt: #f0fdf4;
+  --red:      #dc2626;
+  --red-lt:   #fef2f2;
+  --purple:   #7c3aed;
+  --purple-lt:#f5f3ff;
+  --teal:     #0d9488;
+  --teal-lt:  #f0fdfa;
+  --slate:    #64748b;
+  --text-1:   #111827;
+  --text-2:   #6b7280;
+  --text-3:   #9ca3af;
+  --border:   #e5e7eb;
+  --border2:  #f3f4f6;
+  --shadow:   0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --r: 10px;
+  --r-sm: 6px;
+  --sidebar-w: 220px;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  display: flex;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─────────────────────────────────────
+   SIDEBAR  (variations A / B / C)
+   ───────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+}
+
+.logo {
+  padding: 20px 20px 18px;
+  border-bottom: 1px solid var(--border2);
+}
+.logo-inner { display: flex; align-items: center; gap: 10px; }
+.logo-mark {
+  width: 30px; height: 30px;
+  background: var(--navy);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.logo-mark svg { width: 14px; height: 14px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; }
+.logo-name { font-size: 13px; font-weight: 700; letter-spacing: -.02em; color: var(--navy); }
+.logo-sub { font-size: 9px; font-weight: 500; color: var(--text-3); letter-spacing: .08em; text-transform: uppercase; margin-top: 1px; }
+
+.nav { padding: 14px 10px; flex: 1; overflow-y: auto; }
+.nav-label {
+  font-size: 9px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--text-3);
+  padding: 10px 10px 6px; display: block;
+}
+.nav-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 8px 10px; border-radius: var(--r-sm);
+  font-size: 12px; font-weight: 500; color: var(--text-2);
+  cursor: pointer; transition: all .12s; margin-bottom: 1px;
+  user-select: none;
+  text-decoration: none;
+}
+.nav-item:hover { background: var(--bg); color: var(--text-1); }
+.nav-item.active { background: var(--navy); color: #fff; }
+.nav-item.active .nav-icon { color: #fff; opacity: 1; }
+.nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: .6; color: currentColor; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--red); color: #fff;
+  font-size: 9px; font-weight: 700;
+  padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center;
+}
+.nav-item.active .nav-badge { background: rgba(255,255,255,.25); }
+
+.sidebar-footer {
+  padding: 14px;
+  border-top: 1px solid var(--border2);
+}
+.user-card { display: flex; align-items: center; gap: 9px; }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
+}
+.user-name { font-size: 11px; font-weight: 600; color: var(--text-1); }
+.user-role { font-size: 10px; color: var(--text-3); }
+
+/* SIDEBAR VARIATION B — dark */
+body.sb-dark .sidebar {
+  background: var(--navy);
+  border-right-color: #0b0f17;
+}
+body.sb-dark .logo { border-bottom-color: rgba(255,255,255,.08); }
+body.sb-dark .logo-mark { background: #fff; }
+body.sb-dark .logo-mark svg { stroke: var(--navy); }
+body.sb-dark .logo-name { color: #fff; }
+body.sb-dark .logo-sub { color: rgba(255,255,255,.5); }
+body.sb-dark .nav-label { color: rgba(255,255,255,.35); }
+body.sb-dark .nav-item { color: rgba(255,255,255,.65); }
+body.sb-dark .nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+body.sb-dark .nav-item.active { background: #fff; color: var(--navy); }
+body.sb-dark .sidebar-footer { border-top-color: rgba(255,255,255,.08); }
+body.sb-dark .user-name { color: #fff; }
+body.sb-dark .user-role { color: rgba(255,255,255,.5); }
+body.sb-dark .avatar { background: #fff; color: var(--navy); }
+
+/* SIDEBAR VARIATION C — compact icon rail */
+body.sb-rail { --sidebar-w: 64px; }
+body.sb-rail .nav-label,
+body.sb-rail .logo-name,
+body.sb-rail .logo-sub,
+body.sb-rail .user-name,
+body.sb-rail .user-role,
+body.sb-rail .nav-badge,
+body.sb-rail .nav-item span.label { display: none; }
+body.sb-rail .logo { padding: 16px 0; display: flex; justify-content: center; }
+body.sb-rail .logo-inner { justify-content: center; }
+body.sb-rail .nav { padding: 10px 8px; }
+body.sb-rail .nav-item { justify-content: center; padding: 10px; }
+body.sb-rail .nav-icon { width: 18px; height: 18px; }
+body.sb-rail .sidebar-footer { display: flex; justify-content: center; padding: 12px 0; }
+body.sb-rail .user-card .avatar { margin: 0; }
+body.sb-rail .user-card > div:last-child { display: none; }
+
+/* ─────────────────────────────────────
+   MAIN
+   ───────────────────────────────────── */
+.main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left .2s;
+}
+
+.topbar {
+  padding: 0 28px;
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; z-index: 50;
+}
+.page-title { font-size: 14px; font-weight: 700; letter-spacing: -.02em; color: var(--text-1); }
+
+.topbar-search {
+  flex: 1;
+  max-width: 380px;
+  position: relative;
+}
+.topbar-search svg {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px; color: var(--text-3);
+}
+.topbar-search input {
+  width: 100%; height: 34px;
+  padding: 0 12px 0 32px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); font-size: 12px; color: var(--text-1);
+  font-family: inherit;
+  transition: all .12s;
+}
+.topbar-search input:focus { outline: none; border-color: var(--navy); background: var(--surface); box-shadow: 0 0 0 3px rgba(17,24,39,.06); }
+.topbar-search input::placeholder { color: var(--text-3); }
+
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.date-chip {
+  font-size: 11px; color: var(--text-2);
+  background: var(--bg); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 20px;
+}
+.icon-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: transparent; border: 1px solid transparent;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-2);
+  position: relative;
+}
+.icon-btn:hover { background: var(--bg); color: var(--text-1); }
+.icon-btn .dot {
+  position: absolute; top: 6px; right: 7px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--red);
+  border: 2px solid var(--surface);
+}
+
+.btn {
+  padding: 7px 14px; border-radius: var(--r-sm);
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-1);
+  font-family: inherit; transition: all .12s; letter-spacing: -.01em;
+  display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: none;
+}
+.btn:hover { background: var(--bg); }
+.btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+.btn-primary:hover { background: var(--navy2); }
+.btn-danger { color: var(--red); border-color: #fecaca; background: var(--red-lt); }
+.btn-danger:hover { background: #fee2e2; }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: var(--bg); color: var(--text-1); }
+.btn-sm { padding: 4px 10px; font-size: 11px; }
+
+.content { padding: 24px 28px; flex: 1; }
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; }
+
+.page-head {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  margin-bottom: 20px; gap: 16px; flex-wrap: wrap;
+}
+.page-head h1 {
+  font-size: 22px; font-weight: 700; letter-spacing: -.02em; color: var(--text-1);
+  margin: 0;
+}
+.page-head .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.page-head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ─────────────────────────────────────
+   KPI GRID  (variations K1 / K2 / K3)
+   ───────────────────────────────────── */
+.kpi-row { display: grid; gap: 12px; margin-bottom: 18px; }
+.kpi-row-2 { grid-template-columns: repeat(2, 1fr); }
+.kpi-row-3 { grid-template-columns: repeat(3, 1fr); }
+.kpi-row-4 { grid-template-columns: repeat(4, 1fr); }
+.kpi-row-5 { grid-template-columns: repeat(5, 1fr); }
+.kpi-row-6 { grid-template-columns: repeat(6, 1fr); }
+
+/* Style K1 — minimal (default) */
+.kpi {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border2);
+  transition: box-shadow .15s;
+  position: relative;
+}
+.kpi:hover { box-shadow: var(--shadow-md); }
+.kpi-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 8px; }
+.kpi-val { font-size: 24px; font-weight: 700; letter-spacing: -.04em; color: var(--text-1); line-height: 1; }
+.kpi-delta { font-size: 10px; margin-top: 6px; display: flex; align-items: center; gap: 3px; font-weight: 500; }
+.up { color: var(--green); }
+.dn { color: var(--red); }
+.nt { color: var(--text-3); }
+.kpi-accent { border-top: 2px solid var(--navy); }
+
+/* Style K2 — with icon tile */
+body.kpi-icon .kpi { display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: flex-start; }
+body.kpi-icon .kpi .ico {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--navy);
+}
+body.kpi-icon .kpi .ico svg { width: 18px; height: 18px; }
+body.kpi-icon .kpi.kpi-accent { border-top: none; }
+body.kpi-icon .kpi.kpi-accent .ico { background: var(--navy); color: #fff; }
+
+/* Style K3 — with trend sparkline bg */
+body.kpi-spark .kpi { overflow: hidden; }
+body.kpi-spark .kpi .spark {
+  position: absolute; right: 14px; bottom: 14px; opacity: .55;
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────
+   CARDS
+   ───────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border2);
+}
+.card-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
+.card-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); }
+.card-title-lg { font-size: 13px; font-weight: 700; color: var(--text-1); letter-spacing: -.01em; text-transform: none; }
+.card-link { font-size: 11px; font-weight: 600; color: var(--navy); cursor: pointer; opacity: .7; transition: opacity .12s; text-decoration: none; }
+.card-link:hover { opacity: 1; }
+
+.g-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 16px; }
+.g-3-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 14px; margin-bottom: 16px; }
+.g-1-1 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.g-1-1-1 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+
+/* ─────────────────────────────────────
+   TABLE  (Material-compatible class)
+   ───────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; }
+.tbl th {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-3);
+  padding: 0 12px 10px; text-align: left;
+  border-bottom: 1px solid var(--border2);
+  white-space: nowrap;
+}
+.tbl th:first-child, .tbl td:first-child { padding-left: 0; }
+.tbl th:last-child,  .tbl td:last-child  { padding-right: 0; }
+.tbl td {
+  padding: 10px 12px; border-bottom: 1px solid var(--border2);
+  color: var(--text-1); vertical-align: middle;
+}
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tbody tr { cursor: pointer; transition: background .1s; }
+.tbl tbody tr:hover td { background: var(--bg); }
+.td-muted { color: var(--text-2) !important; }
+.td-sm { font-size: 11px; }
+.td-num { font-variant-numeric: tabular-nums; text-align: right; }
+.td-mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+.td-strong { font-weight: 600; }
+
+/* ── BADGES ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 20px;
+  font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+}
+.b-pro, .b-abierto    { background: var(--blue-lt);   color: var(--blue); }
+.b-wait, .b-terminado { background: var(--amber-lt);  color: var(--amber); }
+.b-done, .b-pagado    { background: var(--green-lt);  color: var(--green); }
+.b-urg                { background: var(--red-lt);    color: var(--red); }
+.b-new                { background: var(--purple-lt); color: var(--purple); }
+.b-vip                { background: var(--navy);      color: #fff; }
+.b-reg                { background: var(--bg); color: var(--text-2); border: 1px solid var(--border); }
+.b-teal               { background: var(--teal-lt);   color: var(--teal); }
+
+/* ── FILTERS ── */
+.filter-bar { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+.filt {
+  padding: 5px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+  border: 1px solid var(--border);
+  background: transparent; color: var(--text-2);
+  cursor: pointer; font-family: inherit; transition: all .12s;
+}
+.filt:hover { border-color: var(--navy); color: var(--navy); }
+.filt.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+/* ── INPUTS (for forms) ── */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+.field-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); }
+.field-input, .field-select, .field-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  font-size: 12px; color: var(--text-1);
+  font-family: inherit;
+  transition: all .12s;
+}
+.field-input:focus, .field-select:focus, .field-textarea:focus {
+  outline: none; border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(17,24,39,.06);
+}
+.field-textarea { min-height: 80px; resize: vertical; }
+.field-row { display: grid; gap: 12px; }
+.field-row-2 { grid-template-columns: 1fr 1fr; }
+.field-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+.field-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.form-section { margin-bottom: 24px; }
+.form-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-3);
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border2);
+}
+
+/* ── SPARK BARS ── */
+.sbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+.sbar-name { font-size: 11px; font-weight: 500; color: var(--text-2); width: 72px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sbar-bg { flex: 1; height: 4px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+.sbar-fill { height: 100%; border-radius: 4px; transition: width .4s; }
+.sbar-val { font-size: 11px; font-weight: 600; width: 36px; text-align: right; flex-shrink: 0; }
+
+/* ── LEGEND ── */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 500; color: var(--text-2); }
+.leg-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+/* ── CHART WRAP ── */
+.chart-wrap { position: relative; }
+
+/* ── ALERTS ── */
+.alert-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; border-radius: var(--r-sm);
+  background: var(--bg); margin-bottom: 7px;
+  border-left: 3px solid transparent;
+}
+.alert-item.crit { border-left-color: var(--red); background: var(--red-lt); }
+.alert-item.warn { border-left-color: var(--amber); background: var(--amber-lt); }
+.alert-name { font-size: 12px; font-weight: 600; color: var(--text-1); }
+.alert-meta { font-size: 10px; color: var(--text-2); margin-top: 1px; }
+.alert-qty { font-size: 13px; font-weight: 700; }
+.alert-item.crit .alert-qty { color: var(--red); }
+.alert-item.warn .alert-qty { color: var(--amber); }
+
+/* ── AGING GRID ── */
+.aging-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.aging-item {
+  padding: 14px 16px;
+  border-radius: var(--r);
+  background: var(--bg);
+  border: 1px solid var(--border2);
+}
+.aging-item.aging-danger { background: var(--red-lt); border-color: #fecaca; }
+.aging-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); }
+.aging-amount { font-size: 18px; font-weight: 700; letter-spacing: -.03em; margin-top: 4px; color: var(--text-1); }
+.aging-item.aging-danger .aging-amount { color: var(--red); }
+.aging-meta { font-size: 10px; color: var(--text-2); margin-top: 4px; }
+
+/* ── TOTALS PANEL (job detail) ── */
+.totals {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 16px;
+}
+.totals-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; color: var(--text-2); }
+.totals-row strong { color: var(--text-1); font-weight: 600; }
+.totals-row.grand { border-top: 1px solid var(--border2); padding-top: 10px; margin-top: 4px; font-size: 15px; color: var(--text-1); font-weight: 700; }
+.totals-row.bal-pos { color: var(--red); font-weight: 600; }
+.totals-row.bal-zero { color: var(--green); font-weight: 600; }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+.tab {
+  padding: 10px 16px; font-size: 12px; font-weight: 600;
+  color: var(--text-2); cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all .12s; user-select: none;
+}
+.tab:hover { color: var(--text-1); }
+.tab.on { color: var(--navy); border-bottom-color: var(--navy); }
+
+/* ── BANNERS (lock, info, error) ── */
+.banner {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font-size: 12px; font-weight: 500;
+  margin-bottom: 14px;
+}
+.banner-warn { background: var(--amber-lt); color: #92400e; border: 1px solid #fde68a; }
+.banner-info { background: var(--blue-lt); color: #1e40af; border: 1px solid #bfdbfe; }
+.banner-error { background: var(--red-lt); color: #991b1b; border: 1px solid #fecaca; }
+.banner-success { background: var(--green-lt); color: #14532d; border: 1px solid #bbf7d0; }
+.banner svg { width: 14px; height: 14px; flex-shrink: 0; }
+.banner .sp { flex: 1; }
+
+/* ── LOGIN ── */
+.login-wrapper {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  z-index: 200;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 36px 32px;
+  box-shadow: 0 20px 48px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+  width: 400px;
+  max-width: 100%;
+}
+.login-brand { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; }
+.login-brand .logo-mark { width: 44px; height: 44px; border-radius: 10px; }
+.login-brand .logo-mark svg { width: 20px; height: 20px; }
+.login-title { font-size: 18px; font-weight: 700; letter-spacing: -.02em; margin-top: 14px; }
+.login-sub { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+
+/* ── EMPTY STATE ── */
+.empty-state {
+  text-align: center; padding: 48px 20px;
+  color: var(--text-3);
+}
+.empty-state svg { width: 36px; height: 36px; opacity: .4; margin-bottom: 10px; }
+.empty-state p { font-size: 13px; margin-bottom: 4px; color: var(--text-2); }
+.empty-state .hint { font-size: 11px; color: var(--text-3); }
+
+/* ── TWEAKS PANEL ── */
+.tweaks {
+  position: fixed;
+  right: 20px; bottom: 20px;
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 20px 48px rgba(0,0,0,.12), 0 4px 12px rgba(0,0,0,.06);
+  padding: 16px;
+  z-index: 150;
+  display: none;
+  font-size: 12px;
+}
+.tweaks.open { display: block; }
+.tweaks-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border2);
+}
+.tweaks-hd .t { font-size: 12px; font-weight: 700; letter-spacing: -.01em; }
+.tweaks-hd .x { cursor: pointer; color: var(--text-3); font-size: 16px; line-height: 1; padding: 4px; }
+.tweaks-section { margin-bottom: 14px; }
+.tweaks-section:last-child { margin-bottom: 0; }
+.tweaks-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 6px; }
+.tweaks-opts { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.tweaks-opt {
+  padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 11px; font-weight: 600; color: var(--text-2);
+  background: var(--surface); cursor: pointer; text-align: center;
+  transition: all .12s;
+}
+.tweaks-opt:hover { border-color: var(--navy); color: var(--navy); }
+.tweaks-opt.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.tweaks-toggle {
+  position: fixed; right: 20px; bottom: 20px;
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--navy); color: #fff;
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 20px rgba(17,24,39,.25);
+  z-index: 140;
+}
+.tweaks-toggle svg { width: 18px; height: 18px; }
+
+/* ── Migration notes panel ── */
+.notes-panel {
+  background: #0f172a; color: #cbd5e1;
+  border-radius: var(--r);
+  padding: 20px 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px; line-height: 1.8;
+  margin-bottom: 16px;
+  border: 1px solid #1e293b;
+}
+.notes-panel .nh { color: #f9fafb; font-weight: 700; font-size: 12px; margin: 12px 0 4px; }
+.notes-panel .nh:first-child { margin-top: 0; }
+.notes-panel .kw { color: #93c5fd; }
+.notes-panel .cl { color: #fde68a; }
+.notes-panel .cm { color: #64748b; }
+.notes-panel .add { color: #86efac; }
+.notes-panel .del { color: #fca5a5; text-decoration: line-through; opacity: .7; }
+
+.notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.note-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+}
+.note-card h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); margin-bottom: 8px; }
+.note-card p { font-size: 12px; color: var(--text-2); line-height: 1.65; }
+.note-card code { font-family: 'JetBrains Mono', monospace; font-size: 11px; background: var(--bg); padding: 1px 5px; border-radius: 4px; color: var(--navy); }
+
+.swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); vertical-align: middle; margin-right: 6px; }
+.token-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border2); }
+.token-row:last-child { border: none; }
+.token-row .k { color: var(--text-2); font-family: 'JetBrains Mono', monospace; }
+.token-row .v { color: var(--text-1); font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+
+/* ── SETTINGS blocks ── */
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid var(--border2);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-label { font-size: 12px; font-weight: 600; color: var(--text-1); }
+.setting-desc { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.switch { width: 34px; height: 20px; background: var(--border); border-radius: 20px; position: relative; cursor: pointer; transition: background .15s; flex-shrink: 0; }
+.switch::after { content:''; position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: left .15s; }
+.switch.on { background: var(--navy); }
+.switch.on::after { left: 16px; }
+
+/* ── FILE UPLOAD (import page) ── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--r);
+  padding: 44px 20px;
+  text-align: center;
+  background: var(--bg);
+  transition: all .15s;
+  cursor: pointer;
+}
+.upload-zone:hover { border-color: var(--navy); background: var(--surface); }
+.upload-zone svg { width: 32px; height: 32px; color: var(--text-3); margin-bottom: 10px; }
+.upload-zone .t { font-size: 13px; font-weight: 600; color: var(--text-1); }
+.upload-zone .h { font-size: 11px; color: var(--text-2); margin-top: 4px; }
+
+/* ── STACK helpers ── */
+.hstack { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.vstack { display: flex; flex-direction: column; gap: 8px; }
+.sp { flex: 1; }
+.mt-12 { margin-top: 12px; } .mt-16 { margin-top: 16px; } .mt-20 { margin-top: 20px; } .mt-24 { margin-top: 24px; }
+.mb-8 { margin-bottom: 8px; } .mb-12 { margin-bottom: 12px; } .mb-16 { margin-bottom: 16px; } .mb-20 { margin-bottom: 20px; }
+
+/* ── Responsive collapse below ~1200 ── */
+@media (max-width: 1200px) {
+  .kpi-row-6 { grid-template-columns: repeat(3, 1fr); }
+  .kpi-row-5, .kpi-row-4 { grid-template-columns: repeat(2, 1fr); }
+  .g-2-1, .g-3-2, .g-1-1, .g-1-1-1 { grid-template-columns: 1fr; }
+  .aging-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- ────────────────────────  SIDEBAR  ──────────────────────── -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-inner">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l2.8-2.8a6 6 0 01-7.8 7.8l-5.6 5.6a2.12 2.12 0 01-3-3l5.6-5.6a6 6 0 017.8-7.8l-2.8 2.8z"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">Taller</div>
+        <div class="logo-sub">Backoffice</div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <span class="nav-label">Principal</span>
+    <a class="nav-item active" onclick="go('dashboard',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4zm8-8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zm0 8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>
+      <span class="label">Dashboard</span>
+    </a>
+    <a class="nav-item" onclick="go('trabajos',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd"/></svg>
+      <span class="label">Trabajos</span>
+      <span class="nav-badge">14</span>
+    </a>
+    <a class="nav-item" onclick="go('clientes',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+      <span class="label">Clientes</span>
+    </a>
+    <a class="nav-item" onclick="go('vehiculos',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h8a1 1 0 011 1v2h1.586A2 2 0 0116 6.586l1.414 1.414a2 2 0 01.586 1.414V12a2 2 0 01-2 2h-.5a2.5 2.5 0 01-5 0h-3a2.5 2.5 0 01-5 0H3a1 1 0 01-1-1V5a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+      <span class="label">Vehículos</span>
+    </a>
+    <a class="nav-item" onclick="go('pagos',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
+      <span class="label">Pagos</span>
+      <span class="nav-badge">3</span>
+    </a>
+
+    <span class="nav-label">Administración</span>
+    <a class="nav-item" onclick="go('usuarios',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+      <span class="label">Usuarios</span>
+    </a>
+    <a class="nav-item" onclick="go('importar',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>
+      <span class="label">Importar</span>
+    </a>
+    <a class="nav-item" onclick="go('ajustes',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+      <span class="label">Ajustes</span>
+    </a>
+
+    <span class="nav-label">Recursos</span>
+    <a class="nav-item" onclick="go('migracion',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M13 7H7v6h6V7z"/><path fill-rule="evenodd" d="M7 2a1 1 0 012 0v1h2V2a1 1 0 112 0v1h2a2 2 0 012 2v2h1a1 1 0 110 2h-1v2h1a1 1 0 110 2h-1v2a2 2 0 01-2 2h-2v1a1 1 0 11-2 0v-1H9v1a1 1 0 11-2 0v-1H5a2 2 0 01-2-2v-2H2a1 1 0 110-2h1V9H2a1 1 0 010-2h1V5a2 2 0 012-2h2V2zM5 5h10v10H5V5z" clip-rule="evenodd"/></svg>
+      <span class="label">Guía migración</span>
+      <span class="nav-badge" style="background:var(--teal)">NEW</span>
+    </a>
+    <a class="nav-item" onclick="go('login',this)">
+      <svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>
+      <span class="label">Login (preview)</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">JM</div>
+      <div>
+        <div class="user-name">J. Morales</div>
+        <div class="user-role">Administrador</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ────────────────────────  MAIN  ──────────────────────── -->
+<div class="main">
+  <header class="topbar">
+    <span class="page-title" id="pageTitle">Dashboard</span>
+    <div class="topbar-search">
+      <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+      <input placeholder="Buscar cliente, patente, trabajo…">
+    </div>
+    <div class="topbar-right">
+      <span class="date-chip">Martes, 21 de abril · 2026</span>
+      <button class="icon-btn"><svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z"/></svg><span class="dot"></span></button>
+      <button class="btn btn-primary" onclick="go('trabajoCreate', null)">
+        <svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+        Nuevo trabajo
+      </button>
+    </div>
+  </header>
+
+  <main class="content" id="mainContent">
+
+    <!-- ══════════════  DASHBOARD  ══════════════ -->
+    <section class="page active" id="p-dashboard">
+      <div class="page-head">
+        <div>
+          <h1>Dashboard</h1>
+          <div class="sub">Resumen financiero y operativo del taller</div>
+        </div>
+        <div class="page-head-actions">
+          <button class="btn btn-ghost">
+            <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l1.414-1.414zM11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" clip-rule="evenodd"/></svg>
+            Privacidad
+          </button>
+        </div>
+      </div>
+
+      <div class="kpi-row kpi-row-6" id="dashKpis">
+        <div class="kpi kpi-accent">
+          <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9z" clip-rule="evenodd"/></svg></div>
+          <div>
+            <div class="kpi-label">Facturado (mes)</div>
+            <div class="kpi-val">$1.284.500</div>
+            <div class="kpi-delta up">↑ 12% vs marzo</div>
+          </div>
+          <svg class="spark" width="60" height="22" viewBox="0 0 60 22"><polyline fill="none" stroke="var(--navy)" stroke-width="1.5" points="0,18 10,14 20,16 30,10 40,12 50,6 60,4"/></svg>
+        </div>
+        <div class="kpi">
+          <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg></div>
+          <div>
+            <div class="kpi-label">Cobrado (mes)</div>
+            <div class="kpi-val">$1.058.200</div>
+            <div class="kpi-delta up">↑ 8% vs marzo</div>
+          </div>
+          <svg class="spark" width="60" height="22" viewBox="0 0 60 22"><polyline fill="none" stroke="var(--green)" stroke-width="1.5" points="0,16 10,14 20,12 30,10 40,10 50,8 60,6"/></svg>
+        </div>
+        <div class="kpi">
+          <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12l-4-2-4 2-4-2V4z"/></svg></div>
+          <div>
+            <div class="kpi-label">Pendiente total</div>
+            <div class="kpi-val" style="color:var(--red)">$226.300</div>
+            <div class="kpi-delta dn">3 deudas vencidas</div>
+          </div>
+          <svg class="spark" width="60" height="22" viewBox="0 0 60 22"><polyline fill="none" stroke="var(--red)" stroke-width="1.5" points="0,6 10,10 20,8 30,12 40,10 50,14 60,12"/></svg>
+        </div>
+        <div class="kpi">
+          <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd"/></svg></div>
+          <div>
+            <div class="kpi-label">Trabajos del mes</div>
+            <div class="kpi-val">47</div>
+            <div class="kpi-delta up">↑ 6 vs marzo</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978.22.053.42.147.59.268l-.34.34a1 1 0 101.415 1.414l1.53-1.531c.47-.19.994-.19 1.464 0l1.531 1.53a1 1 0 001.414-1.414l-.34-.339a1.533 1.533 0 01.59-.268c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg></div>
+          <div>
+            <div class="kpi-label">Trabajos activos</div>
+            <div class="kpi-val">14</div>
+            <div class="kpi-delta nt">3 urgentes</div>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="ico"><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 011 1v1h1a1 1 0 010 2H7v1a1 1 0 11-2 0V6H4a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H7v1a1 1 0 11-2 0v-1H4a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd"/></svg></div>
+          <div>
+            <div class="kpi-label">Tasa de cobro</div>
+            <div class="kpi-val">82%</div>
+            <div class="kpi-delta up">↑ 4%</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status counters row -->
+      <div class="kpi-row kpi-row-4 mb-16">
+        <div class="card" style="padding: 14px 18px"><div class="hstack"><span class="badge b-abierto" style="padding:4px 10px;font-size:10px">Abiertos</span><span class="sp"></span><span style="font-size:20px;font-weight:700">14</span></div></div>
+        <div class="card" style="padding: 14px 18px"><div class="hstack"><span class="badge b-terminado" style="padding:4px 10px;font-size:10px">Terminados</span><span class="sp"></span><span style="font-size:20px;font-weight:700">8</span></div></div>
+        <div class="card" style="padding: 14px 18px"><div class="hstack"><span class="badge b-pagado" style="padding:4px 10px;font-size:10px">Pagados</span><span class="sp"></span><span style="font-size:20px;font-weight:700">25</span></div></div>
+        <div class="card" style="padding: 14px 18px"><div class="hstack"><span style="font-size:11px;color:var(--text-3);text-transform:uppercase;font-weight:600;letter-spacing:.06em">Nuevos clientes (mes)</span><span class="sp"></span><span style="font-size:20px;font-weight:700">12 <span style="font-size:11px;color:var(--green);font-weight:600">+3</span></span></div></div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="card mb-16">
+        <div class="card-hd">
+          <div class="hstack" style="gap: 8px">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--red)"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+            <span class="card-title-lg">Alertas</span>
+          </div>
+          <div class="hstack" style="font-size: 11px; color: var(--text-2)">
+            <label>Días:</label>
+            <input type="number" value="30" style="width:60px;height:26px;padding:0 8px;border:1px solid var(--border);border-radius:6px;font-size:11px">
+          </div>
+        </div>
+
+        <div class="g-1-1">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px">Deudas vencidas (3)</div>
+            <table class="tbl">
+              <thead><tr><th>Cliente</th><th class="td-num">Saldo</th><th class="td-num">Días</th><th class="td-num">Trabajos</th></tr></thead>
+              <tbody>
+                <tr><td class="td-strong">García, Ricardo</td><td class="td-num" style="color:var(--red);font-weight:600">$42.500</td><td class="td-num td-muted">45d</td><td class="td-num td-muted">2</td></tr>
+                <tr><td class="td-strong">Logística del Sur SA</td><td class="td-num" style="color:var(--red);font-weight:600">$128.000</td><td class="td-num td-muted">38d</td><td class="td-num td-muted">3</td></tr>
+                <tr><td class="td-strong">Fernández, Marcos</td><td class="td-num" style="color:var(--red);font-weight:600">$22.800</td><td class="td-num td-muted">31d</td><td class="td-num td-muted">1</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:8px">Trabajos terminados sin cobrar (4)</div>
+            <table class="tbl">
+              <thead><tr><th>N°</th><th>Cliente</th><th class="td-num">Saldo</th><th class="td-num">Días</th></tr></thead>
+              <tbody>
+                <tr><td class="td-mono">T-0441</td><td class="td-strong">López, Juan</td><td class="td-num" style="color:var(--amber);font-weight:600">$18.500</td><td class="td-num td-muted">12d</td></tr>
+                <tr><td class="td-mono">T-0438</td><td class="td-strong">Pérez, Ana</td><td class="td-num" style="color:var(--amber);font-weight:600">$34.200</td><td class="td-num td-muted">8d</td></tr>
+                <tr><td class="td-mono">T-0435</td><td class="td-strong">Torres, Luis</td><td class="td-num" style="color:var(--amber);font-weight:600">$9.800</td><td class="td-num td-muted">5d</td></tr>
+                <tr><td class="td-mono">T-0430</td><td class="td-strong">Vega, Carla</td><td class="td-num" style="color:var(--amber);font-weight:600">$15.000</td><td class="td-num td-muted">3d</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue trend -->
+      <div class="g-2-1">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title-lg">Tendencia de ingresos</span>
+            <div class="hstack">
+              <select class="field-select" style="width:120px;padding:5px 8px;font-size:11px">
+                <option>Mes</option><option>Semana</option><option>Año</option>
+              </select>
+              <div class="legend">
+                <span class="leg"><span class="leg-dot" style="background:#111827"></span>Cobrado</span>
+                <span class="leg"><span class="leg-dot" style="background:#d1d5db;border:1px dashed #9ca3af"></span>Facturado</span>
+              </div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:200px"><canvas id="revenueChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><span class="card-title-lg">Trabajos por tipo</span></div>
+          <div class="chart-wrap" style="height:130px"><canvas id="jobTypeChart"></canvas></div>
+          <div class="mt-12 vstack" style="gap:4px">
+            <div class="hstack" style="font-size:11px"><span class="hstack" style="color:var(--text-2);gap:6px"><span style="width:7px;height:7px;border-radius:2px;background:#111827"></span>Mantenimiento</span><span class="sp"></span><span style="font-weight:600">32%</span></div>
+            <div class="hstack" style="font-size:11px"><span class="hstack" style="color:var(--text-2);gap:6px"><span style="width:7px;height:7px;border-radius:2px;background:#374151"></span>Frenos</span><span class="sp"></span><span style="font-weight:600">24%</span></div>
+            <div class="hstack" style="font-size:11px"><span class="hstack" style="color:var(--text-2);gap:6px"><span style="width:7px;height:7px;border-radius:2px;background:#6b7280"></span>Motor</span><span class="sp"></span><span style="font-weight:600">18%</span></div>
+            <div class="hstack" style="font-size:11px"><span class="hstack" style="color:var(--text-2);gap:6px"><span style="width:7px;height:7px;border-radius:2px;background:#9ca3af"></span>Eléctrica</span><span class="sp"></span><span style="font-weight:600">14%</span></div>
+            <div class="hstack" style="font-size:11px"><span class="hstack" style="color:var(--text-2);gap:6px"><span style="width:7px;height:7px;border-radius:2px;background:#d1d5db"></span>Otros</span><span class="sp"></span><span style="font-weight:600">12%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Closing + top clients -->
+      <div class="g-2-1">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title-lg">Cierre mensual — abril 2026</span>
+            <div class="tabs" style="border:none;margin:0">
+              <span class="tab on">Todos</span>
+              <span class="tab">Con IVA</span>
+              <span class="tab">Sin IVA</span>
+            </div>
+          </div>
+          <div class="kpi-row kpi-row-6" style="margin-bottom:14px">
+            <div><div class="kpi-label">Trabajos</div><div style="font-size:18px;font-weight:700">47</div></div>
+            <div><div class="kpi-label">Subtotal</div><div style="font-size:18px;font-weight:700">$1.052.8k</div></div>
+            <div><div class="kpi-label">IVA</div><div style="font-size:18px;font-weight:700">$231.6k</div></div>
+            <div><div class="kpi-label">Total</div><div style="font-size:18px;font-weight:700">$1.284.5k</div></div>
+            <div><div class="kpi-label">Cobrado</div><div style="font-size:18px;font-weight:700;color:var(--green)">$1.058.2k</div></div>
+            <div><div class="kpi-label">Saldo</div><div style="font-size:18px;font-weight:700;color:var(--red)">$226.3k</div></div>
+          </div>
+          <table class="tbl">
+            <thead><tr><th>N°</th><th>Cliente</th><th>Fecha</th><th>Estado</th><th class="td-num">Total</th><th class="td-num">Saldo</th></tr></thead>
+            <tbody>
+              <tr><td class="td-mono">T-0447</td><td class="td-strong">Fernández, M.</td><td class="td-muted td-sm">18/04</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$45.200</td><td class="td-num" style="color:var(--green)">$0</td></tr>
+              <tr><td class="td-mono">T-0446</td><td class="td-strong">López, J.</td><td class="td-muted td-sm">17/04</td><td><span class="badge b-terminado">Terminado</span></td><td class="td-num td-strong">$18.500</td><td class="td-num" style="color:var(--red);font-weight:600">$18.500</td></tr>
+              <tr><td class="td-mono">T-0445</td><td class="td-strong">Pérez, A.</td><td class="td-muted td-sm">17/04</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$68.000</td><td class="td-num" style="color:var(--green)">$0</td></tr>
+              <tr><td class="td-mono">T-0444</td><td class="td-strong">Torres, L.</td><td class="td-muted td-sm">16/04</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$12.300</td><td class="td-num" style="color:var(--green)">$0</td></tr>
+              <tr><td class="td-mono">T-0443</td><td class="td-strong">García, R.</td><td class="td-muted td-sm">15/04</td><td><span class="badge b-abierto">Abierto</span></td><td class="td-num td-strong">$42.500</td><td class="td-num" style="color:var(--red);font-weight:600">$42.500</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-hd"><span class="card-title-lg">Top 5 clientes</span></div>
+          <table class="tbl">
+            <thead><tr><th>Cliente</th><th class="td-num">Total</th><th class="td-num">Trabajos</th></tr></thead>
+            <tbody>
+              <tr><td class="td-strong">Logística del Sur SA <span class="badge b-vip" style="margin-left:4px">VIP</span></td><td class="td-num td-strong">$342.0k</td><td class="td-num td-muted">12</td></tr>
+              <tr><td class="td-strong">Fernández, Marcos</td><td class="td-num td-strong">$189.5k</td><td class="td-num td-muted">9</td></tr>
+              <tr><td class="td-strong">Pérez, Ana</td><td class="td-num td-strong">$142.3k</td><td class="td-num td-muted">7</td></tr>
+              <tr><td class="td-strong">Torres, Luis</td><td class="td-num td-strong">$98.4k</td><td class="td-num td-muted">5</td></tr>
+              <tr><td class="td-strong">Vega, Carla <span class="badge b-new" style="margin-left:4px">Nueva</span></td><td class="td-num td-strong">$58.2k</td><td class="td-num td-muted">2</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ══════════════  TRABAJOS (LIST)  ══════════════ -->
+    <section class="page" id="p-trabajos">
+      <div class="page-head">
+        <div>
+          <h1>Trabajos</h1>
+          <div class="sub">Órdenes de servicio activas e históricas</div>
+        </div>
+        <div class="page-head-actions">
+          <button class="btn"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>CSV</button>
+          <button class="btn btn-primary" onclick="go('trabajoCreate', null)"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>Nuevo trabajo</button>
+        </div>
+      </div>
+
+      <div class="kpi-row kpi-row-5">
+        <div class="kpi"><div class="kpi-label">Total abiertos</div><div class="kpi-val">14</div></div>
+        <div class="kpi"><div class="kpi-label">En proceso</div><div class="kpi-val">8</div></div>
+        <div class="kpi"><div class="kpi-label">Esperando repuestos</div><div class="kpi-val">3</div></div>
+        <div class="kpi"><div class="kpi-label">Listos para entrega</div><div class="kpi-val">3</div></div>
+        <div class="kpi"><div class="kpi-label">Urgentes</div><div class="kpi-val" style="color:var(--red)">3</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <button class="filt on" onclick="setFilt(this)">Todos</button>
+        <button class="filt" onclick="setFilt(this)">Abierto</button>
+        <button class="filt" onclick="setFilt(this)">Terminado</button>
+        <button class="filt" onclick="setFilt(this)">Pagado</button>
+        <span class="sp"></span>
+        <div class="topbar-search" style="max-width:260px;margin-right:8px">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input placeholder="Buscar n°, cliente, patente…">
+        </div>
+        <input type="date" class="field-input" style="width:140px;padding:5px 8px;font-size:11px" value="2026-04-01">
+        <input type="date" class="field-input" style="width:140px;padding:5px 8px;font-size:11px" value="2026-04-21">
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th style="padding-left:20px">Número</th><th>Cliente</th><th>Patente</th><th>Vehículo</th><th>Estado</th><th class="td-num">Subtotal</th><th>Fecha</th>
+              <th style="padding-right:20px"></th>
+            </tr>
+          </thead>
+          <tbody id="jobsBody"></tbody>
+        </table>
+        <div style="padding:10px 20px;border-top:1px solid var(--border2);display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--text-2)">
+          <span>Mostrando 1–10 de 47</span>
+          <div class="hstack">
+            <button class="btn btn-sm btn-ghost">‹ Anterior</button>
+            <button class="btn btn-sm">1</button>
+            <button class="btn btn-sm btn-ghost">2</button>
+            <button class="btn btn-sm btn-ghost">3</button>
+            <button class="btn btn-sm btn-ghost">Siguiente ›</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════  TRABAJO DETAIL  ══════════════ -->
+    <section class="page" id="p-trabajoDetail">
+      <div class="page-head">
+        <div>
+          <div class="hstack" style="gap:10px">
+            <h1>Trabajo T-0441</h1>
+            <span class="badge b-terminado" style="font-size:10px;padding:4px 10px">Terminado</span>
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="var(--amber)"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/></svg>
+          </div>
+          <div class="sub">Creado el 17/04/2026 · Últ. actualización hoy</div>
+        </div>
+        <div class="page-head-actions">
+          <button class="btn btn-primary"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>Marcar pagado</button>
+          <button class="btn"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/></svg>Imprimir PDF</button>
+          <button class="btn btn-danger"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9z" clip-rule="evenodd"/></svg>Eliminar</button>
+          <button class="btn btn-ghost" onclick="go('trabajos',null)">← Volver</button>
+        </div>
+      </div>
+
+      <div class="banner banner-warn">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2z" clip-rule="evenodd"/></svg>
+        <span class="sp">Este trabajo está bloqueado para edición. Se pueden registrar pagos.</span>
+        <button class="btn btn-sm">Desbloquear</button>
+      </div>
+
+      <div class="g-1-1-1 mb-16">
+        <div class="card">
+          <div class="card-title mb-8">Cliente</div>
+          <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px">López, Juan</div>
+          <div style="font-size:11px;color:var(--text-2);line-height:1.7">RUT: 4.182.937-4<br>Tel: +598 99 123 456<br>lopez.j@email.com</div>
+        </div>
+        <div class="card">
+          <div class="card-title mb-8">Vehículo</div>
+          <div style="font-size:15px;font-weight:700;color:var(--navy);margin-bottom:4px">ABC-1234</div>
+          <div style="font-size:11px;color:var(--text-2);line-height:1.7">Toyota Corolla '19 · Plata<br>Km: 82.450<br>Fecha servicio: 17/04/2026</div>
+        </div>
+        <div class="card" style="background: var(--bg)">
+          <div class="card-title mb-8">Financiero</div>
+          <div class="totals" style="background: var(--surface); padding:10px 12px">
+            <div class="totals-row"><span>Subtotal</span><span>$15.164</span></div>
+            <div class="totals-row"><span>IVA (22%)</span><span>$3.336</span></div>
+            <div class="totals-row grand"><span>Total</span><span>$18.500</span></div>
+            <div class="totals-row"><span>Pagado</span><strong style="color:var(--green)">$0</strong></div>
+            <div class="totals-row bal-pos" style="padding-top:8px;margin-top:4px;border-top:1px solid var(--border2)"><span>Saldo</span><strong>$18.500</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd">
+          <span class="card-title-lg">Items</span>
+          <button class="btn btn-sm"><svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>Agregar</button>
+        </div>
+        <table class="tbl">
+          <thead><tr><th>Tipo</th><th>Descripción</th><th class="td-num">Cant.</th><th class="td-num">Precio</th><th>Proveedor</th><th class="td-num">Subtotal</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><span class="badge b-teal">Mano de obra</span></td><td class="td-strong">Cambio de aceite y filtro</td><td class="td-num">1</td><td class="td-num td-muted">$3.500</td><td class="td-muted td-sm">—</td><td class="td-num td-strong">$3.500</td><td></td></tr>
+            <tr><td><span class="badge b-reg">Repuesto</span></td><td class="td-strong">Aceite 10W-40 sintético<br><small style="color:var(--text-3)">5L</small></td><td class="td-num">1</td><td class="td-num td-muted">$4.200</td><td class="td-muted td-sm">Mobil</td><td class="td-num td-strong">$4.200</td><td></td></tr>
+            <tr><td><span class="badge b-reg">Repuesto</span></td><td class="td-strong">Filtro de aceite</td><td class="td-num">1</td><td class="td-num td-muted">$1.100</td><td class="td-muted td-sm">Mann</td><td class="td-num td-strong">$1.100</td><td></td></tr>
+            <tr><td><span class="badge b-teal">Mano de obra</span></td><td class="td-strong">Revisión general de frenos</td><td class="td-num">2</td><td class="td-num td-muted">$2.800</td><td class="td-muted td-sm">—</td><td class="td-num td-strong">$5.600</td><td></td></tr>
+            <tr><td><span class="badge b-reg">Repuesto</span></td><td class="td-strong">Líquido de frenos DOT 4</td><td class="td-num">1</td><td class="td-num td-muted">$764</td><td class="td-muted td-sm">Bosch</td><td class="td-num td-strong">$764</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="g-1-1">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title-lg">Pagos</span>
+            <button class="btn btn-sm btn-primary">Registrar pago</button>
+          </div>
+          <div class="empty-state" style="padding: 28px 20px">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9z" clip-rule="evenodd"/></svg>
+            <p>Sin pagos registrados</p>
+            <div class="hint">Registra el primer pago del cliente</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><span class="card-title-lg">Notas internas</span></div>
+          <textarea class="field-textarea" style="font-size:12px" placeholder="Observaciones, conversaciones con el cliente…">Cliente pidió presupuesto detallado. Retiró el vehículo el 18/04 sin pagar, se comprometió a pagar antes del 25/04.</textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════  TRABAJO CREATE  ══════════════ -->
+    <section class="page" id="p-trabajoCreate">
+      <div class="page-head">
+        <div>
+          <h1>Nuevo trabajo</h1>
+          <div class="sub">Crea una orden de servicio para un vehículo</div>
+        </div>
+        <div class="page-head-actions">
+          <button class="btn btn-ghost" onclick="go('trabajos',null)">Cancelar</button>
+          <button class="btn btn-primary">Guardar trabajo</button>
+        </div>
+      </div>
+
+      <div class="g-2-1">
+        <div>
+          <div class="card mb-16">
+            <div class="form-section-title">Cliente y vehículo</div>
+            <div class="field-row field-row-2">
+              <div class="field"><label class="field-label">Cliente</label><input class="field-input" placeholder="Buscar o crear cliente…" value="Fernández, Marcos"></div>
+              <div class="field"><label class="field-label">Vehículo / Patente</label><input class="field-input" value="XKL-9821 · Ford F-150 '21"></div>
+            </div>
+            <div class="field-row field-row-3">
+              <div class="field"><label class="field-label">Fecha</label><input type="date" class="field-input" value="2026-04-21"></div>
+              <div class="field"><label class="field-label">Kilometraje</label><input class="field-input" value="45.120"></div>
+              <div class="field"><label class="field-label">IVA</label><select class="field-select"><option>Con IVA (22%)</option><option>Sin IVA</option></select></div>
+            </div>
+          </div>
+
+          <div class="card mb-16">
+            <div class="card-hd">
+              <span class="card-title-lg">Items</span>
+              <button class="btn btn-sm"><svg width="10" height="10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>Agregar ítem</button>
+            </div>
+            <table class="tbl">
+              <thead><tr><th>Tipo</th><th>Descripción</th><th>Proveedor</th><th class="td-num">Cant.</th><th class="td-num">Precio</th><th class="td-num">Subtotal</th><th></th></tr></thead>
+              <tbody>
+                <tr><td><select class="field-select" style="padding:4px 6px;font-size:11px;width:110px"><option>Mano de obra</option><option>Repuesto</option></select></td><td><input class="field-input" style="padding:4px 6px;font-size:11px" value="Cambio de pastillas delanteras"></td><td><input class="field-input" style="padding:4px 6px;font-size:11px" placeholder="—"></td><td><input class="field-input" style="padding:4px 6px;font-size:11px;text-align:right" value="2"></td><td><input class="field-input" style="padding:4px 6px;font-size:11px;text-align:right" value="4.200"></td><td class="td-num td-strong">$8.400</td><td><button class="btn btn-sm btn-ghost" style="padding:2px 6px">✕</button></td></tr>
+                <tr><td><select class="field-select" style="padding:4px 6px;font-size:11px;width:110px"><option selected>Repuesto</option><option>Mano de obra</option></select></td><td><input class="field-input" style="padding:4px 6px;font-size:11px" value="Pastillas Bosch QuietCast"></td><td><input class="field-input" style="padding:4px 6px;font-size:11px" value="Bosch"></td><td><input class="field-input" style="padding:4px 6px;font-size:11px;text-align:right" value="1"></td><td><input class="field-input" style="padding:4px 6px;font-size:11px;text-align:right" value="18.500"></td><td class="td-num td-strong">$18.500</td><td><button class="btn btn-sm btn-ghost" style="padding:2px 6px">✕</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <div class="form-section-title">Notas</div>
+            <textarea class="field-textarea" placeholder="Observaciones para el cliente, trabajo pendiente…"></textarea>
+          </div>
+        </div>
+
+        <div>
+          <div class="card mb-16" style="position:sticky;top:72px">
+            <div class="form-section-title" style="margin-bottom:14px">Resumen</div>
+            <div class="totals" style="padding:0;border:none">
+              <div class="totals-row"><span>Items</span><strong>2</strong></div>
+              <div class="totals-row"><span>Subtotal</span><strong>$26.900</strong></div>
+              <div class="totals-row"><span>Descuento</span><strong>$0</strong></div>
+              <div class="totals-row"><span>IVA (22%)</span><strong>$5.918</strong></div>
+              <div class="totals-row grand"><span>Total</span><span>$32.818</span></div>
+            </div>
+            <button class="btn btn-primary mt-16" style="width:100%;justify-content:center">Guardar trabajo</button>
+            <button class="btn mt-8" style="width:100%;justify-content:center">Guardar y cobrar</button>
+          </div>
+          <div class="card">
+            <div class="form-section-title">Historial del cliente</div>
+            <div class="vstack" style="gap:10px">
+              <div class="hstack" style="font-size:11px"><span class="td-mono" style="color:var(--text-2)">T-0428</span><span class="sp"></span><span class="td-muted">12/03/2026</span><span class="td-strong">$42.800</span></div>
+              <div class="hstack" style="font-size:11px"><span class="td-mono" style="color:var(--text-2)">T-0401</span><span class="sp"></span><span class="td-muted">28/01/2026</span><span class="td-strong">$18.200</span></div>
+              <div class="hstack" style="font-size:11px"><span class="td-mono" style="color:var(--text-2)">T-0372</span><span class="sp"></span><span class="td-muted">02/11/2025</span><span class="td-strong">$35.900</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════  CLIENTES  ══════════════ -->
+    <section class="page" id="p-clientes">
+      <div class="page-head">
+        <div><h1>Clientes</h1><div class="sub">Base de contactos · 348 activos</div></div>
+        <div class="page-head-actions">
+          <button class="btn">CSV</button>
+          <button class="btn btn-primary"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>Nuevo cliente</button>
+        </div>
+      </div>
+
+      <div class="kpi-row kpi-row-4">
+        <div class="kpi kpi-accent"><div class="kpi-label">Total clientes</div><div class="kpi-val">348</div><div class="kpi-delta up">↑ 23 este mes</div></div>
+        <div class="kpi"><div class="kpi-label">Tasa de retorno</div><div class="kpi-val">68%</div><div class="kpi-delta up">↑ 4%</div></div>
+        <div class="kpi"><div class="kpi-label">LTV promedio</div><div class="kpi-val">$124.000</div></div>
+        <div class="kpi"><div class="kpi-label">Con deuda</div><div class="kpi-val" style="color:var(--red)">12</div><div class="kpi-delta dn">$226k pendientes</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="topbar-search" style="max-width:320px">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input placeholder="Nombre, RUT, teléfono…">
+        </div>
+        <button class="filt on">Todos</button>
+        <button class="filt">Individual</button>
+        <button class="filt">Empresa</button>
+        <button class="filt">Con deuda</button>
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tbl">
+          <thead>
+            <tr><th style="padding-left:20px">Nombre</th><th>Tipo</th><th>RUT</th><th>Teléfono</th><th class="td-num">Vehículos</th><th class="td-num">Saldo</th><th style="padding-right:20px"></th></tr>
+          </thead>
+          <tbody id="clientsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════  CLIENTE DETAIL  ══════════════ -->
+    <section class="page" id="p-clienteDetail">
+      <div class="page-head">
+        <div>
+          <div class="hstack"><h1>Fernández, Marcos</h1><span class="badge b-vip">VIP</span></div>
+          <div class="sub">RUT 3.921.455-7 · Cliente desde mar 2024</div>
+        </div>
+        <div class="page-head-actions">
+          <button class="btn">Editar</button>
+          <button class="btn btn-primary">Nuevo trabajo</button>
+        </div>
+      </div>
+
+      <div class="g-1-1-1 mb-16">
+        <div class="card">
+          <div class="card-title mb-8">Contacto</div>
+          <div class="vstack" style="gap:6px;font-size:12px">
+            <div><span class="td-muted">Tel:</span> +598 99 123 456</div>
+            <div><span class="td-muted">Email:</span> m.fernandez@email.com</div>
+            <div><span class="td-muted">Dirección:</span> Bulevar España 2145, Montevideo</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title mb-8">Financiero</div>
+          <div class="hstack" style="justify-content:space-between;margin-bottom:6px;font-size:12px"><span class="td-muted">Total facturado</span><span class="td-strong">$189.500</span></div>
+          <div class="hstack" style="justify-content:space-between;margin-bottom:6px;font-size:12px"><span class="td-muted">Pagado</span><span style="color:var(--green);font-weight:600">$166.700</span></div>
+          <div class="hstack" style="justify-content:space-between;font-size:14px"><span>Saldo</span><strong style="color:var(--red)">$22.800</strong></div>
+        </div>
+        <div class="card">
+          <div class="card-title mb-8">Stats</div>
+          <div class="kpi-row kpi-row-3" style="margin:0">
+            <div><div class="kpi-label">Trabajos</div><div style="font-size:20px;font-weight:700">9</div></div>
+            <div><div class="kpi-label">Vehículos</div><div style="font-size:20px;font-weight:700">2</div></div>
+            <div><div class="kpi-label">Últ. visita</div><div style="font-size:14px;font-weight:700;margin-top:4px">17/04</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <span class="tab on">Trabajos (9)</span>
+        <span class="tab">Vehículos (2)</span>
+        <span class="tab">Pagos</span>
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th style="padding-left:20px">N°</th><th>Fecha</th><th>Vehículo</th><th>Descripción</th><th>Estado</th><th class="td-num">Total</th><th class="td-num">Saldo</th><th style="padding-right:20px"></th></tr></thead>
+          <tbody>
+            <tr><td style="padding-left:20px" class="td-mono">T-0446</td><td class="td-muted td-sm">17/04/2026</td><td>Toyota Corolla '19</td><td class="td-muted td-sm">Cambio aceite + frenos</td><td><span class="badge b-terminado">Terminado</span></td><td class="td-num td-strong">$18.500</td><td class="td-num" style="color:var(--red);font-weight:600">$18.500</td><td style="padding-right:20px"></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0428</td><td class="td-muted td-sm">12/03/2026</td><td>Ford F-150 '21</td><td class="td-muted td-sm">Embrague</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$42.800</td><td class="td-num" style="color:var(--green)">$0</td><td style="padding-right:20px"></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0401</td><td class="td-muted td-sm">28/01/2026</td><td>Toyota Corolla '19</td><td class="td-muted td-sm">Service 60mil km</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$18.200</td><td class="td-num" style="color:var(--green)">$0</td><td style="padding-right:20px"></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0372</td><td class="td-muted td-sm">02/11/2025</td><td>Ford F-150 '21</td><td class="td-muted td-sm">Alineación y balanceo</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$35.900</td><td class="td-num" style="color:var(--green)">$0</td><td style="padding-right:20px"></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0338</td><td class="td-muted td-sm">15/08/2025</td><td>Toyota Corolla '19</td><td class="td-muted td-sm">Batería</td><td><span class="badge b-pagado">Pagado</span></td><td class="td-num td-strong">$12.100</td><td class="td-num" style="color:var(--green)">$0</td><td style="padding-right:20px"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════  VEHÍCULOS  ══════════════ -->
+    <section class="page" id="p-vehiculos">
+      <div class="page-head">
+        <div><h1>Vehículos</h1><div class="sub">Registro de unidades que ingresan al taller</div></div>
+        <div class="page-head-actions">
+          <button class="btn">CSV</button>
+          <button class="btn btn-primary"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>Nuevo vehículo</button>
+        </div>
+      </div>
+
+      <div class="kpi-row kpi-row-4">
+        <div class="kpi kpi-accent"><div class="kpi-label">Total vehículos</div><div class="kpi-val">512</div><div class="kpi-delta up">↑ 18 este mes</div></div>
+        <div class="kpi"><div class="kpi-label">Activos (6m)</div><div class="kpi-val">287</div></div>
+        <div class="kpi"><div class="kpi-label">Con trabajo abierto</div><div class="kpi-val">14</div></div>
+        <div class="kpi"><div class="kpi-label">Service vencido</div><div class="kpi-val" style="color:var(--amber)">23</div></div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="topbar-search" style="max-width:320px">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"/></svg>
+          <input placeholder="Patente, marca, modelo, dueño…">
+        </div>
+        <select class="field-select" style="width:140px;padding:5px 10px;font-size:11px"><option>Todas las marcas</option><option>Toyota</option><option>Ford</option></select>
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th style="padding-left:20px">Patente</th><th>Marca / Modelo</th><th>Año</th><th>Color</th><th>Dueño</th><th class="td-num">Km</th><th class="td-num">Trabajos</th><th>Últ. visita</th><th style="padding-right:20px"></th></tr></thead>
+          <tbody id="vehBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════  PAGOS  ══════════════ -->
+    <section class="page" id="p-pagos">
+      <div class="page-head">
+        <div><h1>Pagos</h1><div class="sub">Cuentas por cobrar y registro de cobros</div></div>
+        <div class="page-head-actions">
+          <button class="btn">Antigüedad PDF</button>
+          <button class="btn btn-primary">Registrar pago</button>
+        </div>
+      </div>
+
+      <div class="kpi-row kpi-row-4">
+        <div class="kpi kpi-accent"><div class="kpi-label">Cobrado (mes)</div><div class="kpi-val">$1.058.2k</div><div class="kpi-delta up">↑ 8%</div></div>
+        <div class="kpi"><div class="kpi-label">Pendiente total</div><div class="kpi-val" style="color:var(--red)">$226.3k</div></div>
+        <div class="kpi"><div class="kpi-label">Deudores</div><div class="kpi-val">12</div></div>
+        <div class="kpi">
+          <div class="kpi-label">Métodos de cobro</div>
+          <div class="chart-wrap" style="height:48px;margin-top:4px"><canvas id="methodChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">Cobrado vs Pendiente</span></div>
+        <div class="vstack" style="gap: 10px">
+          <div class="sbar-row"><span class="sbar-name">Cobrado</span><div class="sbar-bg" style="height:22px;border-radius:4px"><div class="sbar-fill" style="width:82%;background:var(--green);height:100%;display:flex;align-items:center;padding-left:10px;color:#fff;font-size:11px;font-weight:600;border-radius:4px">$1.058.2k · 82%</div></div><span class="sbar-val" style="width:auto"></span></div>
+          <div class="sbar-row"><span class="sbar-name">Pendiente</span><div class="sbar-bg" style="height:22px;border-radius:4px"><div class="sbar-fill" style="width:18%;background:var(--red);height:100%;display:flex;align-items:center;padding-left:10px;color:#fff;font-size:11px;font-weight:600;border-radius:4px">$226.3k · 18%</div></div><span class="sbar-val" style="width:auto"></span></div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">Antigüedad de deuda</span></div>
+        <div class="aging-grid">
+          <div class="aging-item"><div class="aging-label">0–30 días</div><div class="aging-amount">$48.200</div><div class="aging-meta">5 trabajos · 4 clientes</div></div>
+          <div class="aging-item"><div class="aging-label">31–60 días</div><div class="aging-amount">$64.500</div><div class="aging-meta">4 trabajos · 3 clientes</div></div>
+          <div class="aging-item"><div class="aging-label">61–90 días</div><div class="aging-amount">$41.600</div><div class="aging-meta">3 trabajos · 3 clientes</div></div>
+          <div class="aging-item aging-danger"><div class="aging-label">90+ días</div><div class="aging-amount">$72.000</div><div class="aging-meta">2 trabajos · 2 clientes</div></div>
+          <div class="aging-item"><div class="aging-label">Total</div><div class="aging-amount">$226.3k</div><div class="aging-meta">14 trabajos · 12 clientes</div></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <span class="tab on">Trabajos con saldo</span>
+        <span class="tab">Pagos recientes</span>
+        <span class="tab">Deudores</span>
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th style="padding-left:20px">N°</th><th>Fecha</th><th>Cliente</th><th>Patente</th><th class="td-num">Total</th><th class="td-num">Pagado</th><th class="td-num">Saldo</th><th>Estado</th><th>Últ. pago</th><th style="padding-right:20px"></th></tr></thead>
+          <tbody>
+            <tr><td style="padding-left:20px" class="td-mono">T-0441</td><td class="td-muted td-sm">13/04</td><td class="td-strong">García, R.</td><td class="td-muted">RGH-4521</td><td class="td-num td-strong">$42.500</td><td class="td-num" style="color:var(--green)">$0</td><td class="td-num" style="color:var(--red);font-weight:600">$42.500</td><td><span class="badge b-abierto">Abierto</span></td><td class="td-muted td-sm">—</td><td style="padding-right:20px"><button class="btn btn-sm btn-primary">Cobrar</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0446</td><td class="td-muted td-sm">17/04</td><td class="td-strong">López, J.</td><td class="td-muted">ABC-1234</td><td class="td-num td-strong">$18.500</td><td class="td-num" style="color:var(--green)">$0</td><td class="td-num" style="color:var(--red);font-weight:600">$18.500</td><td><span class="badge b-terminado">Terminado</span></td><td class="td-muted td-sm">—</td><td style="padding-right:20px"><button class="btn btn-sm btn-primary">Cobrar</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0445</td><td class="td-muted td-sm">17/04</td><td class="td-strong">Pérez, A.</td><td class="td-muted">JKM-2298</td><td class="td-num td-strong">$68.000</td><td class="td-num" style="color:var(--green)">$34.000</td><td class="td-num" style="color:var(--red);font-weight:600">$34.000</td><td><span class="badge b-terminado">Terminado</span></td><td class="td-muted td-sm">14/04 (efectivo)</td><td style="padding-right:20px"><button class="btn btn-sm btn-primary">Cobrar</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0443</td><td class="td-muted td-sm">15/04</td><td class="td-strong">Logística del Sur SA</td><td class="td-muted">SUR-8821</td><td class="td-num td-strong">$128.000</td><td class="td-num" style="color:var(--green)">$0</td><td class="td-num" style="color:var(--red);font-weight:600">$128.000</td><td><span class="badge b-abierto">Abierto</span></td><td class="td-muted td-sm">—</td><td style="padding-right:20px"><button class="btn btn-sm btn-primary">Cobrar</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">T-0430</td><td class="td-muted td-sm">08/04</td><td class="td-strong">Vega, C.</td><td class="td-muted">QWE-4455</td><td class="td-num td-strong">$15.000</td><td class="td-num" style="color:var(--green)">$0</td><td class="td-num" style="color:var(--red);font-weight:600">$15.000</td><td><span class="badge b-terminado">Terminado</span></td><td class="td-muted td-sm">—</td><td style="padding-right:20px"><button class="btn btn-sm btn-primary">Cobrar</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════  USUARIOS  ══════════════ -->
+    <section class="page" id="p-usuarios">
+      <div class="page-head">
+        <div><h1>Usuarios</h1><div class="sub">Gestión de accesos al sistema</div></div>
+        <div class="page-head-actions">
+          <button class="btn btn-primary"><svg width="11" height="11" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd"/></svg>Nuevo usuario</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:0">
+        <table class="tbl">
+          <thead><tr><th style="padding-left:20px">Usuario</th><th>Nombre</th><th>Rol</th><th>Email</th><th>Últ. login</th><th>Estado</th><th style="padding-right:20px"></th></tr></thead>
+          <tbody>
+            <tr><td style="padding-left:20px" class="td-mono">admin</td><td class="td-strong">J. Morales</td><td><span class="badge b-vip">Administrador</span></td><td class="td-muted td-sm">morales@taller.com</td><td class="td-muted td-sm">hoy, 09:42</td><td><span class="badge b-done">Activo</span></td><td style="padding-right:20px"><button class="btn btn-sm btn-ghost">⋯</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">recep1</td><td class="td-strong">L. Rodríguez</td><td><span class="badge b-pro">Recepción</span></td><td class="td-muted td-sm">rodriguez@taller.com</td><td class="td-muted td-sm">hoy, 08:15</td><td><span class="badge b-done">Activo</span></td><td style="padding-right:20px"><button class="btn btn-sm btn-ghost">⋯</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">mec_ramirez</td><td class="td-strong">C. Ramírez</td><td><span class="badge b-teal">Mecánico</span></td><td class="td-muted td-sm">ramirez@taller.com</td><td class="td-muted td-sm">ayer, 17:30</td><td><span class="badge b-done">Activo</span></td><td style="padding-right:20px"><button class="btn btn-sm btn-ghost">⋯</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">mec_gonzalez</td><td class="td-strong">A. González</td><td><span class="badge b-teal">Mecánico</span></td><td class="td-muted td-sm">gonzalez@taller.com</td><td class="td-muted td-sm">ayer, 18:02</td><td><span class="badge b-done">Activo</span></td><td style="padding-right:20px"><button class="btn btn-sm btn-ghost">⋯</button></td></tr>
+            <tr><td style="padding-left:20px" class="td-mono">recep2</td><td class="td-strong">M. Silva</td><td><span class="badge b-pro">Recepción</span></td><td class="td-muted td-sm">silva@taller.com</td><td class="td-muted td-sm">hace 6 días</td><td><span class="badge b-reg" style="background:#f3f4f6;color:var(--text-3)">Inactivo</span></td><td style="padding-right:20px"><button class="btn btn-sm btn-ghost">⋯</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════  IMPORTAR  ══════════════ -->
+    <section class="page" id="p-importar">
+      <div class="page-head">
+        <div><h1>Importar datos</h1><div class="sub">Cargar clientes, vehículos o trabajos desde CSV/Excel</div></div>
+      </div>
+
+      <div class="g-2-1">
+        <div class="card mb-16">
+          <div class="form-section-title">1. Selecciona tipo de datos</div>
+          <div class="field-row field-row-3">
+            <button class="btn" style="flex-direction:column;padding:16px;height:auto;gap:8px;background:var(--navy);color:#fff;border-color:var(--navy)">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>
+              Clientes
+            </button>
+            <button class="btn" style="flex-direction:column;padding:16px;height:auto;gap:8px">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm7 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"/><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h8a1 1 0 011 1v2h1.586A2 2 0 0116 6.586l1.414 1.414a2 2 0 01.586 1.414V12a2 2 0 01-2 2h-.5a2.5 2.5 0 01-5 0h-3a2.5 2.5 0 01-5 0H3a1 1 0 01-1-1V5a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+              Vehículos
+            </button>
+            <button class="btn" style="flex-direction:column;padding:16px;height:auto;gap:8px">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5z" clip-rule="evenodd"/></svg>
+              Trabajos
+            </button>
+          </div>
+
+          <div class="form-section-title mt-20">2. Subir archivo</div>
+          <div class="upload-zone">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>
+            <div class="t">Arrastra un archivo o hacé click</div>
+            <div class="h">CSV, XLSX · máximo 5MB</div>
+          </div>
+
+          <div class="form-section-title mt-20">3. Mapear columnas</div>
+          <div class="field-row field-row-2">
+            <div class="field"><label class="field-label">Columna CSV → campo</label><select class="field-select"><option>nombre_completo → full_name</option></select></div>
+            <div class="field"><label class="field-label">Columna CSV → campo</label><select class="field-select"><option>rut → rut</option></select></div>
+            <div class="field"><label class="field-label">Columna CSV → campo</label><select class="field-select"><option>telefono → phone</option></select></div>
+            <div class="field"><label class="field-label">Columna CSV → campo</label><select class="field-select"><option>— Ignorar —</option></select></div>
+          </div>
+
+          <div class="hstack mt-20" style="justify-content:flex-end">
+            <button class="btn btn-ghost">Cancelar</button>
+            <button class="btn btn-primary">Validar e importar</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card mb-16">
+            <div class="card-title mb-8">Resumen del archivo</div>
+            <div class="token-row"><span class="k">filas</span><span class="v">248</span></div>
+            <div class="token-row"><span class="k">columnas</span><span class="v">7</span></div>
+            <div class="token-row"><span class="k">formato</span><span class="v">.csv (UTF-8)</span></div>
+            <div class="token-row"><span class="k">tamaño</span><span class="v">142 KB</span></div>
+          </div>
+          <div class="card">
+            <div class="card-title mb-8">Validación</div>
+            <div class="banner banner-success" style="margin:0 0 8px">✓ 245 filas válidas</div>
+            <div class="banner banner-warn" style="margin:0 0 8px">⚠ 3 filas con RUT duplicado</div>
+            <div class="banner banner-error" style="margin:0">✗ 0 filas con errores críticos</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-16">
+        <div class="card-hd"><span class="card-title-lg">Importaciones recientes</span></div>
+        <table class="tbl">
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Archivo</th><th class="td-num">Filas</th><th>Usuario</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="td-muted td-sm">18/04 09:30</td><td>Clientes</td><td class="td-mono">clientes_2026.csv</td><td class="td-num">148</td><td class="td-muted">J. Morales</td><td><span class="badge b-done">Completada</span></td><td></td></tr>
+            <tr><td class="td-muted td-sm">12/04 14:22</td><td>Vehículos</td><td class="td-mono">flota_jul.xlsx</td><td class="td-num">62</td><td class="td-muted">J. Morales</td><td><span class="badge b-done">Completada</span></td><td></td></tr>
+            <tr><td class="td-muted td-sm">02/04 11:05</td><td>Trabajos</td><td class="td-mono">historico_q1.csv</td><td class="td-num">412</td><td class="td-muted">J. Morales</td><td><span class="badge b-urg">Con errores</span></td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ══════════════  AJUSTES  ══════════════ -->
+    <section class="page" id="p-ajustes">
+      <div class="page-head">
+        <div><h1>Ajustes</h1><div class="sub">Configuración del taller y preferencias</div></div>
+      </div>
+
+      <div class="g-2-1">
+        <div>
+          <div class="card mb-16">
+            <div class="form-section-title">Datos del taller</div>
+            <div class="field-row field-row-2">
+              <div class="field"><label class="field-label">Nombre</label><input class="field-input" value="Taller Morales e Hijos"></div>
+              <div class="field"><label class="field-label">RUT / CUIT</label><input class="field-input" value="21-30145678-4"></div>
+              <div class="field"><label class="field-label">Teléfono</label><input class="field-input" value="+598 2 410 5588"></div>
+              <div class="field"><label class="field-label">Email</label><input class="field-input" value="contacto@tallermorales.com"></div>
+            </div>
+            <div class="field"><label class="field-label">Dirección</label><input class="field-input" value="Av. 8 de Octubre 2934, Montevideo"></div>
+            <div class="field"><label class="field-label">Logo</label>
+              <div class="upload-zone" style="padding: 20px">
+                <div class="hstack" style="justify-content:center;gap:10px">
+                  <div style="width:48px;height:48px;border-radius:8px;background:var(--navy);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">TM</div>
+                  <div><div class="t" style="font-size:12px">logo.svg · 2.4 KB</div><div class="h">Reemplazar</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-16">
+            <div class="form-section-title">Facturación</div>
+            <div class="setting-row">
+              <div><div class="setting-label">IVA por defecto</div><div class="setting-desc">Se aplica al crear nuevos trabajos</div></div>
+              <div class="hstack"><input class="field-input" value="22" style="width:60px;text-align:right"><span class="td-muted">%</span></div>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Incluir IVA por defecto</div><div class="setting-desc">Nuevos trabajos tendrán IVA activado</div></div>
+              <div class="switch on"></div>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Moneda</div><div class="setting-desc">Símbolo y formato de números</div></div>
+              <select class="field-select" style="width:140px"><option>UYU $</option><option>USD $</option></select>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Alerta de deudas</div><div class="setting-desc">Días desde la última actividad</div></div>
+              <div class="hstack"><input class="field-input" value="30" style="width:60px;text-align:right"><span class="td-muted">días</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="form-section-title">Seguridad</div>
+            <div class="setting-row">
+              <div><div class="setting-label">Sesión expira tras</div><div class="setting-desc">Tiempo sin actividad hasta cierre automático</div></div>
+              <select class="field-select" style="width:140px"><option>8 horas</option><option>4 horas</option><option>1 hora</option></select>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Requerir 2FA</div><div class="setting-desc">Para usuarios administradores</div></div>
+              <div class="switch"></div>
+            </div>
+            <div class="setting-row">
+              <div><div class="setting-label">Bloquear trabajos pagados</div><div class="setting-desc">No permitir editar ítems tras el cobro</div></div>
+              <div class="switch on"></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card mb-16">
+            <div class="card-title mb-8">Estado del sistema</div>
+            <div class="token-row"><span class="k">versión</span><span class="v">v3.2.1</span></div>
+            <div class="token-row"><span class="k">angular</span><span class="v">20.0.3</span></div>
+            <div class="token-row"><span class="k">base de datos</span><span class="v" style="color:var(--green)">● OK</span></div>
+            <div class="token-row"><span class="k">backup</span><span class="v">hoy 03:00</span></div>
+            <div class="token-row"><span class="k">almacenamiento</span><span class="v">2.3 / 10 GB</span></div>
+          </div>
+          <div class="card">
+            <div class="card-title mb-8">Acciones</div>
+            <button class="btn mb-8" style="width:100%;justify-content:flex-start">Exportar toda la base (backup)</button>
+            <button class="btn mb-8" style="width:100%;justify-content:flex-start">Ver log de auditoría</button>
+            <button class="btn btn-danger" style="width:100%;justify-content:flex-start">Limpiar datos de prueba</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════  MIGRACIÓN GUIDE  ══════════════ -->
+    <section class="page" id="p-migracion">
+      <div class="page-head">
+        <div><h1>Guía de migración</h1><div class="sub">Del diseño actual (Roboto + navy/rojo) al nuevo (Plus Jakarta + navy)</div></div>
+      </div>
+
+      <div class="notes-grid">
+        <div class="note-card">
+          <h4>Alcance</h4>
+          <p>Rediseño visual completo manteniendo Angular Material. Estilos globales (<code>styles.scss</code>) + <code>layout.component</code> + overrides <code>::ng-deep</code> cubren el 80%. Tablas, cards y KPIs usan clases utilitarias del nuevo diseño.</p>
+        </div>
+        <div class="note-card">
+          <h4>Estrategia</h4>
+          <p>No reemplazar Material. Reescribir tokens CSS, sobre-escribir los slots de <code>mat-card</code>, <code>mat-table</code>, <code>mat-form-field</code> y reemplazar clases globales (<code>.page-header</code>, <code>.status-badge</code>, etc.) por las del nuevo sistema.</p>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">1. Tokens — nuevos valores para <code>styles.scss</code></span></div>
+        <div class="g-1-1">
+          <div>
+            <div class="form-section-title">Nuevos (usar)</div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#f4f4f1"></span>--bg</span><span class="v">#f4f4f1</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#ffffff"></span>--surface</span><span class="v">#ffffff</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#111827"></span>--navy</span><span class="v">#111827</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#1f2937"></span>--navy2</span><span class="v">#1f2937</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#e5e7eb"></span>--border</span><span class="v">#e5e7eb</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#f3f4f6"></span>--border2</span><span class="v">#f3f4f6</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#111827"></span>--text-1</span><span class="v">#111827</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#6b7280"></span>--text-2</span><span class="v">#6b7280</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#9ca3af"></span>--text-3</span><span class="v">#9ca3af</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#16a34a"></span>--green</span><span class="v">#16a34a</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#dc2626"></span>--red</span><span class="v">#dc2626</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#d97706"></span>--amber</span><span class="v">#d97706</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#2563eb"></span>--blue</span><span class="v">#2563eb</span></div>
+          </div>
+          <div>
+            <div class="form-section-title">Descartar</div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#1A2B5F"></span>--color-primary <span class="td-muted">(navy saturado)</span></span><span class="v" style="color:var(--red);text-decoration:line-through">#1A2B5F</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#C41E2A"></span>--color-accent <span class="td-muted">(rojo corporativo)</span></span><span class="v" style="color:var(--red);text-decoration:line-through">#C41E2A</span></div>
+            <div class="token-row"><span class="k"><span class="swatch" style="background:#FAFAFA"></span>--color-bg</span><span class="v" style="color:var(--red);text-decoration:line-through">#FAFAFA → f4f4f1</span></div>
+            <div class="token-row"><span class="k">Roboto</span><span class="v" style="color:var(--red);text-decoration:line-through">→ Plus Jakarta Sans</span></div>
+            <br>
+            <div class="form-section-title">Radios y sombras</div>
+            <div class="token-row"><span class="k">--r</span><span class="v">10px</span></div>
+            <div class="token-row"><span class="k">--r-sm</span><span class="v">6px</span></div>
+            <div class="token-row"><span class="k">--shadow</span><span class="v">0 1px 3px rgba(0,0,0,.06)</span></div>
+            <div class="token-row"><span class="k">font-size base</span><span class="v">13px</span></div>
+            <div class="token-row"><span class="k">sidebar width</span><span class="v">220px</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">2. Overrides de Angular Material (::ng-deep)</span></div>
+        <div class="notes-panel">
+<span class="cm">// styles.scss — después de tokens</span>
+<span class="nh">// mat-card: quitar elevación, usar borde sutil</span>
+<span class="kw">.mat-mdc-card</span> {
+  background: <span class="cl">var(--surface)</span>;
+  border: <span class="cl">1px solid var(--border2)</span>;
+  border-radius: <span class="cl">var(--r)</span>;
+  box-shadow: <span class="cl">var(--shadow)</span> !important;
+  padding: <span class="cl">18px 20px</span>;
+  transition: box-shadow .15s;
+  &:hover { box-shadow: <span class="cl">var(--shadow-md)</span> !important; }
+}
+
+<span class="nh">// mat-table: quitar background blanco de header, usar estilo tbl</span>
+<span class="kw">.mat-mdc-header-row</span> {
+  background: <span class="cl">transparent</span> !important;
+  border-bottom: <span class="cl">1px solid var(--border2)</span>;
+}
+<span class="kw">.mat-mdc-header-cell</span> {
+  color: <span class="cl">var(--text-3)</span> !important;
+  font-size: <span class="cl">9px</span> !important;
+  font-weight: <span class="cl">700</span> !important;
+  text-transform: <span class="cl">uppercase</span>;
+  letter-spacing: <span class="cl">.08em</span>;
+  padding: <span class="cl">0 12px 10px</span> !important;
+}
+<span class="kw">.mat-mdc-cell</span> {
+  padding: <span class="cl">10px 12px</span> !important;
+  border-bottom: <span class="cl">1px solid var(--border2)</span> !important;
+  font-size: <span class="cl">13px</span>;
+}
+
+<span class="nh">// mat-form-field outlined: usar radio 6px, color navy en focus</span>
+<span class="kw">.mat-mdc-form-field.mat-mdc-form-field-appearance-outline</span> {
+  <span class="cl">--mdc-outlined-text-field-outline-color</span>: var(--border);
+  <span class="cl">--mdc-outlined-text-field-focus-outline-color</span>: var(--navy);
+  <span class="cl">--mdc-outlined-text-field-container-shape</span>: 6px;
+  <span class="cl">--mdc-outlined-text-field-label-text-color</span>: var(--text-3);
+}
+
+<span class="nh">// mat-raised-button primary → navy en vez de rojo</span>
+<span class="kw">.mat-mdc-raised-button.mat-primary</span> {
+  background: <span class="cl">var(--navy)</span> !important;
+  color: <span class="cl">#fff</span> !important;
+}
+<span class="kw">.mat-mdc-raised-button.mat-primary:hover</span> {
+  background: <span class="cl">var(--navy2)</span> !important;
+}
+
+<span class="nh">// mat-paginator: reducir altura, usar tipografía del sistema</span>
+<span class="kw">.mat-mdc-paginator</span> {
+  background: <span class="cl">transparent</span>;
+  font-size: <span class="cl">11px</span>;
+}
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">3. Reemplazos de clases globales</span></div>
+        <table class="tbl">
+          <thead><tr><th>Actual</th><th>Nuevo</th><th>Dónde</th></tr></thead>
+          <tbody>
+            <tr><td class="td-mono" style="color:var(--red)">.page-container</td><td class="td-mono" style="color:var(--green)">.content + .page-head</td><td class="td-muted td-sm">Todos los feature components</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.page-header + h1</td><td class="td-mono" style="color:var(--green)">.page-head + .page-head-actions</td><td class="td-muted td-sm">Headers de página</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.card-grid.kpi-grid</td><td class="td-mono" style="color:var(--green)">.kpi-row.kpi-row-{4,5,6}</td><td class="td-muted td-sm">dashboard, pagos</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.stat-card</td><td class="td-mono" style="color:var(--green)">.kpi + .kpi-label + .kpi-val</td><td class="td-muted td-sm">dashboard KPIs</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.status-badge .status-abierto</td><td class="td-mono" style="color:var(--green)">.badge .b-abierto</td><td class="td-muted td-sm">pipes, plantillas</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.search-field</td><td class="td-mono" style="color:var(--green)">.topbar-search (global)</td><td class="td-muted td-sm">listas + topbar</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.balance-positive</td><td class="td-mono" style="color:var(--green)">inline style o .td-num con color</td><td class="td-muted td-sm">Totales</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.lock-banner</td><td class="td-mono" style="color:var(--green)">.banner.banner-warn</td><td class="td-muted td-sm">job-detail</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.totals-panel</td><td class="td-mono" style="color:var(--green)">.totals + .totals-row</td><td class="td-muted td-sm">job-detail</td></tr>
+            <tr><td class="td-mono" style="color:var(--red)">.error-msg, .warning-msg</td><td class="td-mono" style="color:var(--green)">.banner.banner-error / -warn</td><td class="td-muted td-sm">global</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">4. Cambios en <code>layout.component.ts</code></span></div>
+        <div class="notes-panel">
+<span class="cm">// ANTES: sidenav azul navy (--color-primary) con enlaces blancos</span>
+<span class="cm">// AHORA: sidenav BLANCO, enlaces gris oscuro, activo = navy sobre blanco</span>
+
+<span class="del">background: var(--color-primary);</span>
+<span class="add">background: var(--surface);</span>
+<span class="add">border-right: 1px solid var(--border);</span>
+
+<span class="del">.sidenav mat-nav-list a { color: white; }</span>
+<span class="add">.sidenav mat-nav-list a { color: var(--text-2); font-size: 12px; }</span>
+<span class="add">.sidenav mat-nav-list a.active {</span>
+<span class="add">  background: var(--navy); color: #fff; border-radius: 6px;</span>
+<span class="add">  border-left: none; /* quitar el acento rojo */</span>
+<span class="add">}</span>
+
+<span class="cm">// Topbar: dejar de ser azul navy, usar fondo blanco con borde</span>
+<span class="del">background: var(--color-primary-dark); color: white;</span>
+<span class="add">background: var(--surface);</span>
+<span class="add">border-bottom: 1px solid var(--border);</span>
+<span class="add">color: var(--text-1);</span>
+
+<span class="cm">// search-bar: quitar overrides blancos, usar input estándar</span>
+<span class="add">/* Eliminar los ::ng-deep .search-bar que pintan blanco transparente */</span>
+        </div>
+      </div>
+
+      <div class="card mb-16">
+        <div class="card-hd"><span class="card-title-lg">5. Checklist file-by-file</span></div>
+        <table class="tbl">
+          <thead><tr><th>Archivo</th><th>Cambio</th><th>Esfuerzo</th></tr></thead>
+          <tbody>
+            <tr><td class="td-mono">src/styles.scss</td><td>Reemplazar tokens + añadir ::ng-deep de Material</td><td><span class="badge b-urg">Alto</span></td></tr>
+            <tr><td class="td-mono">src/index.html</td><td>Cambiar link a Google Fonts: Plus Jakarta Sans 400/500/600/700</td><td><span class="badge b-done">Bajo</span></td></tr>
+            <tr><td class="td-mono">layout/layout.component.ts</td><td>Sidebar blanco + topbar blanco + search chip</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">dashboard/dashboard.component.ts</td><td>Reestructurar KPIs (kpi-row-6), añadir charts navy/grey, alertas como dos columnas</td><td><span class="badge b-urg">Alto</span></td></tr>
+            <tr><td class="td-mono">jobs/list/job-list.component.ts</td><td>Añadir KPI row de estados, filter-bar con chips, tabla sin elevación</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">jobs/detail/job-detail.component.ts</td><td>3 cards info + tabla items + totals-panel lateral</td><td><span class="badge b-urg">Alto</span></td></tr>
+            <tr><td class="td-mono">jobs/create/job-create.component.ts</td><td>Layout 2-1 con panel de Resumen sticky</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">clients/list/*.ts</td><td>KPIs + filter chips + tabla</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">clients/detail/*.ts</td><td>3 info cards + tabs</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">vehicles/*</td><td>Mismo patrón que clients</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">payments/payments-page.component.ts</td><td>KPIs con chart sparkline, aging-grid, barras horizontales</td><td><span class="badge b-urg">Alto</span></td></tr>
+            <tr><td class="td-mono">users/user-list.component.ts</td><td>Tabla + role badges</td><td><span class="badge b-done">Bajo</span></td></tr>
+            <tr><td class="td-mono">import/import.component.ts</td><td>Wizard 3 pasos + upload-zone + panel validación</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">settings/settings.component.ts</td><td>setting-row con switches custom</td><td><span class="badge b-wait">Medio</span></td></tr>
+            <tr><td class="td-mono">auth/login/login.component.ts</td><td>Fondo plano + card blanca + logo-mark</td><td><span class="badge b-done">Bajo</span></td></tr>
+            <tr><td class="td-mono">shared/pipes/status.pipe.ts</td><td>Sin cambios — solo cambia CSS de los badges</td><td><span class="badge b-done">Bajo</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-hd"><span class="card-title-lg">6. Orden recomendado</span></div>
+        <div class="vstack" style="gap:10px;font-size:12px">
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">1</div>Reemplazar <code>styles.scss</code> completo + añadir fuente en <code>index.html</code>. Validar que nada crashea.</div>
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">2</div>Migrar <code>layout.component</code>. Es la regresión visual más grande pero también la más rápida.</div>
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">3</div>Dashboard (ejemplo canónico de KPIs + charts + tablas).</div>
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">4</div>Listas (Trabajos, Clientes, Vehículos) — comparten patrón, copiar-pegar.</div>
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">5</div>Detail views + formularios (Trabajo detalle, crear, Cliente detalle, Vehículo detalle).</div>
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">6</div>Pagos + Importar (los más específicos).</div>
+          <div class="hstack"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">7</div>Usuarios, Ajustes, Login (los más rápidos, dejar al final).</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════  LOGIN  ══════════════ -->
+    <section class="page" id="p-login">
+      <div class="page-head">
+        <div><h1>Login (preview)</h1><div class="sub">Pantalla de acceso al sistema — vista en miniatura</div></div>
+      </div>
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); padding: 48px 20px; display: flex; justify-content: center">
+        <div class="login-card">
+          <div class="login-brand">
+            <div class="logo-mark" style="width:44px;height:44px;border-radius:10px"><svg viewBox="0 0 24 24" style="width:20px;height:20px"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l2.8-2.8a6 6 0 01-7.8 7.8l-5.6 5.6a2.12 2.12 0 01-3-3l5.6-5.6a6 6 0 017.8-7.8l-2.8 2.8z"/></svg></div>
+            <div class="login-title">Taller Morales e Hijos</div>
+            <div class="login-sub">Iniciar sesión</div>
+          </div>
+          <div class="field"><label class="field-label">Usuario</label><input class="field-input" value="admin"></div>
+          <div class="field"><label class="field-label">Contraseña</label><input type="password" class="field-input" value="········"></div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:10px;margin-top:10px">Entrar</button>
+          <div style="text-align:center;font-size:11px;color:var(--text-3);margin-top:14px">v3.2.1 · <a style="color:var(--text-2);text-decoration:none">¿Olvidaste tu contraseña?</a></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ── Tweaks ── -->
+<button class="tweaks-toggle" onclick="document.getElementById('tweaks').classList.toggle('open');this.style.display='none'">
+  <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>
+</button>
+
+<aside class="tweaks" id="tweaks">
+  <div class="tweaks-hd">
+    <span class="t">Tweaks</span>
+    <span class="x" onclick="document.getElementById('tweaks').classList.remove('open');document.querySelector('.tweaks-toggle').style.display='flex'">✕</span>
+  </div>
+  <div class="tweaks-section">
+    <div class="tweaks-lbl">Sidebar</div>
+    <div class="tweaks-opts">
+      <button class="tweaks-opt on" onclick="setSidebar('light',this)">Claro</button>
+      <button class="tweaks-opt" onclick="setSidebar('dark',this)">Oscuro</button>
+      <button class="tweaks-opt" onclick="setSidebar('rail',this)">Rail</button>
+    </div>
+  </div>
+  <div class="tweaks-section">
+    <div class="tweaks-lbl">Estilo KPI</div>
+    <div class="tweaks-opts">
+      <button class="tweaks-opt on" onclick="setKpi('minimal',this)">Minimal</button>
+      <button class="tweaks-opt" onclick="setKpi('icon',this)">Con ícono</button>
+      <button class="tweaks-opt" onclick="setKpi('spark',this)">+ Sparkline</button>
+    </div>
+  </div>
+  <div class="tweaks-section">
+    <div class="tweaks-lbl">Densidad</div>
+    <div class="tweaks-opts">
+      <button class="tweaks-opt on" onclick="setDensity(13,this)">Compacta</button>
+      <button class="tweaks-opt" onclick="setDensity(14,this)">Normal</button>
+      <button class="tweaks-opt" onclick="setDensity(15,this)">Cómoda</button>
+    </div>
+  </div>
+</aside>
+
+<script>
+// ── Routing ──
+const titles = {
+  dashboard:'Dashboard', trabajos:'Trabajos', trabajoDetail:'Trabajo T-0441',
+  trabajoCreate:'Nuevo trabajo', clientes:'Clientes', clienteDetail:'Fernández, Marcos',
+  vehiculos:'Vehículos', pagos:'Pagos', usuarios:'Usuarios', importar:'Importar',
+  ajustes:'Ajustes', migracion:'Guía de migración', login:'Login'
+};
+function go(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('p-' + id);
+  if (el) el.classList.add('active');
+  document.getElementById('pageTitle').textContent = titles[id] || id;
+  if (btn) btn.classList.add('active');
+  else {
+    // highlight the nav that goes to this page
+    document.querySelectorAll('.nav-item').forEach(b => {
+      if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+id+"'")) b.classList.add('active');
+    });
+  }
+  window.scrollTo(0, 0);
+  document.getElementById('mainContent').scrollTop = 0;
+  // Resize charts that became visible
+  requestAnimationFrame(() => {
+    if (window._charts) window._charts.forEach(c => { try { c.resize(); } catch(e){} });
+  });
+  try { localStorage.setItem('wf_page', id); } catch(e){}
+}
+// restore
+try {
+  const saved = localStorage.getItem('wf_page');
+  if (saved && titles[saved]) go(saved, null);
+} catch(e){}
+
+function setFilt(btn) {
+  btn.parentElement.querySelectorAll('.filt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+// ── Tweaks ──
+function setSidebar(kind, btn) {
+  document.body.classList.remove('sb-dark','sb-rail');
+  if (kind==='dark') document.body.classList.add('sb-dark');
+  if (kind==='rail') document.body.classList.add('sb-rail');
+  btn.parentElement.querySelectorAll('.tweaks-opt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+function setKpi(kind, btn) {
+  document.body.classList.remove('kpi-icon','kpi-spark');
+  if (kind==='icon') document.body.classList.add('kpi-icon');
+  if (kind==='spark') { document.body.classList.add('kpi-icon','kpi-spark'); }
+  btn.parentElement.querySelectorAll('.tweaks-opt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+function setDensity(px, btn) {
+  document.body.style.fontSize = px + 'px';
+  btn.parentElement.querySelectorAll('.tweaks-opt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+// Default KPI = icon (better look)
+document.body.classList.add('kpi-icon');
+
+// ── Tables — render data ──
+const jobs = [
+  {n:'T-0447',c:'Fernández, M.',p:'XKL-9821',v:"Ford F-150 '21",st:'abierto',val:'$45.200',d:'18/04'},
+  {n:'T-0446',c:'López, J.',p:'ABC-1234',v:"Toyota Corolla '19",st:'terminado',val:'$18.500',d:'17/04'},
+  {n:'T-0445',c:'Pérez, A.',p:'JKM-2298',v:"Honda Civic '20",st:'terminado',val:'$68.000',d:'17/04'},
+  {n:'T-0444',c:'Torres, L.',p:'QWE-4455',v:"Chevy Spark '22",st:'pagado',val:'$12.300',d:'16/04'},
+  {n:'T-0443',c:'Logística del Sur SA',p:'SUR-8821',v:"Mercedes Sprinter '20",st:'abierto',val:'$128.000',d:'15/04'},
+  {n:'T-0442',c:'Vega, C.',p:'QWE-4455',v:"Mazda 3 '19",st:'pagado',val:'$22.100',d:'14/04'},
+  {n:'T-0441',c:'García, R.',p:'RGH-4521',v:"VW Golf '18",st:'abierto',val:'$42.500',d:'13/04'},
+  {n:'T-0440',c:'Herrera, B.',p:'KKT-1188',v:"Kia Sportage '21",st:'pagado',val:'$9.800',d:'12/04'},
+  {n:'T-0439',c:'Ríos, D.',p:'MZD-7799',v:"Mazda 3 '19",st:'terminado',val:'$15.400',d:'11/04'},
+  {n:'T-0438',c:'Núñez, F.',p:'HYI-5566',v:"Hyundai i20 '22",st:'pagado',val:'$38.900',d:'10/04'}
+];
+const stMap = {abierto:['b-abierto','Abierto'],terminado:['b-terminado','Terminado'],pagado:['b-pagado','Pagado']};
+document.getElementById('jobsBody').innerHTML = jobs.map(j => `
+  <tr onclick="go('trabajoDetail',null)">
+    <td style="padding-left:20px" class="td-mono td-strong">${j.n}</td>
+    <td class="td-strong">${j.c}</td>
+    <td class="td-muted"><span class="td-mono" style="font-size:11px">${j.p}</span></td>
+    <td class="td-muted td-sm">${j.v}</td>
+    <td><span class="badge ${stMap[j.st][0]}">${stMap[j.st][1]}</span></td>
+    <td class="td-num td-strong">${j.val}</td>
+    <td class="td-muted td-sm">${j.d}</td>
+    <td style="padding-right:20px;text-align:right"><span style="color:var(--text-3)">›</span></td>
+  </tr>
+`).join('');
+
+const clients = [
+  {n:'Fernández, Marcos',t:'Individual',r:'3.921.455-7',p:'+598 99 123 456',v:2,s:22800,vip:true},
+  {n:'Logística del Sur SA',t:'Empresa',r:'21-45982104-8',p:'+598 2 415 6600',v:12,s:128000},
+  {n:'López, Juan',t:'Individual',r:'4.182.937-4',p:'+598 99 456 789',v:1,s:18500},
+  {n:'Pérez, Ana',t:'Individual',r:'5.112.889-1',p:'+598 99 771 332',v:1,s:0},
+  {n:'Torres, Luis',t:'Individual',r:'3.887.124-9',p:'+598 99 223 887',v:1,s:0},
+  {n:'Vega, Carla',t:'Individual',r:'6.004.772-3',p:'+598 98 554 120',v:1,s:0,nuevo:true},
+  {n:'García, Ricardo',t:'Individual',r:'2.991.557-2',p:'+598 99 884 111',v:3,s:42500},
+  {n:'Ríos, Diego',t:'Individual',r:'4.551.992-8',p:'+598 99 887 221',v:1,s:0},
+  {n:'Núñez, Federico',t:'Individual',r:'3.551.789-0',p:'+598 99 221 908',v:1,s:0},
+  {n:'Herrera, Beatriz',t:'Individual',r:'4.889.221-5',p:'+598 98 112 553',v:1,s:0}
+];
+document.getElementById('clientsBody').innerHTML = clients.map(c => `
+  <tr onclick="go('clienteDetail',null)">
+    <td style="padding-left:20px" class="td-strong">${c.n} ${c.vip?'<span class="badge b-vip" style="margin-left:4px">VIP</span>':''}${c.nuevo?'<span class="badge b-new" style="margin-left:4px">Nueva</span>':''}</td>
+    <td class="td-muted td-sm">${c.t}</td>
+    <td class="td-muted td-sm td-mono">${c.r}</td>
+    <td class="td-muted td-sm">${c.p}</td>
+    <td class="td-num">${c.v}</td>
+    <td class="td-num" style="${c.s>0?'color:var(--red);font-weight:600':'color:var(--text-3)'}">${c.s>0?('$'+c.s.toLocaleString('es-UY')):'—'}</td>
+    <td style="padding-right:20px;text-align:right"><span style="color:var(--text-3)">›</span></td>
+  </tr>
+`).join('');
+
+const veh = [
+  {p:'ABC-1234',m:'Toyota Corolla',y:2019,c:'Plata',o:'López, J.',k:82450,t:5,u:'17/04'},
+  {p:'XKL-9821',m:'Ford F-150',y:2021,c:'Blanco',o:'Fernández, M.',k:45120,t:3,u:'18/04'},
+  {p:'JKM-2298',m:'Honda Civic',y:2020,c:'Gris',o:'Pérez, A.',k:68900,t:2,u:'17/04'},
+  {p:'RGH-4521',m:'VW Golf',y:2018,c:'Rojo',o:'García, R.',k:110230,t:4,u:'13/04'},
+  {p:'QWE-4455',m:'Chevy Spark',y:2022,c:'Azul',o:'Torres, L.',k:12880,t:1,u:'16/04'},
+  {p:'SUR-8821',m:'Mercedes Sprinter',y:2020,c:'Blanco',o:'Logística del Sur SA',k:245110,t:6,u:'15/04'},
+  {p:'MZD-7799',m:'Mazda 3',y:2019,c:'Negro',o:'Ríos, D.',k:72400,t:2,u:'11/04'},
+  {p:'HYI-5566',m:'Hyundai i20',y:2022,c:'Gris',o:'Núñez, F.',k:21010,t:1,u:'10/04'},
+  {p:'KKT-1188',m:'Kia Sportage',y:2021,c:'Blanco',o:'Herrera, B.',k:38920,t:2,u:'12/04'}
+];
+document.getElementById('vehBody').innerHTML = veh.map(v => `
+  <tr>
+    <td style="padding-left:20px" class="td-mono td-strong">${v.p}</td>
+    <td class="td-strong">${v.m}</td>
+    <td class="td-muted td-sm">${v.y}</td>
+    <td class="td-muted td-sm">${v.c}</td>
+    <td class="td-muted td-sm">${v.o}</td>
+    <td class="td-num td-muted">${v.k.toLocaleString('es-UY')}</td>
+    <td class="td-num">${v.t}</td>
+    <td class="td-muted td-sm">${v.u}</td>
+    <td style="padding-right:20px;text-align:right"><span style="color:var(--text-3)">›</span></td>
+  </tr>
+`).join('');
+
+// ── Charts ──
+const gc = 'rgba(0,0,0,0.05)';
+const tc = '#9ca3af';
+const defaultFont = { family: "'Plus Jakarta Sans', sans-serif", size: 10 };
+
+window._charts = [];
+window._charts.push(new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Nov','Dic','Ene','Feb','Mar','Abr'],
+    datasets: [
+      { label:'Cobrado', data:[842, 921, 780, 990, 980, 1058], backgroundColor:'#111827', borderRadius:5, borderSkipped:false, order:2 },
+      { label:'Facturado', data:[920, 1020, 870, 1100, 1150, 1284], type:'line', borderColor:'#d1d5db', borderDash:[5,4], borderWidth:1.5, tension:0.3, pointRadius:0, fill:false, backgroundColor:'transparent', order:1 }
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{callbacks:{label: ctx => '$' + ctx.parsed.y + 'k'}} },
+    scales: {
+      x:{ticks:{color:tc,font:defaultFont},grid:{display:false},border:{display:false}},
+      y:{ticks:{color:tc,font:defaultFont,callback:v=>'$'+v+'k'},grid:{color:gc},border:{display:false}}
+    }
+  }
+}));
+
+window._charts.push(new Chart(document.getElementById('jobTypeChart'), {
+  type:'doughnut',
+  data:{ labels:['Mantenimiento','Frenos','Motor','Eléctrica','Otros'],
+    datasets:[{data:[32,24,18,14,12], backgroundColor:['#111827','#374151','#6b7280','#9ca3af','#d1d5db'], borderWidth:0, hoverOffset:4}] },
+  options:{ responsive:true, maintainAspectRatio:false, cutout:'72%', plugins:{legend:{display:false}} }
+}));
+
+window._charts.push(new Chart(document.getElementById('methodChart'), {
+  type:'doughnut',
+  data:{ labels:['Efectivo','Transferencia','Tarjeta','Cheque'],
+    datasets:[{data:[42,28,22,8], backgroundColor:['#111827','#374151','#6b7280','#d1d5db'], borderWidth:0}] },
+  options:{ responsive:true, maintainAspectRatio:false, cutout:'75%', plugins:{legend:{display:false}} }
+}));
+
+</script>
+</body>
+</html>
