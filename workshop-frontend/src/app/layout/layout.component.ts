@@ -29,76 +29,76 @@ import { SearchResults } from '../core/models';
   template: `
     <mat-sidenav-container class="layout-container">
       <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="!isMobile" class="sidenav">
-        <div class="sidenav-header">
-          <div class="logo-container">
+        <div class="brand">
+          <div class="logo-mark">
             <img [src]="workshopConfig.config()?.logo_url || 'assets/logo.png'"
                  [alt]="workshopConfig.config()?.name || 'Taller'"
                  class="logo-img"
                  onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-            <div class="logo-fallback" style="display:none;">
-              <mat-icon class="logo-icon">build</mat-icon>
-              <span class="logo-text">{{ workshopConfig.config()?.name || 'Taller' }}</span>
-            </div>
+            <mat-icon class="logo-fallback-icon" style="display:none;">build</mat-icon>
+          </div>
+          <div class="brand-text">
+            <span class="brand-name">{{ workshopConfig.config()?.name || 'Taller' }}</span>
+            <span class="brand-sub">Backoffice</span>
           </div>
         </div>
-        <mat-nav-list>
+
+        <nav class="nav">
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/dashboard" routerLinkActive="active" (click)="onNavClick()">
-              <mat-icon matListItemIcon>dashboard</mat-icon>
-              <span>Dashboard</span>
+            <a class="nav-item" routerLink="/dashboard" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon>dashboard</mat-icon><span>Dashboard</span>
             </a>
           }
-          <a mat-list-item routerLink="/trabajos" routerLinkActive="active" (click)="onNavClick()">
-            <mat-icon matListItemIcon>work</mat-icon>
-            <span>Trabajos</span>
+          <a class="nav-item" routerLink="/trabajos" routerLinkActive="active" (click)="onNavClick()">
+            <mat-icon>work</mat-icon><span>Trabajos</span>
           </a>
           @if (auth.isAdminOrRecep()) {
-            <a mat-list-item routerLink="/clientes" routerLinkActive="active" (click)="onNavClick()">
-              <mat-icon matListItemIcon>people</mat-icon>
-              <span>Clientes</span>
+            <a class="nav-item" routerLink="/clientes" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon>people</mat-icon><span>Clientes</span>
             </a>
           }
-          <a mat-list-item routerLink="/vehiculos" routerLinkActive="active" (click)="onNavClick()">
-            <mat-icon matListItemIcon>directions_car</mat-icon>
-            <span>Vehiculos</span>
+          <a class="nav-item" routerLink="/vehiculos" routerLinkActive="active" (click)="onNavClick()">
+            <mat-icon>directions_car</mat-icon><span>Vehiculos</span>
           </a>
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/pagos" routerLinkActive="active" (click)="onNavClick()">
-              <mat-icon matListItemIcon>payments</mat-icon>
-              <span>Pagos</span>
+            <a class="nav-item" routerLink="/pagos" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon>payments</mat-icon><span>Pagos</span>
             </a>
           }
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/usuarios" routerLinkActive="active" (click)="onNavClick()">
-              <mat-icon matListItemIcon>manage_accounts</mat-icon>
-              <span>Usuarios</span>
+            <a class="nav-item" routerLink="/usuarios" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon>manage_accounts</mat-icon><span>Usuarios</span>
             </a>
           }
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/importar" routerLinkActive="active" (click)="onNavClick()">
-              <mat-icon matListItemIcon>upload_file</mat-icon>
-              <span>Importar</span>
+            <a class="nav-item" routerLink="/importar" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon>upload_file</mat-icon><span>Importar</span>
             </a>
           }
           @if (auth.isAdmin()) {
-            <a mat-list-item routerLink="/ajustes" routerLinkActive="active" (click)="onNavClick()">
-              <mat-icon matListItemIcon>settings</mat-icon>
-              <span>Ajustes</span>
+            <a class="nav-item" routerLink="/ajustes" routerLinkActive="active" (click)="onNavClick()">
+              <mat-icon>settings</mat-icon><span>Ajustes</span>
             </a>
           }
-        </mat-nav-list>
+        </nav>
+
+        <div class="sidenav-foot">
+          <span class="foot-text">v1.0 · {{ todayChip }}</span>
+        </div>
       </mat-sidenav>
 
       <mat-sidenav-content class="main-content">
-        <mat-toolbar class="top-toolbar">
+        <header class="topbar">
           @if (isMobile) {
-            <button mat-icon-button (click)="sidenav.toggle()" style="color:white;">
+            <button mat-icon-button (click)="sidenav.toggle()" class="hamburger">
               <mat-icon>menu</mat-icon>
             </button>
           }
-          <mat-form-field appearance="outline" class="search-bar" subscriptSizing="dynamic">
-            <mat-icon matPrefix>search</mat-icon>
-            <input matInput placeholder="Buscar cliente, patente, trabajo..."
+
+          <div class="topbar-search">
+            <mat-icon class="search-ico">search</mat-icon>
+            <input type="text"
+                   placeholder="Buscar cliente, patente, trabajo…"
                    [(ngModel)]="searchQuery"
                    (input)="onSearch()"
                    [matAutocomplete]="auto">
@@ -121,13 +121,29 @@ import { SearchResults } from '../core/models';
                 }
               }
             </mat-autocomplete>
-          </mat-form-field>
+          </div>
 
-          <span class="spacer"></span>
+          <div class="spacer"></div>
+
+          <div class="date-chip">
+            <mat-icon>event</mat-icon>
+            <span>{{ todayChip }}</span>
+          </div>
+
+          <button mat-icon-button class="icon-btn bell" aria-label="Notificaciones">
+            <mat-icon>notifications_none</mat-icon>
+          </button>
+
+          @if (auth.isAdminOrRecep()) {
+            <button class="btn btn-primary cta" (click)="goNewJob()">
+              <mat-icon>add</mat-icon>
+              @if (!isMobile) { <span>Nuevo trabajo</span> }
+            </button>
+          }
 
           <button mat-button [matMenuTriggerFor]="userMenu" class="user-menu-btn">
             <mat-icon>account_circle</mat-icon>
-            @if (!isMobile) { {{ auth.currentUser()?.full_name }} }
+            @if (!isMobile) { <span class="user-name">{{ auth.currentUser()?.full_name }}</span> }
           </button>
           <mat-menu #userMenu="matMenu">
             <button mat-menu-item disabled>
@@ -139,7 +155,7 @@ import { SearchResults } from '../core/models';
               <span>Cerrar sesion</span>
             </button>
           </mat-menu>
-        </mat-toolbar>
+        </header>
 
         <div class="page-wrapper">
           <router-outlet />
@@ -148,94 +164,199 @@ import { SearchResults } from '../core/models';
     </mat-sidenav-container>
   `,
   styles: [`
-    .layout-container { height: 100vh; }
+    .layout-container { height: 100vh; background: var(--bg); }
+
+    /* ===== Sidebar (dark variant) ===== */
     .sidenav {
-      width: 220px;
-      background: var(--color-primary);
+      width: var(--sidebar-w);
+      background: var(--navy);
+      border-right: 1px solid var(--navy2);
+      display: flex;
+      flex-direction: column;
     }
-    .sidenav-header {
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 14px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .logo-mark {
+      width: 30px;
+      height: 30px;
+      background: var(--navy2);
+      border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px 12px;
-      color: white;
+      overflow: hidden;
+      flex: 0 0 30px;
     }
-    .logo-container {
+    .logo-img { max-width: 26px; max-height: 26px; object-fit: contain; }
+    .logo-fallback-icon { color: #fff; font-size: 18px; width: 18px; height: 18px; }
+    .brand-text { display: flex; flex-direction: column; min-width: 0; }
+    .brand-name {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .brand-sub {
+      color: rgba(255,255,255,.5);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      padding: 10px 8px;
+      gap: 2px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .nav-item {
       display: flex;
       align-items: center;
-      justify-content: center;
-      width: 100%;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: var(--r-sm);
+      color: rgba(255,255,255,.72);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background .14s, color .14s;
     }
-    .logo-img {
-      max-width: 160px;
-      max-height: 80px;
-      object-fit: contain;
+    .nav-item mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: rgba(255,255,255,.55);
     }
-    .logo-fallback {
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .nav-item:hover {
+      background: var(--navy2);
+      color: #fff;
     }
-    .logo-icon { font-size: 28px; width: 28px; height: 28px; }
-    .logo-text { font-size: 20px; font-weight: 500; }
-    .sidenav mat-nav-list a {
-      color: white;
+    .nav-item:hover mat-icon { color: #fff; }
+    .nav-item.active {
+      background: var(--navy2);
+      color: #fff;
     }
-    .sidenav mat-nav-list a.active {
-      color: white;
-      background: rgba(255,255,255,0.12);
-      border-left: 3px solid var(--color-accent);
+    .nav-item.active mat-icon { color: #fff; }
+
+    .sidenav-foot {
+      padding: 10px 16px 14px;
+      border-top: 1px solid rgba(255,255,255,.06);
     }
-    .sidenav mat-nav-list mat-icon {
-      color: white;
+    .foot-text {
+      color: rgba(255,255,255,.4);
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
     }
-    .sidenav mat-nav-list a.active mat-icon {
-      color: var(--color-accent-light);
-    }
-    :host ::ng-deep .sidenav .mat-mdc-list-item .mdc-list-item__primary-text {
-      color: white !important;
-    }
-    .main-content { display: flex; flex-direction: column; }
-    .top-toolbar {
+
+    /* ===== Main area ===== */
+    .main-content { display: flex; flex-direction: column; background: var(--bg); }
+
+    /* ===== Topbar (white) ===== */
+    .topbar {
       position: sticky;
       top: 0;
       z-index: 10;
-      background: var(--color-primary-dark);
-      color: white;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      height: 56px;
+      padding: 0 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
-    .search-bar {
-      margin-left: 16px;
-      width: 350px;
-      --mdc-outlined-text-field-input-text-placeholder-color: rgba(255,255,255,0.75);
-      --mdc-filled-text-field-input-text-placeholder-color: rgba(255,255,255,0.75);
+    .hamburger mat-icon { color: var(--text-2); }
+
+    .topbar-search {
+      position: relative;
+      width: 380px;
+      max-width: 40vw;
+      display: flex;
+      align-items: center;
+    }
+    .topbar-search .search-ico {
+      position: absolute;
+      left: 10px;
+      color: var(--text-3);
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+    .topbar-search input {
+      width: 100%;
+      height: 36px;
+      padding: 0 12px 0 34px;
+      background: var(--bg);
+      border: 1px solid transparent;
+      border-radius: var(--r-sm);
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text-1);
+      outline: none;
+      transition: background .14s, border-color .14s, box-shadow .14s;
+    }
+    .topbar-search input::placeholder { color: var(--text-3); }
+    .topbar-search input:hover { background: #eceae5; }
+    .topbar-search input:focus {
+      background: var(--surface);
+      border-color: var(--navy);
+      box-shadow: 0 0 0 3px rgba(17,24,39,.06);
     }
     @media (max-width: 768px) {
-      .search-bar {
-        width: 180px;
-        margin-left: 8px;
-      }
+      .topbar-search { width: 220px; }
     }
-    .search-bar .mat-mdc-form-field-wrapper {
-      padding: 0;
-    }
-    :host ::ng-deep .search-bar .mat-mdc-text-field-wrapper {
-      background: rgba(255,255,255,0.12);
-      border-radius: 4px;
-    }
-    :host ::ng-deep .search-bar .mat-mdc-input-element {
-      color: white !important;
-      caret-color: white;
-    }
-    :host ::ng-deep .search-bar .mat-mdc-input-element::placeholder {
-      color: rgba(255,255,255,0.75) !important;
-      opacity: 1;
-    }
-    :host ::ng-deep .search-bar mat-icon { color: rgba(255,255,255,0.7); }
-    .user-menu-btn { color: white; }
-    :host ::ng-deep .user-menu-btn .mdc-button__label { color: white !important; }
-    :host ::ng-deep .user-menu-btn mat-icon { color: white !important; }
-    .page-wrapper { flex: 1; overflow: auto; }
+
     .spacer { flex: 1; }
+
+    .date-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: var(--bg);
+      border-radius: var(--r-sm);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-2);
+    }
+    .date-chip mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: var(--text-3);
+    }
+    @media (max-width: 900px) { .date-chip { display: none; } }
+
+    .icon-btn.bell { color: var(--text-2); }
+    .icon-btn.bell mat-icon { font-size: 20px; width: 20px; height: 20px; }
+
+    .cta {
+      height: 36px;
+      padding: 0 14px;
+      font-size: 12px;
+    }
+    .cta mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    .user-menu-btn { color: var(--text-1); font-size: 13px; }
+    .user-menu-btn mat-icon { color: var(--text-2); }
+    .user-name { font-weight: 500; margin-left: 4px; }
+
+    .page-wrapper { flex: 1; overflow: auto; background: var(--bg); }
   `]
 })
 export class LayoutComponent {
@@ -243,6 +364,7 @@ export class LayoutComponent {
   searchQuery = '';
   searchResults: SearchResults | null = null;
   isMobile = false;
+  todayChip = '';
   private searchTimeout: any;
 
   constructor(
@@ -255,10 +377,16 @@ export class LayoutComponent {
     this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(result => {
       this.isMobile = result.matches;
     });
+    const now = new Date();
+    this.todayChip = now.toLocaleDateString('es-UY', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   onNavClick() {
     if (this.isMobile) this.sidenav.close();
+  }
+
+  goNewJob() {
+    this.router.navigate(['/trabajos/nuevo']);
   }
 
   onSearch() {

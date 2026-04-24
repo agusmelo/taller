@@ -214,14 +214,18 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
   `,
   styles: [`
     .upload-zone {
-      border: 2px dashed #ccc;
-      border-radius: 8px;
+      border: 2px dashed var(--border);
+      border-radius: var(--r);
       padding: 48px 24px;
       text-align: center;
       cursor: pointer;
-      transition: border-color 0.2s;
+      transition: border-color .15s, background .15s;
+      background: var(--bg);
     }
-    .upload-zone:hover { border-color: var(--color-primary); }
+    .upload-zone:hover {
+      border-color: var(--navy);
+      background: #eceae5;
+    }
     .stat-card { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
     .stat-label { font-size: 13px; color: #666; }
     .stat-value { font-size: 20px; font-weight: 500; }
