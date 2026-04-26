@@ -12,7 +12,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../core/services/api.service';
@@ -32,201 +31,149 @@ import Chart from 'chart.js/auto';
   imports: [
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule, MatDividerModule,
-    MatDatepickerModule, MatNativeDateModule, MatSlideToggleModule, MatTabsModule, MatTooltipModule,
+    MatDatepickerModule, MatNativeDateModule, MatTabsModule, MatTooltipModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Dashboard</h1>
-        <mat-slide-toggle [(ngModel)]="privacyMode" (change)="onPrivacyToggle()">
-          <mat-icon style="vertical-align:middle;margin-right:4px;">
-            {{ privacyMode ? 'visibility_off' : 'visibility' }}
-          </mat-icon>
-          Privacidad
-        </mat-slide-toggle>
+        <div class="page-head-actions">
+          <button class="btn btn-ghost" (click)="privacyMode = !privacyMode; onPrivacyToggle()">
+            <mat-icon>{{ privacyMode ? 'visibility_off' : 'visibility' }}</mat-icon>
+            <span>{{ privacyMode ? 'Mostrar' : 'Ocultar' }}</span>
+          </button>
+        </div>
       </div>
 
       <!-- Section A: KPI Cards -->
-      <div class="card-grid kpi-grid" *ngIf="summary">
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#1565c0;">request_quote</mat-icon>
-            <div>
-              <div class="stat-label">Facturado (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.facturado_month | appCurrency) }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#2e7d32;">payments</mat-icon>
-            <div>
-              <div class="stat-label">Cobrado (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.cobrado_month | appCurrency) }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#e65100;">account_balance_wallet</mat-icon>
-            <div>
-              <div class="stat-label">Pendiente total</div>
-              <div class="stat-value" [style.color]="summary.pendiente_total > 0 ? '#c62828' : '#2e7d32'">
-                {{ privacyMode ? '***' : (summary.pendiente_total | appCurrency) }}
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#6a1b9a;">build_circle</mat-icon>
-            <div>
-              <div class="stat-label">Trabajos del mes</div>
-              <div class="stat-value">{{ summary.jobs_month }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#00838f;">engineering</mat-icon>
-            <div>
-              <div class="stat-label">Trabajos activos</div>
-              <div class="stat-value">{{ summary.active_jobs }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#558b2f;">percent</mat-icon>
-            <div>
-              <div class="stat-label">Tasa de cobro (mes)</div>
-              <div class="stat-value">{{ privacyMode ? '***' : (summary.collection_rate_month + '%') }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
+      <div class="kpi-row kpi-row-6" *ngIf="summary">
+        <div class="kpi kpi-accent">
+          <div class="kpi-label">Facturado (mes)</div>
+          <div class="kpi-val">{{ privacyMode ? '***' : (summary.facturado_month | appCurrency) }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Cobrado (mes)</div>
+          <div class="kpi-val">{{ privacyMode ? '***' : (summary.cobrado_month | appCurrency) }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Pendiente total</div>
+          <div class="kpi-val" [style.color]="summary.pendiente_total > 0 ? 'var(--red)' : 'var(--green)'">
+            {{ privacyMode ? '***' : (summary.pendiente_total | appCurrency) }}
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Trabajos del mes</div>
+          <div class="kpi-val">{{ summary.jobs_month }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Trabajos activos</div>
+          <div class="kpi-val">{{ summary.active_jobs }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Tasa de cobro (mes)</div>
+          <div class="kpi-val">{{ privacyMode ? '***' : (summary.collection_rate_month + '%') }}</div>
+        </div>
       </div>
 
       <!-- Job status counters -->
-      <div class="card-grid status-grid" *ngIf="jobStatus">
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <span class="status-badge status-abierto" style="font-size:14px;padding:8px 16px;">Abiertos: {{ jobStatus.abierto }}</span>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <span class="status-badge status-terminado" style="font-size:14px;padding:8px 16px;">Terminados: {{ jobStatus.terminado }}</span>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <span class="status-badge status-pagado" style="font-size:14px;padding:8px 16px;">Pagados: {{ jobStatus.pagado }}</span>
-          </mat-card-content>
-        </mat-card>
+      <div class="kpi-row kpi-row-4" *ngIf="jobStatus">
+        <div class="kpi">
+          <div class="kpi-label"><span class="badge b-abierto">Abiertos</span></div>
+          <div class="kpi-val">{{ jobStatus.abierto }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label"><span class="badge b-terminado">Terminados</span></div>
+          <div class="kpi-val">{{ jobStatus.terminado }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label"><span class="badge b-pagado">Pagados</span></div>
+          <div class="kpi-val">{{ jobStatus.pagado }}</div>
+        </div>
         @if (newClientsData) {
-          <mat-card>
-            <mat-card-content class="stat-card">
-              <mat-icon class="stat-icon" style="color:#1565c0;">person_add</mat-icon>
-              <div>
-                <div class="stat-label">Nuevos clientes (mes)</div>
-                <div class="stat-value">
-                  {{ newClientsData.current_month }}
-                  @if (newClientsData.previous_month > 0) {
-                    <span class="delta" [class.positive]="newClientsData.current_month >= newClientsData.previous_month"
-                          [class.negative]="newClientsData.current_month < newClientsData.previous_month">
-                      {{ newClientsData.current_month >= newClientsData.previous_month ? '+' : '' }}{{ newClientsData.current_month - newClientsData.previous_month }}
-                    </span>
-                  }
-                </div>
-              </div>
-            </mat-card-content>
-          </mat-card>
+          <div class="kpi">
+            <div class="kpi-label">Nuevos clientes (mes)</div>
+            <div class="kpi-val">
+              {{ newClientsData.current_month }}
+              @if (newClientsData.previous_month > 0) {
+                <span class="kpi-delta"
+                      [class.up]="newClientsData.current_month >= newClientsData.previous_month"
+                      [class.down]="newClientsData.current_month < newClientsData.previous_month">
+                  {{ newClientsData.current_month >= newClientsData.previous_month ? '+' : '' }}{{ newClientsData.current_month - newClientsData.previous_month }}
+                </span>
+              }
+            </div>
+          </div>
         }
       </div>
 
       <!-- Section B: Alerts -->
       @if (overdueDebts.length > 0 || unpaidJobs.length > 0) {
-        <mat-card class="alerts-card mb-16">
+        <mat-card class="mb-16">
           <mat-card-content>
-            <div class="alerts-header">
-              <div style="display:flex;align-items:center;gap:8px;">
-                <mat-icon style="color:#d32f2f;">warning</mat-icon>
-                <h3 style="margin:0;">Alertas</h3>
-              </div>
+            <div class="card-head">
+              <h3 class="card-title-lg">Alertas</h3>
               <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:120px;">
                 <mat-label>Dias</mat-label>
                 <input matInput type="number" [(ngModel)]="alertDays" min="1" (change)="loadAlerts()">
               </mat-form-field>
             </div>
 
-            @if (overdueDebts.length > 0) {
-              <div class="alert-section">
-                <h4 style="color:#d32f2f;margin:12px 0 8px;">
-                  <mat-icon style="vertical-align:middle;font-size:18px;">account_balance_wallet</mat-icon>
-                  Deudas vencidas ({{ overdueDebts.length }})
-                </h4>
-                <table mat-table [dataSource]="overdueDebts" style="width:100%;">
-                  <ng-container matColumnDef="full_name">
-                    <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                    <td mat-cell *matCellDef="let d">{{ d.full_name }}</td>
-                  </ng-container>
-                  <ng-container matColumnDef="saldo">
-                    <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
-                    <td mat-cell *matCellDef="let d" class="text-right" style="color:#d32f2f;font-weight:500;">
-                      {{ privacyMode ? '***' : (d.saldo | appCurrency) }}
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="days_overdue">
-                    <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
-                    <td mat-cell *matCellDef="let d" class="text-right">{{ d.days_overdue }}d</td>
-                  </ng-container>
-                  <ng-container matColumnDef="job_count">
-                    <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
-                    <td mat-cell *matCellDef="let d" class="text-right">{{ d.job_count }}</td>
-                  </ng-container>
-                  <tr mat-header-row *matHeaderRowDef="['full_name','saldo','days_overdue','job_count']"></tr>
-                  <tr mat-row *matRowDef="let row; columns: ['full_name','saldo','days_overdue','job_count'];"
-                      class="clickable-row" (click)="goToClient(row.id)"></tr>
-                </table>
-              </div>
-            }
+            <div class="alerts-body">
+              @if (overdueDebts.length > 0) {
+                <div class="alerts-col">
+                  <h4>Deudas vencidas ({{ overdueDebts.length }})</h4>
+                  <table mat-table [dataSource]="overdueDebts">
+                    <ng-container matColumnDef="full_name">
+                      <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                      <td mat-cell *matCellDef="let d">{{ d.full_name }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="saldo">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
+                      <td mat-cell *matCellDef="let d" class="td-num money-neg">
+                        {{ privacyMode ? '***' : (d.saldo | appCurrency) }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="days_overdue">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
+                      <td mat-cell *matCellDef="let d" class="td-num">{{ d.days_overdue }}d</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['full_name','saldo','days_overdue']"></tr>
+                    <tr mat-row *matRowDef="let row; columns: ['full_name','saldo','days_overdue'];"
+                        class="clickable-row" (click)="goToClient(row.id)"></tr>
+                  </table>
+                </div>
+              }
 
-            @if (unpaidJobs.length > 0) {
-              <div class="alert-section" style="margin-top:16px;">
-                <h4 style="color:#e65100;margin:12px 0 8px;">
-                  <mat-icon style="vertical-align:middle;font-size:18px;">pending_actions</mat-icon>
-                  Trabajos terminados sin cobrar ({{ unpaidJobs.length }})
-                </h4>
-                <table mat-table [dataSource]="unpaidJobs" style="width:100%;">
-                  <ng-container matColumnDef="job_number">
-                    <th mat-header-cell *matHeaderCellDef>N.o</th>
-                    <td mat-cell *matCellDef="let j">{{ j.job_number }}</td>
-                  </ng-container>
-                  <ng-container matColumnDef="client_name">
-                    <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                    <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
-                  </ng-container>
-                  <ng-container matColumnDef="plate_number">
-                    <th mat-header-cell *matHeaderCellDef>Patente</th>
-                    <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
-                  </ng-container>
-                  <ng-container matColumnDef="balance">
-                    <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
-                    <td mat-cell *matCellDef="let j" class="text-right" style="color:#e65100;font-weight:500;">
-                      {{ privacyMode ? '***' : (j.balance | appCurrency) }}
-                    </td>
-                  </ng-container>
-                  <ng-container matColumnDef="days_pending">
-                    <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
-                    <td mat-cell *matCellDef="let j" class="text-right">{{ j.days_pending }}d</td>
-                  </ng-container>
-                  <tr mat-header-row *matHeaderRowDef="['job_number','client_name','plate_number','balance','days_pending']"></tr>
-                  <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','plate_number','balance','days_pending'];"
-                      class="clickable-row" (click)="goToJob(row.id)"></tr>
-                </table>
-              </div>
-            }
+              @if (unpaidJobs.length > 0) {
+                <div class="alerts-col">
+                  <h4>Trabajos sin cobrar ({{ unpaidJobs.length }})</h4>
+                  <table mat-table [dataSource]="unpaidJobs">
+                    <ng-container matColumnDef="job_number">
+                      <th mat-header-cell *matHeaderCellDef>N.o</th>
+                      <td mat-cell *matCellDef="let j" class="t-mono">{{ j.job_number }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="client_name">
+                      <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                      <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="balance">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
+                      <td mat-cell *matCellDef="let j" class="td-num money-neg">
+                        {{ privacyMode ? '***' : (j.balance | appCurrency) }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="days_pending">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
+                      <td mat-cell *matCellDef="let j" class="td-num">{{ j.days_pending }}d</td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['job_number','client_name','balance','days_pending']"></tr>
+                    <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','balance','days_pending'];"
+                        class="clickable-row" (click)="goToJob(row.id)"></tr>
+                  </table>
+                </div>
+              }
+            </div>
           </mat-card-content>
         </mat-card>
       }
@@ -316,18 +263,18 @@ import Chart from 'chart.js/auto';
                       <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.all.subtotal | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">IVA</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.all.tax | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.all.total | appCurrency) }}</span></div>
-                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:#2e7d32;">{{ privacyMode ? '***' : (monthlyClosing.all.paid | appCurrency) }}</span></div>
-                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:#c62828;">{{ privacyMode ? '***' : (monthlyClosing.all.balance | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.all.paid | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.all.balance | appCurrency) }}</span></div>
                     </div>
                     <table mat-table [dataSource]="monthlyClosing.jobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
                       <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
-                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
                       <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
-                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? 'var(--red)' : 'var(--green)'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
                       <tr mat-header-row *matHeaderRowDef="closingColumns"></tr>
                       <tr mat-row *matRowDef="let row; columns: closingColumns;" class="clickable-row" (click)="goToJob(row.id)"></tr>
                     </table>
@@ -342,18 +289,18 @@ import Chart from 'chart.js/auto';
                       <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.iva.subtotal | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">IVA</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.iva.tax | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.iva.total | appCurrency) }}</span></div>
-                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:#2e7d32;">{{ privacyMode ? '***' : (monthlyClosing.iva.paid | appCurrency) }}</span></div>
-                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:#c62828;">{{ privacyMode ? '***' : (monthlyClosing.iva.balance | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.iva.paid | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.iva.balance | appCurrency) }}</span></div>
                     </div>
                     <table mat-table [dataSource]="closingIvaJobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
                       <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
-                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
                       <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
-                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? 'var(--red)' : 'var(--green)'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
                       <tr mat-header-row *matHeaderRowDef="closingColumns"></tr>
                       <tr mat-row *matRowDef="let row; columns: closingColumns;" class="clickable-row" (click)="goToJob(row.id)"></tr>
                     </table>
@@ -367,18 +314,18 @@ import Chart from 'chart.js/auto';
                       <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.no_iva.count }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.no_iva.subtotal | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.total | appCurrency) }}</span></div>
-                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:#2e7d32;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.paid | appCurrency) }}</span></div>
-                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:#c62828;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.balance | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.paid | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.balance | appCurrency) }}</span></div>
                     </div>
                     <table mat-table [dataSource]="closingNoIvaJobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
                       <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
-                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
                       <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
-                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
+                      <ng-container matColumnDef="balance"><th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th><td mat-cell *matCellDef="let j" class="text-right" [style.color]="j.balance > 0 ? 'var(--red)' : 'var(--green)'">{{ privacyMode ? '***' : (j.balance | appCurrency) }}</td></ng-container>
                       <tr mat-header-row *matHeaderRowDef="closingColumns"></tr>
                       <tr mat-row *matRowDef="let row; columns: closingColumns;" class="clickable-row" (click)="goToJob(row.id)"></tr>
                     </table>
@@ -438,7 +385,7 @@ import Chart from 'chart.js/auto';
             <ng-container matColumnDef="status">
               <th mat-header-cell *matHeaderCellDef>Estado</th>
               <td mat-cell *matCellDef="let j">
-                <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
+                <span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span>
               </td>
             </ng-container>
             <ng-container matColumnDef="job_date">
@@ -466,22 +413,19 @@ import Chart from 'chart.js/auto';
           </div>
 
           @if (financialTotals) {
-            <div class="card-grid" style="margin-bottom:16px;">
-              <mat-card style="background:#e3f2fd;">
-                <mat-card-content class="stat-card">
-                  <div><div class="stat-label">Total facturado</div><div class="stat-value">{{ privacyMode ? '***' : (financialTotals.total_facturado | appCurrency) }}</div></div>
-                </mat-card-content>
-              </mat-card>
-              <mat-card style="background:#e8f5e9;">
-                <mat-card-content class="stat-card">
-                  <div><div class="stat-label">Total cobrado</div><div class="stat-value">{{ privacyMode ? '***' : (financialTotals.total_pagado | appCurrency) }}</div></div>
-                </mat-card-content>
-              </mat-card>
-              <mat-card style="background:#fff3e0;">
-                <mat-card-content class="stat-card">
-                  <div><div class="stat-label">Total pendiente</div><div class="stat-value balance-positive">{{ privacyMode ? '***' : (financialTotals.total_pendiente | appCurrency) }}</div></div>
-                </mat-card-content>
-              </mat-card>
+            <div class="kpi-row kpi-row-3" style="margin-bottom:16px;">
+              <div class="kpi">
+                <div class="kpi-label">Total facturado</div>
+                <div class="kpi-val">{{ privacyMode ? '***' : (financialTotals.total_facturado | appCurrency) }}</div>
+              </div>
+              <div class="kpi">
+                <div class="kpi-label">Total cobrado</div>
+                <div class="kpi-val" style="color:var(--green);">{{ privacyMode ? '***' : (financialTotals.total_pagado | appCurrency) }}</div>
+              </div>
+              <div class="kpi">
+                <div class="kpi-label">Total pendiente</div>
+                <div class="kpi-val" style="color:var(--red);">{{ privacyMode ? '***' : (financialTotals.total_pendiente | appCurrency) }}</div>
+              </div>
             </div>
           }
 
@@ -508,9 +452,8 @@ import Chart from 'chart.js/auto';
             </ng-container>
             <ng-container matColumnDef="saldo">
               <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
-              <td mat-cell *matCellDef="let c" class="text-right"
-                  [style.background]="c.saldo > 0 ? '#fff8e1' : '#e8f5e9'"
-                  [class]="c.saldo > 0 ? 'balance-positive' : 'balance-zero'">
+              <td mat-cell *matCellDef="let c" class="td-num"
+                  [class.money-neg]="c.saldo > 0" [class.money-zero]="c.saldo <= 0">
                 {{ privacyMode ? '***' : (c.saldo | appCurrency) }}
               </td>
             </ng-container>
@@ -520,32 +463,67 @@ import Chart from 'chart.js/auto';
           </table>
         </mat-card-content>
       </mat-card>
-    </div>
+    </main>
   `,
   styles: [`
-    .stat-card { display: flex; align-items: center; gap: 16px; padding: 8px 0; justify-content: center; }
-    .stat-icon { font-size: 40px; width: 40px; height: 40px; }
-    .stat-label { font-size: 13px; color: #666; }
-    .stat-value { font-size: 22px; font-weight: 500; }
-    .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
-    .status-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important; }
-    .delta {
-      font-size: 13px; margin-left: 4px; font-weight: 400;
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
     }
-    .delta.positive { color: #2e7d32; }
-    .delta.negative { color: #c62828; }
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0;
+    }
+    .alerts-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 900px) {
+      .alerts-body { grid-template-columns: 1fr; }
+    }
+    .alerts-col h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-2);
+    }
     .closing-summary {
-      display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;
-      padding: 12px; background: #f5f5f5; border-radius: 4px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
     }
-    .closing-stat { display: flex; flex-direction: column; min-width: 100px; }
-    .closing-label { font-size: 12px; color: #666; }
-    .closing-value { font-size: 18px; font-weight: 500; }
-    .alerts-card {
-      border-left: 4px solid #d32f2f;
+    .closing-stat {
+      display: flex;
+      flex-direction: column;
+      min-width: 100px;
+      gap: 4px;
     }
-    .alerts-header {
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    .closing-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-3);
+    }
+    .closing-value {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-1);
     }
   `]
 })
@@ -657,6 +635,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     const labels = this.revenueTrendData.map(d => d.period);
     const data = this.revenueTrendData.map(d => d.total);
 
+    const css = getComputedStyle(document.documentElement);
+    const navy = css.getPropertyValue('--navy').trim() || '#111827';
+    const text3 = css.getPropertyValue('--text-3').trim() || '#9ca3af';
+    const border2 = css.getPropertyValue('--border2').trim() || '#f3f4f6';
+    const fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
+    Chart.defaults.font.family = fontFamily;
+    Chart.defaults.color = text3;
+
     this.chart = new Chart(this.chartRef.nativeElement, {
       type: 'line',
       data: {
@@ -664,22 +650,32 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         datasets: [{
           label: 'Ingresos',
           data,
-          borderColor: '#1565c0',
-          backgroundColor: 'rgba(21, 101, 192, 0.1)',
+          borderColor: navy,
+          backgroundColor: 'rgba(17, 24, 39, 0.08)',
           fill: true,
           tension: 0.3,
-          pointRadius: 4,
-          pointBackgroundColor: '#1565c0',
+          pointRadius: 3,
+          pointBackgroundColor: navy,
+          borderWidth: 2,
         }]
       },
       options: {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: text3, font: { family: fontFamily, size: 11 } }
+          },
           y: {
             beginAtZero: true,
             display: !this.privacyMode,
-            ticks: { callback: (v) => '$ ' + Number(v).toLocaleString('es-UY') }
+            grid: { color: border2 },
+            ticks: {
+              color: text3,
+              font: { family: fontFamily, size: 11 },
+              callback: (v) => '$ ' + Number(v).toLocaleString('es-UY')
+            }
           }
         }
       }
