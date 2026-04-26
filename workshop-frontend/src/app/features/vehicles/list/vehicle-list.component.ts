@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
@@ -21,12 +22,12 @@ import { VehicleFormComponent } from '../form/vehicle-form.component';
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatDialogModule,
+    MatFormFieldModule, MatInputModule, MatDialogModule, MatCardModule,
     MatPaginatorModule, MatProgressSpinnerModule
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Vehiculos</h1>
         @if (auth.isAdminOrRecep()) {
           <button mat-raised-button color="primary" (click)="openForm()">
@@ -35,11 +36,13 @@ import { VehicleFormComponent } from '../form/vehicle-form.component';
         }
       </div>
 
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Buscar por patente, marca, modelo...</mat-label>
-        <input matInput [(ngModel)]="searchQuery" (input)="onSearch()">
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
+      <div class="filter-row">
+        <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+          <mat-label>Buscar por patente, marca, modelo...</mat-label>
+          <input matInput [(ngModel)]="searchQuery" (input)="onSearch()">
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+      </div>
 
       @if (loading) {
         <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
@@ -50,41 +53,57 @@ import { VehicleFormComponent } from '../form/vehicle-form.component';
           @if (searchQuery) { <p class="empty-hint">Intenta con otro termino de busqueda</p> }
         </div>
       } @else {
-        <table mat-table [dataSource]="vehicles" class="mat-elevation-z1">
-          <ng-container matColumnDef="plate_number">
-            <th mat-header-cell *matHeaderCellDef>Patente</th>
-            <td mat-cell *matCellDef="let v"><strong>{{ v.plate_number }}</strong></td>
-          </ng-container>
-          <ng-container matColumnDef="make">
-            <th mat-header-cell *matHeaderCellDef>Marca</th>
-            <td mat-cell *matCellDef="let v">{{ v.make }}</td>
-          </ng-container>
-          <ng-container matColumnDef="model">
-            <th mat-header-cell *matHeaderCellDef>Modelo</th>
-            <td mat-cell *matCellDef="let v">{{ v.model }}</td>
-          </ng-container>
-          <ng-container matColumnDef="year">
-            <th mat-header-cell *matHeaderCellDef>Ano</th>
-            <td mat-cell *matCellDef="let v">{{ v.year || '-' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="client_name">
-            <th mat-header-cell *matHeaderCellDef>Dueno</th>
-            <td mat-cell *matCellDef="let v">{{ v.client_name }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              class="clickable-row" (click)="goToDetail(row.id)"></tr>
-        </table>
-        <mat-paginator [length]="totalItems"
-                       [pageIndex]="page"
-                       [pageSize]="pageSize"
-                       [pageSizeOptions]="[10, 20, 50]"
-                       (page)="onPage($event)"
-                       showFirstLastButtons>
-        </mat-paginator>
+        <mat-card class="table-card">
+          <mat-card-content>
+            <table mat-table [dataSource]="vehicles">
+              <ng-container matColumnDef="plate_number">
+                <th mat-header-cell *matHeaderCellDef>Patente</th>
+                <td mat-cell *matCellDef="let v" class="t-mono"><strong>{{ v.plate_number }}</strong></td>
+              </ng-container>
+              <ng-container matColumnDef="make">
+                <th mat-header-cell *matHeaderCellDef>Marca</th>
+                <td mat-cell *matCellDef="let v">{{ v.make }}</td>
+              </ng-container>
+              <ng-container matColumnDef="model">
+                <th mat-header-cell *matHeaderCellDef>Modelo</th>
+                <td mat-cell *matCellDef="let v">{{ v.model }}</td>
+              </ng-container>
+              <ng-container matColumnDef="year">
+                <th mat-header-cell *matHeaderCellDef>Ano</th>
+                <td mat-cell *matCellDef="let v">{{ v.year || '-' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="client_name">
+                <th mat-header-cell *matHeaderCellDef>Dueno</th>
+                <td mat-cell *matCellDef="let v">{{ v.client_name }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                  class="clickable-row" (click)="goToDetail(row.id)"></tr>
+            </table>
+            <mat-paginator [length]="totalItems"
+                           [pageIndex]="page"
+                           [pageSize]="pageSize"
+                           [pageSizeOptions]="[10, 20, 50]"
+                           (page)="onPage($event)"
+                           showFirstLastButtons>
+            </mat-paginator>
+          </mat-card-content>
+        </mat-card>
       }
-    </div>
-  `
+    </main>
+  `,
+  styles: [`
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .table-card { padding: 0 !important; overflow: hidden; }
+    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+    .table-card mat-paginator { padding: 0 12px; }
+  `]
 })
 export class VehicleListComponent implements OnInit {
   vehicles: Vehicle[] = [];
