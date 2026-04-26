@@ -30,13 +30,13 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     MatDatepickerModule, MatNativeDateModule, AppCurrencyPipe
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Nuevo Trabajo</h1>
         <button mat-button routerLink="/trabajos"><mat-icon>arrow_back</mat-icon> Volver</button>
       </div>
 
-      @if (error) { <div class="error-msg">{{ error }}</div> }
+      @if (error) { <div class="banner banner-error">{{ error }}</div> }
 
       <div class="job-create-layout">
         <!-- LEFT: Form -->
@@ -57,8 +57,8 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
                                   [displayWith]="displayPlate">
                   @for (v of vehicleResults; track v.id) {
                     <mat-option [value]="v">
-                      <strong>{{ v.plate_number }}</strong> — {{ v.make }} {{ v.model }}
-                      <small style="color:#666;"> ({{ v.client_name }})</small>
+                      <strong class="t-mono">{{ v.plate_number }}</strong> — {{ v.make }} {{ v.model }}
+                      <small style="color:var(--text-3);"> ({{ v.client_name }})</small>
                     </mat-option>
                   }
                   @if (plateSearch.length >= 2 && vehicleResults.length === 0 && !searchingPlate) {
@@ -76,10 +76,9 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
               }
 
               @if (vehicle) {
-                <div class="info-msg">
-                  <strong>{{ vehicle.plate_number }}</strong> — {{ vehicle.make }} {{ vehicle.model }} {{ vehicle.year || '' }}<br>
-                  Dueno: <strong>{{ vehicle.client_name }}</strong>
-                  {{ vehicle.client_rut ? '(' + vehicle.client_rut + ')' : '' }}
+                <div class="banner banner-info">
+                  <span><strong class="t-mono">{{ vehicle.plate_number }}</strong> — {{ vehicle.make }} {{ vehicle.model }} {{ vehicle.year || '' }} · Dueno: <strong>{{ vehicle.client_name }}</strong>
+                  {{ vehicle.client_rut ? '(' + vehicle.client_rut + ')' : '' }}</span>
                 </div>
               }
             </mat-card-content>
@@ -171,48 +170,52 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
         <!-- RIGHT: Totals panel (sticky) -->
         @if (vehicle) {
           <div class="job-create-sidebar">
-            <div class="totals-panel" style="position:sticky;top:80px;">
-              <div class="form-section-title" style="border:none;margin-bottom:8px;">Resumen</div>
-              <div class="total-row">
-                <span>Subtotal</span>
-                <span>{{ totals.subtotal | appCurrency }}</span>
-              </div>
-              @if (totals.discount > 0) {
-                <div class="total-row" style="color:var(--color-warning);">
-                  <span>Descuento</span>
-                  <span>-{{ totals.discount | appCurrency }}</span>
+            <mat-card class="summary-card">
+              <mat-card-content>
+                <h3 class="card-title-lg">Resumen</h3>
+                <div class="totals">
+                  <div class="totals-row">
+                    <span>Subtotal</span>
+                    <span class="t-mono">{{ totals.subtotal | appCurrency }}</span>
+                  </div>
+                  @if (totals.discount > 0) {
+                    <div class="totals-row" style="color:var(--amber);">
+                      <span>Descuento</span>
+                      <span class="t-mono">-{{ totals.discount | appCurrency }}</span>
+                    </div>
+                  }
+                  @if (taxEnabled) {
+                    <div class="totals-row">
+                      <span>IVA (22%)</span>
+                      <span class="t-mono">+{{ totals.tax | appCurrency }}</span>
+                    </div>
+                  }
+                  <div class="totals-row totals-total">
+                    <span>Total</span>
+                    <span class="t-mono">{{ totals.total | appCurrency }}</span>
+                  </div>
                 </div>
-              }
-              @if (taxEnabled) {
-                <div class="total-row">
-                  <span>IVA (22%)</span>
-                  <span>+{{ totals.tax | appCurrency }}</span>
-                </div>
-              }
-              <div class="total-row grand-total">
-                <span>Total</span>
-                <span>{{ totals.total | appCurrency }}</span>
-              </div>
 
-              <div style="margin-top:24px;">
-                <button mat-raised-button color="primary" (click)="save()"
-                        [disabled]="saving || !vehicle" style="width:100%;height:48px;font-size:16px;">
-                  {{ saving ? 'Guardando...' : 'Crear Trabajo' }}
-                </button>
-                <button mat-button routerLink="/trabajos" style="width:100%;margin-top:8px;">
-                  Cancelar
-                </button>
-              </div>
-            </div>
+                <div class="summary-actions">
+                  <button mat-raised-button color="primary" (click)="save()"
+                          [disabled]="saving || !vehicle" style="width:100%;height:44px;">
+                    {{ saving ? 'Guardando...' : 'Crear Trabajo' }}
+                  </button>
+                  <button mat-button routerLink="/trabajos" style="width:100%;margin-top:8px;">
+                    Cancelar
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
           </div>
         }
       </div>
-    </div>
+    </main>
   `,
   styles: [`
     .job-create-layout {
       display: grid;
-      grid-template-columns: 1fr 300px;
+      grid-template-columns: 1fr 320px;
       gap: 24px;
       align-items: start;
     }
@@ -236,7 +239,50 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     .item-price { width: 100px; }
     .item-type { width: 140px; }
     .item-supplier { width: 130px; }
-    .item-total { width: 100px; font-weight: 500; font-size: 13px; white-space: nowrap; }
+    .item-total {
+      width: 100px;
+      font-weight: 600;
+      font-size: 13px;
+      white-space: nowrap;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .summary-card {
+      position: sticky;
+      top: 72px;
+    }
+    .summary-card h3 { margin-bottom: 12px; }
+    .summary-actions { margin-top: 20px; }
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0;
+    }
+    .totals { display: flex; flex-direction: column; gap: 4px; }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .totals-total {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 4px;
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .form-section-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border2);
+    }
   `]
 })
 export class JobCreateComponent {

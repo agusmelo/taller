@@ -5,7 +5,6 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
@@ -21,19 +20,19 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
   standalone: true,
   imports: [
     CommonModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
-    MatTableModule, MatChipsModule, MatDialogModule, MatProgressSpinnerModule,
+    MatTableModule, MatDialogModule, MatProgressSpinnerModule,
     StatusLabelPipe
   ],
   template: `
     @if (loading) {
       <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
     } @else if (client) {
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>{{ client.full_name }}</h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="page-head-actions">
           @if (auth.isAdminOrRecep()) {
-            <button mat-raised-button color="accent" (click)="edit()">
+            <button mat-raised-button color="primary" (click)="edit()">
               <mat-icon>edit</mat-icon> Editar
             </button>
           }
@@ -46,75 +45,132 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
         </div>
       </div>
 
-      <div class="card-grid">
+      <div class="info-cards">
         <mat-card>
           <mat-card-content>
-            <p><strong>Tipo:</strong> {{ client.type === 'empresa' ? 'Empresa' : 'Individual' }}</p>
-            <p><strong>RUT:</strong> {{ client.rut || 'No registrado' }}</p>
-            <p><strong>Telefono:</strong> {{ client.phone || '-' }}</p>
-            <p><strong>Email:</strong> {{ client.email || '-' }}</p>
-            <p><strong>Direccion:</strong> {{ client.address || '-' }}</p>
-            @if (client.notes) { <p><strong>Notas:</strong> {{ client.notes }}</p> }
+            <h3 class="card-title-lg">Identificacion</h3>
+            <div class="info-row"><span>Tipo</span><span>{{ client.type === 'empresa' ? 'Empresa' : 'Individual' }}</span></div>
+            <div class="info-row"><span>RUT</span><span class="t-mono">{{ client.rut || '-' }}</span></div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card>
+          <mat-card-content>
+            <h3 class="card-title-lg">Contacto</h3>
+            <div class="info-row"><span>Telefono</span><span>{{ client.phone || '-' }}</span></div>
+            <div class="info-row"><span>Email</span><span>{{ client.email || '-' }}</span></div>
+            <div class="info-row"><span>Direccion</span><span>{{ client.address || '-' }}</span></div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card>
+          <mat-card-content>
+            <h3 class="card-title-lg">Resumen</h3>
+            <div class="info-row"><span>Vehiculos</span><span class="t-mono">{{ vehicles.length }}</span></div>
+            <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
+            @if (client.notes) {
+              <div class="info-row"><span>Notas</span><span>{{ client.notes }}</span></div>
+            }
           </mat-card-content>
         </mat-card>
       </div>
 
-      <h2>Vehiculos ({{ vehicles.length }})</h2>
-      <table mat-table [dataSource]="vehicles" class="mat-elevation-z1 mb-16">
-        <ng-container matColumnDef="plate_number">
-          <th mat-header-cell *matHeaderCellDef>Patente</th>
-          <td mat-cell *matCellDef="let v">{{ v.plate_number }}</td>
-        </ng-container>
-        <ng-container matColumnDef="make">
-          <th mat-header-cell *matHeaderCellDef>Marca</th>
-          <td mat-cell *matCellDef="let v">{{ v.make }}</td>
-        </ng-container>
-        <ng-container matColumnDef="model">
-          <th mat-header-cell *matHeaderCellDef>Modelo</th>
-          <td mat-cell *matCellDef="let v">{{ v.model }}</td>
-        </ng-container>
-        <ng-container matColumnDef="year">
-          <th mat-header-cell *matHeaderCellDef>Ano</th>
-          <td mat-cell *matCellDef="let v">{{ v.year || '-' }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="['plate_number','make','model','year']"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['plate_number','make','model','year'];"
-            class="clickable-row" (click)="goToVehicle(row.id)"></tr>
-      </table>
+      <div class="tabs">
+        <button class="tab" [class.on]="activeTab === 'jobs'" (click)="activeTab = 'jobs'">Trabajos ({{ jobs.length }})</button>
+        <button class="tab" [class.on]="activeTab === 'vehicles'" (click)="activeTab = 'vehicles'">Vehiculos ({{ vehicles.length }})</button>
+      </div>
 
-      <h2>Trabajos ({{ jobs.length }})</h2>
-      <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
-        <ng-container matColumnDef="job_number">
-          <th mat-header-cell *matHeaderCellDef>Numero</th>
-          <td mat-cell *matCellDef="let j">{{ j.job_number }}</td>
-        </ng-container>
-        <ng-container matColumnDef="plate_number">
-          <th mat-header-cell *matHeaderCellDef>Patente</th>
-          <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
-        </ng-container>
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Estado</th>
-          <td mat-cell *matCellDef="let j">
-            <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="created_at">
-          <th mat-header-cell *matHeaderCellDef>Fecha</th>
-          <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="['job_number','plate_number','status','created_at']"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['job_number','plate_number','status','created_at'];"
-            class="clickable-row" (click)="goToJob(row.id)"></tr>
-      </table>
-    </div>
+      <mat-card class="table-card">
+        <mat-card-content>
+          @if (activeTab === 'vehicles') {
+            <table mat-table [dataSource]="vehicles">
+              <ng-container matColumnDef="plate_number">
+                <th mat-header-cell *matHeaderCellDef>Patente</th>
+                <td mat-cell *matCellDef="let v" class="t-mono">{{ v.plate_number }}</td>
+              </ng-container>
+              <ng-container matColumnDef="make">
+                <th mat-header-cell *matHeaderCellDef>Marca</th>
+                <td mat-cell *matCellDef="let v">{{ v.make }}</td>
+              </ng-container>
+              <ng-container matColumnDef="model">
+                <th mat-header-cell *matHeaderCellDef>Modelo</th>
+                <td mat-cell *matCellDef="let v">{{ v.model }}</td>
+              </ng-container>
+              <ng-container matColumnDef="year">
+                <th mat-header-cell *matHeaderCellDef>Ano</th>
+                <td mat-cell *matCellDef="let v">{{ v.year || '-' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['plate_number','make','model','year']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['plate_number','make','model','year'];"
+                  class="clickable-row" (click)="goToVehicle(row.id)"></tr>
+            </table>
+          } @else {
+            <table mat-table [dataSource]="jobs">
+              <ng-container matColumnDef="job_number">
+                <th mat-header-cell *matHeaderCellDef>Numero</th>
+                <td mat-cell *matCellDef="let j" class="t-mono">{{ j.job_number }}</td>
+              </ng-container>
+              <ng-container matColumnDef="plate_number">
+                <th mat-header-cell *matHeaderCellDef>Patente</th>
+                <td mat-cell *matCellDef="let j" class="t-mono">{{ j.plate_number }}</td>
+              </ng-container>
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let j">
+                  <span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="created_at">
+                <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['job_number','plate_number','status','created_at']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['job_number','plate_number','status','created_at'];"
+                  class="clickable-row" (click)="goToJob(row.id)"></tr>
+            </table>
+          }
+        </mat-card-content>
+      </mat-card>
+    </main>
     }
-  `
+  `,
+  styles: [`
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .info-cards { grid-template-columns: 1fr; }
+    }
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0 0 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .info-row > span:first-child {
+      color: var(--text-3);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .table-card { padding: 0 !important; overflow: hidden; }
+    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+  `]
 })
 export class ClientDetailComponent implements OnInit {
   client: Client | null = null;
   vehicles: Vehicle[] = [];
   jobs: Job[] = [];
   loading = true;
+  activeTab: 'jobs' | 'vehicles' = 'jobs';
 
   constructor(
     private route: ActivatedRoute,
