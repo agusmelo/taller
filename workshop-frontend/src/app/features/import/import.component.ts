@@ -21,8 +21,8 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
     MatDividerModule, AppCurrencyPipe
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Importar trabajos</h1>
       </div>
 
@@ -34,20 +34,20 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
             <mat-card style="max-width:600px;">
               <mat-card-content>
                 <div class="upload-zone" (dragover)="onDragOver($event)" (drop)="onDrop($event)" (click)="fileInput.click()">
-                  <mat-icon style="font-size:48px;width:48px;height:48px;color:#999;">cloud_upload</mat-icon>
-                  <p>Arrastra un archivo CSV aqui o haz click para seleccionar</p>
-                  <p style="font-size:12px;color:#999;">Formato: Cliente;Fecha;Docs A pagar;Forma de Pago;Total;Importe pagado</p>
+                  <mat-icon class="upload-ico">cloud_upload</mat-icon>
+                  <p class="upload-cta">Arrastra un archivo CSV aqui o haz click para seleccionar</p>
+                  <p class="upload-hint">Formato: Cliente;Fecha;Docs A pagar;Forma de Pago;Total;Importe pagado</p>
                   <input #fileInput type="file" accept=".csv,.txt" style="display:none;" (change)="onFileSelected($event)">
                 </div>
                 @if (fileName) {
-                  <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                  <div class="file-row">
                     <mat-icon>description</mat-icon>
                     <span>{{ fileName }}</span>
                     <button mat-icon-button (click)="clearFile()"><mat-icon>close</mat-icon></button>
                   </div>
                 }
                 @if (parseError) {
-                  <div style="color:#c62828;margin-top:12px;">{{ parseError }}</div>
+                  <div class="banner banner-error">{{ parseError }}</div>
                 }
                 <div style="margin-top:16px;">
                   <button mat-raised-button color="primary" (click)="loadPreview()" [disabled]="!fileContent || previewing">
@@ -68,30 +68,24 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
           <ng-template matStepLabel>Revisar datos</ng-template>
           @if (preview) {
             <div style="padding:24px 0;">
-              <div class="card-grid" style="margin-bottom:16px;">
-                <mat-card style="background:#e3f2fd;">
-                  <mat-card-content class="stat-card">
-                    <mat-icon style="color:#1565c0;font-size:32px;width:32px;height:32px;">list_alt</mat-icon>
-                    <div><div class="stat-label">Filas</div><div class="stat-value">{{ preview.row_count }}</div></div>
-                  </mat-card-content>
-                </mat-card>
-                <mat-card style="background:#e8f5e9;">
-                  <mat-card-content class="stat-card">
-                    <mat-icon style="color:#2e7d32;font-size:32px;width:32px;height:32px;">people</mat-icon>
-                    <div><div class="stat-label">Clientes</div><div class="stat-value">{{ preview.unique_clients }}</div></div>
-                  </mat-card-content>
-                </mat-card>
-                <mat-card style="background:#fff3e0;">
-                  <mat-card-content class="stat-card">
-                    <mat-icon style="color:#e65100;font-size:32px;width:32px;height:32px;">directions_car</mat-icon>
-                    <div><div class="stat-label">Vehiculos</div><div class="stat-value">{{ preview.unique_plates }}</div></div>
-                  </mat-card-content>
-                </mat-card>
+              <div class="kpi-row kpi-row-3" style="margin-bottom:16px;">
+                <div class="kpi">
+                  <div class="kpi-label">Filas</div>
+                  <div class="kpi-val">{{ preview.row_count }}</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-label">Clientes</div>
+                  <div class="kpi-val">{{ preview.unique_clients }}</div>
+                </div>
+                <div class="kpi">
+                  <div class="kpi-label">Vehiculos</div>
+                  <div class="kpi-val">{{ preview.unique_plates }}</div>
+                </div>
               </div>
 
               <mat-card>
                 <mat-card-content>
-                  <h3>Vista previa de datos a importar</h3>
+                  <h3 class="card-title-lg">Vista previa de datos a importar</h3>
                   <div style="overflow-x:auto;">
                     <table mat-table [dataSource]="preview.rows" style="width:100%;">
                       <ng-container matColumnDef="client_name">
@@ -116,15 +110,15 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
                       </ng-container>
                       <ng-container matColumnDef="total">
                         <th mat-header-cell *matHeaderCellDef class="text-right">Total</th>
-                        <td mat-cell *matCellDef="let r" class="text-right">{{ r.total | appCurrency }}</td>
+                        <td mat-cell *matCellDef="let r" class="td-num">{{ r.total | appCurrency }}</td>
                       </ng-container>
                       <ng-container matColumnDef="paid">
                         <th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th>
-                        <td mat-cell *matCellDef="let r" class="text-right">{{ r.paid | appCurrency }}</td>
+                        <td mat-cell *matCellDef="let r" class="td-num">{{ r.paid | appCurrency }}</td>
                       </ng-container>
                       <ng-container matColumnDef="balance">
                         <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
-                        <td mat-cell *matCellDef="let r" class="text-right" [style.color]="r.balance > 0 ? '#c62828' : '#2e7d32'">{{ r.balance | appCurrency }}</td>
+                        <td mat-cell *matCellDef="let r" class="td-num" [class.money-neg]="r.balance > 0" [class.money-zero]="r.balance <= 0">{{ r.balance | appCurrency }}</td>
                       </ng-container>
                       <tr mat-header-row *matHeaderRowDef="previewColumns"></tr>
                       <tr mat-row *matRowDef="let row; columns: previewColumns;"></tr>
@@ -154,9 +148,9 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
             <div style="padding:24px 0;">
               <mat-card style="max-width:600px;">
                 <mat-card-content>
-                  <div style="text-align:center;margin-bottom:16px;">
-                    <mat-icon style="font-size:48px;width:48px;height:48px;color:#2e7d32;">check_circle</mat-icon>
-                    <h3>Importacion completada</h3>
+                  <div class="result-header">
+                    <mat-icon class="success-ico">check_circle</mat-icon>
+                    <h3 class="card-title-lg">Importacion completada</h3>
                   </div>
 
                   <div class="result-grid">
@@ -188,10 +182,10 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
 
                   @if (importResult.errors && importResult.errors.length > 0) {
                     <mat-divider style="margin:16px 0;"></mat-divider>
-                    <h4 style="color:#c62828;">Errores ({{ importResult.errors.length }})</h4>
+                    <h4 class="errors-title">Errores ({{ importResult.errors.length }})</h4>
                     @for (e of importResult.errors; track e.row) {
-                      <div style="font-size:13px;color:#c62828;margin:4px 0;">
-                        Fila {{ e.row }} ({{ e.client }}): {{ e.error }}
+                      <div class="error-row">
+                        Fila <span class="t-mono">{{ e.row }}</span> ({{ e.client }}): {{ e.error }}
                       </div>
                     }
                   }
@@ -210,9 +204,15 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
           }
         </mat-step>
       </mat-stepper>
-    </div>
+    </main>
   `,
   styles: [`
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0 0 12px;
+    }
     .upload-zone {
       border: 2px dashed var(--border);
       border-radius: var(--r);
@@ -226,12 +226,75 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
       border-color: var(--navy);
       background: #eceae5;
     }
-    .stat-card { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-    .stat-label { font-size: 13px; color: #666; }
-    .stat-value { font-size: 20px; font-weight: 500; }
-    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .result-item { display: flex; align-items: center; gap: 8px; }
-    .result-item mat-icon { color: #666; }
+    .upload-ico {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: var(--text-3);
+    }
+    .upload-cta {
+      font-size: 14px;
+      color: var(--text-1);
+      margin: 12px 0 4px;
+    }
+    .upload-hint {
+      font-size: 12px;
+      color: var(--text-3);
+      margin: 0;
+    }
+    .file-row {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg);
+      border-radius: var(--r-sm);
+      font-size: 13px;
+    }
+    .file-row mat-icon { color: var(--text-2); }
+    .result-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .success-ico {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: var(--green);
+      margin-bottom: 8px;
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .result-item mat-icon {
+      color: var(--text-3);
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+    .errors-title {
+      color: var(--red);
+      margin: 0 0 8px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .error-row {
+      font-size: 12px;
+      color: var(--red);
+      margin: 4px 0;
+      padding: 6px 10px;
+      background: var(--red-lt);
+      border-radius: var(--r-sm);
+    }
   `]
 })
 export class ImportComponent {

@@ -37,58 +37,43 @@ import Chart from 'chart.js/auto';
     StatusLabelPipe, PaymentMethodPipe, AppCurrencyPipe
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Pagos</h1>
       </div>
 
       <!-- KPI Cards -->
-      <div class="card-grid kpi-grid" *ngIf="summary">
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#2e7d32;">payments</mat-icon>
-            <div>
-              <div class="stat-label">Cobrado (mes)</div>
-              <div class="stat-value">{{ summary.cobrado_month | appCurrency }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#c62828;">account_balance_wallet</mat-icon>
-            <div>
-              <div class="stat-label">Pendiente total</div>
-              <div class="stat-value" style="color:#c62828;">{{ summary.pendiente_total | appCurrency }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card">
-            <mat-icon class="stat-icon" style="color:#e65100;">people</mat-icon>
-            <div>
-              <div class="stat-label">Deudores</div>
-              <div class="stat-value">{{ summary.deudores_count }}</div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content class="stat-card chart-card">
-            <canvas #methodChart height="80"></canvas>
-          </mat-card-content>
-        </mat-card>
+      <div class="kpi-row kpi-row-4" *ngIf="summary">
+        <div class="kpi">
+          <div class="kpi-label">Cobrado (mes)</div>
+          <div class="kpi-val" style="color:var(--green);">{{ summary.cobrado_month | appCurrency }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Pendiente total</div>
+          <div class="kpi-val" style="color:var(--red);">{{ summary.pendiente_total | appCurrency }}</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-label">Deudores</div>
+          <div class="kpi-val">{{ summary.deudores_count }}</div>
+        </div>
+        <div class="kpi kpi-chart">
+          <div class="kpi-label">Metodos de cobro</div>
+          <canvas #methodChart height="60"></canvas>
+        </div>
       </div>
 
       <!-- Paid vs Pending visualization -->
       @if (summary && summary.cobrado_month + summary.pendiente_total > 0) {
         <mat-card class="mb-16">
           <mat-card-content>
-            <h3 style="margin-bottom:12px;">Cobrado vs Pendiente</h3>
+            <h3 class="card-title-lg">Cobrado vs Pendiente</h3>
             <div class="bar-comparison">
               <div class="bar-row">
                 <span class="bar-label">Cobrado</span>
                 <div class="bar-track">
                   <div class="bar-fill bar-paid" [style.width.%]="paidPercent">
-                    {{ summary.cobrado_month | appCurrency }}
+                    <span class="t-mono">{{ summary.cobrado_month | appCurrency }}</span>
+                    <span class="bar-pct">{{ paidPercent }}%</span>
                   </div>
                 </div>
               </div>
@@ -96,7 +81,8 @@ import Chart from 'chart.js/auto';
                 <span class="bar-label">Pendiente</span>
                 <div class="bar-track">
                   <div class="bar-fill bar-pending" [style.width.%]="pendingPercent">
-                    {{ summary.pendiente_total | appCurrency }}
+                    <span class="t-mono">{{ summary.pendiente_total | appCurrency }}</span>
+                    <span class="bar-pct">{{ pendingPercent }}%</span>
                   </div>
                 </div>
               </div>
@@ -109,12 +95,12 @@ import Chart from 'chart.js/auto';
       @if (aging) {
         <mat-card class="mb-16">
           <mat-card-content>
-            <h3 style="margin-bottom:12px;">Antiguedad de deuda</h3>
+            <h3 class="card-title-lg">Antiguedad de deuda</h3>
             <div class="aging-grid">
               @for (bucket of agingBuckets; track bucket.label) {
                 <div class="aging-item" [class.aging-danger]="bucket.label === '90+'">
                   <div class="aging-label">{{ bucket.label }} dias</div>
-                  <div class="aging-amount">{{ bucket.data.total_balance | appCurrency }}</div>
+                  <div class="aging-amount t-mono">{{ bucket.data.total_balance | appCurrency }}</div>
                   <div class="aging-meta">{{ bucket.data.job_count }} trabajos · {{ bucket.data.client_count }} clientes</div>
                 </div>
               }
@@ -127,7 +113,7 @@ import Chart from 'chart.js/auto';
         <!-- Tab 1: Jobs with balances -->
         <mat-tab label="Trabajos">
           <div style="padding:16px 0;">
-            <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+            <div class="filter-row">
               <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
                 <mat-label>Buscar...</mat-label>
                 <input matInput [(ngModel)]="jobSearch" (input)="onJobSearch()">
@@ -149,10 +135,12 @@ import Chart from 'chart.js/auto';
             } @else if (jobs.length === 0) {
               <div class="empty-state"><mat-icon>receipt_long</mat-icon><p>Sin trabajos</p></div>
             } @else {
-              <table mat-table [dataSource]="jobs" class="mat-elevation-z1" style="width:100%;">
+              <mat-card class="table-card">
+                <mat-card-content>
+              <table mat-table [dataSource]="jobs">
                 <ng-container matColumnDef="job_number">
                   <th mat-header-cell *matHeaderCellDef>N.o</th>
-                  <td mat-cell *matCellDef="let j"><strong>{{ j.job_number }}</strong></td>
+                  <td mat-cell *matCellDef="let j" class="t-mono"><strong>{{ j.job_number }}</strong></td>
                 </ng-container>
                 <ng-container matColumnDef="job_date">
                   <th mat-header-cell *matHeaderCellDef>Fecha</th>
@@ -164,28 +152,27 @@ import Chart from 'chart.js/auto';
                 </ng-container>
                 <ng-container matColumnDef="plate_number">
                   <th mat-header-cell *matHeaderCellDef>Patente</th>
-                  <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
+                  <td mat-cell *matCellDef="let j" class="t-mono">{{ j.plate_number }}</td>
                 </ng-container>
                 <ng-container matColumnDef="total">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Total</th>
-                  <td mat-cell *matCellDef="let j" class="text-right">{{ j.total | appCurrency }}</td>
+                  <td mat-cell *matCellDef="let j" class="td-num">{{ j.total | appCurrency }}</td>
                 </ng-container>
                 <ng-container matColumnDef="total_paid">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th>
-                  <td mat-cell *matCellDef="let j" class="text-right" style="color:#2e7d32;">{{ j.total_paid | appCurrency }}</td>
+                  <td mat-cell *matCellDef="let j" class="td-num" style="color:var(--green);">{{ j.total_paid | appCurrency }}</td>
                 </ng-container>
                 <ng-container matColumnDef="balance">
                   <th mat-header-cell *matHeaderCellDef class="text-right">Saldo</th>
-                  <td mat-cell *matCellDef="let j" class="text-right"
-                      [style.color]="j.balance > 0 ? '#c62828' : '#2e7d32'"
-                      [style.fontWeight]="j.balance > 0 ? '600' : '400'">
+                  <td mat-cell *matCellDef="let j" class="td-num"
+                      [class.money-neg]="j.balance > 0" [class.money-zero]="j.balance <= 0">
                     {{ j.balance | appCurrency }}
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="status">
                   <th mat-header-cell *matHeaderCellDef>Estado</th>
                   <td mat-cell *matCellDef="let j">
-                    <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
+                    <span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span>
                   </td>
                 </ng-container>
                 <ng-container matColumnDef="last_payment">
@@ -193,7 +180,7 @@ import Chart from 'chart.js/auto';
                   <td mat-cell *matCellDef="let j">
                     @if (j.last_payment_date) {
                       {{ j.last_payment_date | date:'dd/MM/yy' }}
-                      <small style="color:#666;"> ({{ j.last_payment_method | paymentMethod }})</small>
+                      <small style="color:var(--text-3);"> ({{ j.last_payment_method | paymentMethod }})</small>
                     } @else { - }
                   </td>
                 </ng-container>
@@ -215,6 +202,8 @@ import Chart from 'chart.js/auto';
               <mat-paginator [length]="jobsTotal" [pageIndex]="jobPage" [pageSize]="jobPageSize"
                              [pageSizeOptions]="[10, 20, 50]" (page)="onJobPage($event)" showFirstLastButtons>
               </mat-paginator>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </mat-tab>
@@ -231,49 +220,52 @@ import Chart from 'chart.js/auto';
             @if (debtors.length === 0) {
               <div class="empty-state"><mat-icon>celebration</mat-icon><p>No hay deudores</p></div>
             } @else {
-              <table mat-table [dataSource]="debtors" class="mat-elevation-z1" style="width:100%;">
-                <ng-container matColumnDef="full_name">
-                  <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                  <td mat-cell *matCellDef="let d">
-                    {{ d.full_name }}
-                    @if (isDebtAlert(d)) {
-                      <mat-icon style="color:#c62828;font-size:16px;vertical-align:middle;margin-left:4px;"
-                                matTooltip="Deuda supera umbral de alerta">warning</mat-icon>
-                    }
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="rut">
-                  <th mat-header-cell *matHeaderCellDef>RUT</th>
-                  <td mat-cell *matCellDef="let d">{{ d.rut || '-' }}</td>
-                </ng-container>
-                <ng-container matColumnDef="phone">
-                  <th mat-header-cell *matHeaderCellDef>Telefono</th>
-                  <td mat-cell *matCellDef="let d">{{ d.phone || '-' }}</td>
-                </ng-container>
-                <ng-container matColumnDef="total_debt">
-                  <th mat-header-cell *matHeaderCellDef class="text-right">Deuda total</th>
-                  <td mat-cell *matCellDef="let d" class="text-right"
-                      [style.color]="isDebtAlert(d) ? '#c62828' : '#e65100'"
-                      style="font-weight:600;">
-                    {{ d.total_debt | appCurrency }}
-                  </td>
-                </ng-container>
-                <ng-container matColumnDef="unpaid_jobs">
-                  <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
-                  <td mat-cell *matCellDef="let d" class="text-right">{{ d.unpaid_jobs }}</td>
-                </ng-container>
-                <ng-container matColumnDef="days_overdue">
-                  <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
-                  <td mat-cell *matCellDef="let d" class="text-right"
-                      [style.color]="d.days_overdue > unpaidDaysThreshold ? '#c62828' : ''">
-                    {{ d.days_overdue }}d
-                  </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['full_name','rut','phone','total_debt','unpaid_jobs','days_overdue']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['full_name','rut','phone','total_debt','unpaid_jobs','days_overdue'];"
-                    class="clickable-row" (click)="goToClient(row.id)"
-                    [style.background]="isDebtAlert(row) ? '#fff5f5' : ''"></tr>
-              </table>
+              <mat-card class="table-card">
+                <mat-card-content>
+                  <table mat-table [dataSource]="debtors">
+                    <ng-container matColumnDef="full_name">
+                      <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                      <td mat-cell *matCellDef="let d">
+                        {{ d.full_name }}
+                        @if (isDebtAlert(d)) {
+                          <mat-icon class="warn-ico" matTooltip="Deuda supera umbral de alerta">warning</mat-icon>
+                        }
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="rut">
+                      <th mat-header-cell *matHeaderCellDef>RUT</th>
+                      <td mat-cell *matCellDef="let d" class="t-mono">{{ d.rut || '-' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="phone">
+                      <th mat-header-cell *matHeaderCellDef>Telefono</th>
+                      <td mat-cell *matCellDef="let d">{{ d.phone || '-' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="total_debt">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Deuda total</th>
+                      <td mat-cell *matCellDef="let d" class="td-num"
+                          [style.color]="isDebtAlert(d) ? 'var(--red)' : 'var(--amber)'"
+                          style="font-weight:600;">
+                        {{ d.total_debt | appCurrency }}
+                      </td>
+                    </ng-container>
+                    <ng-container matColumnDef="unpaid_jobs">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
+                      <td mat-cell *matCellDef="let d" class="td-num">{{ d.unpaid_jobs }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="days_overdue">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Dias</th>
+                      <td mat-cell *matCellDef="let d" class="td-num"
+                          [style.color]="d.days_overdue > unpaidDaysThreshold ? 'var(--red)' : ''">
+                        {{ d.days_overdue }}d
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['full_name','rut','phone','total_debt','unpaid_jobs','days_overdue']"></tr>
+                    <tr mat-row *matRowDef="let row; columns: ['full_name','rut','phone','total_debt','unpaid_jobs','days_overdue'];"
+                        class="clickable-row" (click)="goToClient(row.id)"
+                        [class.row-alert]="isDebtAlert(row)"></tr>
+                  </table>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </mat-tab>
@@ -284,71 +276,154 @@ import Chart from 'chart.js/auto';
             @if (recentPayments.length === 0) {
               <div class="empty-state"><mat-icon>receipt</mat-icon><p>Sin pagos registrados</p></div>
             } @else {
-              <table mat-table [dataSource]="recentPayments" class="mat-elevation-z1" style="width:100%;">
-                <ng-container matColumnDef="paid_at">
-                  <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                  <td mat-cell *matCellDef="let p">{{ p.paid_at | date:'dd/MM/yy HH:mm' }}</td>
-                </ng-container>
-                <ng-container matColumnDef="client_name">
-                  <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                  <td mat-cell *matCellDef="let p">{{ p.client_name }}</td>
-                </ng-container>
-                <ng-container matColumnDef="job_number">
-                  <th mat-header-cell *matHeaderCellDef>Trabajo</th>
-                  <td mat-cell *matCellDef="let p">{{ p.job_number }}</td>
-                </ng-container>
-                <ng-container matColumnDef="method">
-                  <th mat-header-cell *matHeaderCellDef>Metodo</th>
-                  <td mat-cell *matCellDef="let p">{{ p.method | paymentMethod }}</td>
-                </ng-container>
-                <ng-container matColumnDef="reference">
-                  <th mat-header-cell *matHeaderCellDef>Referencia</th>
-                  <td mat-cell *matCellDef="let p">{{ p.reference || '-' }}</td>
-                </ng-container>
-                <ng-container matColumnDef="amount">
-                  <th mat-header-cell *matHeaderCellDef class="text-right">Monto</th>
-                  <td mat-cell *matCellDef="let p" class="text-right" style="color:#2e7d32;font-weight:500;">
-                    {{ p.amount | appCurrency }}
-                  </td>
-                </ng-container>
-                <tr mat-header-row *matHeaderRowDef="['paid_at','client_name','job_number','method','reference','amount']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['paid_at','client_name','job_number','method','reference','amount'];"
-                    class="clickable-row" (click)="goToJob(row.job_id)"></tr>
-              </table>
+              <mat-card class="table-card">
+                <mat-card-content>
+                  <table mat-table [dataSource]="recentPayments">
+                    <ng-container matColumnDef="paid_at">
+                      <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                      <td mat-cell *matCellDef="let p">{{ p.paid_at | date:'dd/MM/yy HH:mm' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="client_name">
+                      <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                      <td mat-cell *matCellDef="let p">{{ p.client_name }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="job_number">
+                      <th mat-header-cell *matHeaderCellDef>Trabajo</th>
+                      <td mat-cell *matCellDef="let p" class="t-mono">{{ p.job_number }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="method">
+                      <th mat-header-cell *matHeaderCellDef>Metodo</th>
+                      <td mat-cell *matCellDef="let p">{{ p.method | paymentMethod }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="reference">
+                      <th mat-header-cell *matHeaderCellDef>Referencia</th>
+                      <td mat-cell *matCellDef="let p">{{ p.reference || '-' }}</td>
+                    </ng-container>
+                    <ng-container matColumnDef="amount">
+                      <th mat-header-cell *matHeaderCellDef class="text-right">Monto</th>
+                      <td mat-cell *matCellDef="let p" class="td-num" style="color:var(--green);font-weight:600;">
+                        {{ p.amount | appCurrency }}
+                      </td>
+                    </ng-container>
+                    <tr mat-header-row *matHeaderRowDef="['paid_at','client_name','job_number','method','reference','amount']"></tr>
+                    <tr mat-row *matRowDef="let row; columns: ['paid_at','client_name','job_number','method','reference','amount'];"
+                        class="clickable-row" (click)="goToJob(row.job_id)"></tr>
+                  </table>
+                </mat-card-content>
+              </mat-card>
             }
           </div>
         </mat-tab>
       </mat-tab-group>
-    </div>
+    </main>
   `,
   styles: [`
-    .stat-card { display: flex; align-items: center; gap: 16px; padding: 8px 0; }
-    .stat-icon { font-size: 40px; width: 40px; height: 40px; }
-    .stat-label { font-size: 13px; color: #666; }
-    .stat-value { font-size: 22px; font-weight: 500; }
-    .kpi-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; }
-    .chart-card { justify-content: center; }
-    .bar-comparison { display: flex; flex-direction: column; gap: 12px; }
-    .bar-row { display: flex; align-items: center; gap: 12px; }
-    .bar-label { width: 80px; font-size: 13px; color: #666; text-align: right; }
-    .bar-track { flex: 1; background: #f0f0f0; border-radius: 4px; height: 32px; overflow: hidden; }
-    .bar-fill { height: 100%; display: flex; align-items: center; padding: 0 12px;
-                font-size: 12px; font-weight: 500; color: white; min-width: fit-content;
-                transition: width 0.5s ease; border-radius: 4px; }
-    .bar-paid { background: #2e7d32; }
-    .bar-pending { background: #c62828; }
-    .aging-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    @media (max-width: 768px) { .aging-grid { grid-template-columns: repeat(2, 1fr); } }
-    .aging-item { text-align: center; padding: 16px; border-radius: 8px; background: #f5f5f5; }
-    .aging-item.aging-danger { background: #ffebee; }
-    .aging-label { font-size: 13px; color: #666; font-weight: 500; }
-    .aging-amount { font-size: 20px; font-weight: 600; margin: 4px 0; }
-    .aging-danger .aging-amount { color: #c62828; }
-    .aging-meta { font-size: 11px; color: #999; }
-    .tab-badge {
-      background: #c62828; color: white; border-radius: 10px;
-      padding: 2px 7px; font-size: 11px; margin-left: 6px;
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0 0 12px;
     }
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .table-card { padding: 0 !important; overflow: hidden; }
+    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+    .table-card mat-paginator { padding: 0 12px; }
+    .kpi-chart { padding: 12px 14px; gap: 4px; }
+    .kpi-chart canvas { max-height: 60px; }
+
+    .bar-comparison { display: flex; flex-direction: column; gap: 10px; }
+    .bar-row { display: flex; align-items: center; gap: 12px; }
+    .bar-label {
+      width: 80px;
+      font-size: 11px;
+      color: var(--text-3);
+      text-align: right;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .bar-track {
+      flex: 1;
+      background: var(--border2);
+      border-radius: var(--r-sm);
+      height: 30px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      min-width: fit-content;
+      transition: width .5s ease;
+      border-radius: var(--r-sm);
+    }
+    .bar-pct { opacity: .8; font-size: 11px; }
+    .bar-paid { background: var(--green); }
+    .bar-pending { background: var(--red); }
+
+    .aging-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 768px) { .aging-grid { grid-template-columns: repeat(2, 1fr); } }
+    .aging-item {
+      text-align: center;
+      padding: 14px;
+      border-radius: var(--r-sm);
+      background: var(--bg);
+      border: 1px solid var(--border2);
+    }
+    .aging-item.aging-danger {
+      background: var(--red-lt);
+      border-color: #fecaca;
+    }
+    .aging-label {
+      font-size: 10px;
+      color: var(--text-3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .aging-amount {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 4px 0;
+      color: var(--text-1);
+      letter-spacing: -.02em;
+    }
+    .aging-danger .aging-amount { color: var(--red); }
+    .aging-meta { font-size: 11px; color: var(--text-3); }
+
+    .tab-badge {
+      background: var(--red);
+      color: white;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-left: 6px;
+    }
+    .warn-ico {
+      color: var(--red);
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-left: 4px;
+    }
+    .row-alert { background: var(--red-lt) !important; }
   `]
 })
 export class PaymentsPageComponent implements OnInit {
@@ -487,21 +562,38 @@ export class PaymentsPageComponent implements OnInit {
       efectivo: 'Efectivo', transferencia: 'Transferencia',
       credito: 'Credito', cheque: 'Cheque'
     };
-    const colors = ['#2e7d32', '#1565c0', '#e65100', '#6a1b9a'];
+    const css = getComputedStyle(document.documentElement);
+    const navy = css.getPropertyValue('--navy').trim() || '#111827';
+    const text2 = css.getPropertyValue('--text-2').trim() || '#6b7280';
+    const fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
+    Chart.defaults.font.family = fontFamily;
+    Chart.defaults.color = text2;
+    // Monochrome ramp from navy to mid-grey
+    const ramp = [navy, '#374151', '#6b7280', '#9ca3af'];
     this.methodChart = new Chart(this.methodChartRef.nativeElement, {
       type: 'doughnut',
       data: {
         labels: this.summary.by_method.map(m => labels[m.method] || m.method),
         datasets: [{
           data: this.summary.by_method.map(m => m.total),
-          backgroundColor: colors.slice(0, this.summary.by_method.length),
+          backgroundColor: ramp.slice(0, this.summary.by_method.length),
+          borderWidth: 0,
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        cutout: '65%',
         plugins: {
-          legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } },
+          legend: {
+            position: 'right',
+            labels: {
+              boxWidth: 8,
+              boxHeight: 8,
+              font: { size: 11, family: fontFamily },
+              color: text2
+            }
+          },
           tooltip: {
             callbacks: {
               label: ctx => ctx.label + ': $ ' + Number(ctx.raw).toLocaleString('es-UY', { minimumFractionDigits: 2 })

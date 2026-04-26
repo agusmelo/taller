@@ -24,10 +24,10 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
   template: `
     <h2 mat-dialog-title>Registrar pago</h2>
     <mat-dialog-content>
-      <div style="margin-bottom:16px;background:#f5f5f5;padding:12px;border-radius:4px;">
-        <div><strong>Trabajo #{{ data.job.job_number }}</strong> — {{ data.job.client_name }}</div>
-        <div style="margin-top:4px;font-size:13px;color:#666;">
-          Saldo pendiente: <strong style="color:#c62828;">{{ data.job.balance | appCurrency }}</strong>
+      <div class="job-summary">
+        <div><strong>Trabajo <span class="t-mono">#{{ data.job.job_number }}</span></strong> — {{ data.job.client_name }}</div>
+        <div class="balance-row">
+          Saldo pendiente: <strong class="t-mono" style="color:var(--red);">{{ data.job.balance | appCurrency }}</strong>
         </div>
       </div>
 
@@ -66,7 +66,21 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
       </button>
     </mat-dialog-actions>
   `,
-  styles: [`.full-width { width: 100%; }`]
+  styles: [`
+    .full-width { width: 100%; }
+    .job-summary {
+      margin-bottom: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      padding: 12px;
+      border-radius: var(--r-sm);
+    }
+    .balance-row {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text-2);
+    }
+  `]
 })
 export class QuickPaymentDialogComponent {
   amount = 0;
