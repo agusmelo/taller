@@ -35,22 +35,6 @@
 
   /* Layout */
   --sidebar-w: 220px;
-
-  /* Legacy aliases (removed in Phase 7 cleanup) */
-  --color-primary: var(--navy);
-  --color-primary-light: var(--navy2);
-  --color-primary-dark: var(--navy);
-  --color-accent: var(--red);
-  --color-accent-light: var(--red);
-  --color-accent-dark: var(--red);
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-text: var(--text-1);
-  --color-text-secondary: var(--text-2);
-  --color-border: var(--border);
-  --color-success: var(--green);
-  --color-warning: var(--amber);
-  --color-error: var(--red);
 }
 
 // ============================
@@ -73,15 +57,13 @@ html, body {
 // ============================
 // LAYOUT
 // ============================
-.content,
-.page-container {
+.content {
   padding: 24px 28px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-.page-head,
-.page-header {
+.page-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -90,8 +72,7 @@ html, body {
   gap: 12px;
 }
 
-.page-head h1,
-.page-header h1 {
+.page-head h1 {
   margin: 0;
   font-size: 22px;
   font-weight: 700;
@@ -103,13 +84,6 @@ html, body {
   display: flex;
   gap: 8px;
   align-items: center;
-}
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
 }
 
 // KPI rows
@@ -268,14 +242,14 @@ html, body {
 }
 
 .form-section-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: .08em;
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--border2);
 }
 
 @media (max-width: 600px) {
@@ -285,10 +259,9 @@ html, body {
 }
 
 // ============================
-// STATUS / GENERIC BADGES
+// BADGES
 // ============================
-.badge,
-.status-badge {
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -300,22 +273,23 @@ html, body {
   line-height: 1.4;
 }
 
-.badge.b-abierto,   .status-abierto   { background: var(--blue-lt);   color: var(--blue); }
-.badge.b-terminado, .status-terminado { background: var(--amber-lt);  color: var(--amber); }
-.badge.b-pagado,    .status-pagado    { background: var(--green-lt);  color: var(--green); }
-.badge.b-urgente                      { background: var(--red-lt);    color: var(--red); }
-.badge.b-nueva, .badge.b-new          { background: var(--purple-lt); color: var(--purple); }
-.badge.b-teal                         { background: var(--teal-lt);   color: var(--teal); }
-.badge.b-reg                          { background: var(--border2);   color: var(--text-2); }
-.badge.b-vip                          { background: var(--navy);      color: #fff; }
-.badge.b-pro                          { background: var(--blue-lt);   color: var(--blue); }
+.badge.b-abierto    { background: var(--blue-lt);   color: var(--blue); }
+.badge.b-terminado  { background: var(--amber-lt);  color: var(--amber); }
+.badge.b-pagado     { background: var(--green-lt);  color: var(--green); }
+.badge.b-urgente    { background: var(--red-lt);    color: var(--red); }
+.badge.b-nueva,
+.badge.b-new        { background: var(--purple-lt); color: var(--purple); }
+.badge.b-teal       { background: var(--teal-lt);   color: var(--teal); }
+.badge.b-reg        { background: var(--border2);   color: var(--text-2); }
+.badge.b-vip        { background: var(--navy);      color: #fff; }
+.badge.b-pro        { background: var(--blue-lt);   color: var(--blue); }
 
 // ============================
-// FINANCIAL
+// MONEY HELPERS
 // ============================
-.balance-positive, .money-neg { color: var(--red);   font-weight: 600; }
-.balance-zero,     .money-zero { color: var(--text-3); }
-.balance-overpaid, .money-pos { color: var(--green); font-weight: 600; }
+.money-neg  { color: var(--red);   font-weight: 600; }
+.money-zero { color: var(--text-3); }
+.money-pos  { color: var(--green); font-weight: 600; }
 .td-num { text-align: right; font-variant-numeric: tabular-nums; }
 
 // ============================
@@ -391,7 +365,7 @@ html, body {
 .empty-state {
   text-align: center;
   padding: 48px 16px;
-  color: var(--color-text-secondary);
+  color: var(--text-3);
   mat-icon {
     font-size: 48px;
     width: 48px;
@@ -483,10 +457,10 @@ html, body {
 // SNACKBAR
 // ============================
 .snack-success .mdc-snackbar__surface {
-  background-color: var(--color-success) !important;
+  background-color: var(--green) !important;
 }
 .snack-error .mdc-snackbar__surface {
-  background-color: var(--color-error) !important;
+  background-color: var(--red) !important;
 }
 
 // ============================
@@ -497,71 +471,4 @@ html, body {
   justify-content: center;
   align-items: center;
   padding: 48px;
-}
-
-// ============================
-// ALERTS
-// ============================
-.error-msg {
-  background: #ffebee;
-  color: var(--color-error);
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-.warning-msg {
-  background: #fff8e1;
-  color: #f57f17;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-.info-msg {
-  background: #e3f2fd;
-  color: #1565c0;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-}
-
-// ============================
-// LOCK BANNER
-// ============================
-.lock-banner {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #fff3e0;
-  color: var(--color-warning);
-  padding: 12px 16px;
-  border-radius: 4px;
-  margin-bottom: 16px;
-  font-weight: 500;
-}
-
-// ============================
-// TOTALS PANEL
-// ============================
-.totals-panel {
-  background: var(--color-surface);
-  border: 2px solid var(--color-border);
-  border-radius: 8px;
-  padding: 16px;
-}
-
-.totals-panel .total-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-}
-
-.totals-panel .total-row.grand-total {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--color-primary);
-  border-top: 2px solid var(--color-border);
-  padding-top: 8px;
-  margin-top: 4px;
 }
