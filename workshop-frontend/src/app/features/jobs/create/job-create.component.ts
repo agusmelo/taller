@@ -9,14 +9,13 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Vehicle, VehicleSearchResult } from '../../../core/models';
+import { VehicleSearchResult } from '../../../core/models';
 import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 
@@ -26,7 +25,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
   imports: [
     CommonModule, FormsModule, RouterLink, MatCardModule, MatFormFieldModule,
     MatInputModule, MatButtonModule, MatIconModule, MatSelectModule,
-    MatCheckboxModule, MatDividerModule, MatDialogModule, MatAutocompleteModule,
+    MatCheckboxModule, MatDialogModule, MatAutocompleteModule,
     MatDatepickerModule, MatNativeDateModule, AppCurrencyPipe
   ],
   template: `

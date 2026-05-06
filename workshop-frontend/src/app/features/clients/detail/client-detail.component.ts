@@ -10,10 +10,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Client, Vehicle, Job } from '../../../core/models';
+import { Client, Vehicle, Job, ClientFinancialRow, RecentPayment } from '../../../core/models';
 import { ClientFormComponent } from '../form/client-form.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
-import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
+import { StatusLabelPipe, PaymentMethodPipe } from '../../../shared/pipes/status.pipe';
+import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 
 @Component({
   selector: 'app-client-detail',
@@ -21,7 +22,7 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
   imports: [
     CommonModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatDialogModule, MatProgressSpinnerModule,
-    StatusLabelPipe
+    StatusLabelPipe, PaymentMethodPipe, AppCurrencyPipe
   ],
   template: `
     @if (loading) {
@@ -63,9 +64,19 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
         </mat-card>
         <mat-card>
           <mat-card-content>
-            <h3 class="card-title-lg">Resumen</h3>
-            <div class="info-row"><span>Vehiculos</span><span class="t-mono">{{ vehicles.length }}</span></div>
-            <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
+            <h3 class="card-title-lg">Financiero</h3>
+            @if (financial; as f) {
+              <div class="info-row"><span>Facturado</span><span class="t-mono">{{ f.total_facturado | appCurrency }}</span></div>
+              <div class="info-row"><span>Pagado</span><span class="t-mono" style="color:var(--green);">{{ f.total_pagado | appCurrency }}</span></div>
+              <div class="info-row">
+                <span>Saldo</span>
+                <span class="t-mono" [class.money-neg]="f.saldo > 0" [class.money-zero]="f.saldo <= 0">{{ f.saldo | appCurrency }}</span>
+              </div>
+              <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ f.job_count }}</span></div>
+            } @else {
+              <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
+              <div class="info-row"><span>Vehiculos</span><span class="t-mono">{{ vehicles.length }}</span></div>
+            }
             @if (client.notes) {
               <div class="info-row"><span>Notas</span><span>{{ client.notes }}</span></div>
             }
@@ -76,11 +87,44 @@ import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
       <div class="tabs">
         <button class="tab" [class.on]="activeTab === 'jobs'" (click)="activeTab = 'jobs'">Trabajos ({{ jobs.length }})</button>
         <button class="tab" [class.on]="activeTab === 'vehicles'" (click)="activeTab = 'vehicles'">Vehiculos ({{ vehicles.length }})</button>
+        <button class="tab" [class.on]="activeTab === 'payments'" (click)="activeTab = 'payments'">Pagos ({{ payments.length }})</button>
       </div>
 
       <mat-card class="table-card">
         <mat-card-content>
-          @if (activeTab === 'vehicles') {
+          @if (activeTab === 'payments') {
+            @if (payments.length === 0) {
+              <div class="empty-state"><mat-icon>receipt</mat-icon><p>Sin pagos registrados</p></div>
+            } @else {
+              <table mat-table [dataSource]="payments">
+                <ng-container matColumnDef="paid_at">
+                  <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                  <td mat-cell *matCellDef="let p">{{ p.paid_at | date:'dd/MM/yy HH:mm' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="job_number">
+                  <th mat-header-cell *matHeaderCellDef>Trabajo</th>
+                  <td mat-cell *matCellDef="let p" class="t-mono">{{ p.job_number }}</td>
+                </ng-container>
+                <ng-container matColumnDef="method">
+                  <th mat-header-cell *matHeaderCellDef>Metodo</th>
+                  <td mat-cell *matCellDef="let p">{{ p.method | paymentMethod }}</td>
+                </ng-container>
+                <ng-container matColumnDef="reference">
+                  <th mat-header-cell *matHeaderCellDef>Referencia</th>
+                  <td mat-cell *matCellDef="let p">{{ p.reference || '-' }}</td>
+                </ng-container>
+                <ng-container matColumnDef="amount">
+                  <th mat-header-cell *matHeaderCellDef class="text-right">Monto</th>
+                  <td mat-cell *matCellDef="let p" class="td-num" style="color:var(--green);font-weight:600;">
+                    {{ p.amount | appCurrency }}
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="['paid_at','job_number','method','reference','amount']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['paid_at','job_number','method','reference','amount'];"
+                    class="clickable-row" (click)="goToJob(row.job_id)"></tr>
+              </table>
+            }
+          } @else if (activeTab === 'vehicles') {
             <table mat-table [dataSource]="vehicles">
               <ng-container matColumnDef="plate_number">
                 <th mat-header-cell *matHeaderCellDef>Patente</th>
@@ -169,8 +213,10 @@ export class ClientDetailComponent implements OnInit {
   client: Client | null = null;
   vehicles: Vehicle[] = [];
   jobs: Job[] = [];
+  payments: RecentPayment[] = [];
+  financial: ClientFinancialRow | null = null;
   loading = true;
-  activeTab: 'jobs' | 'vehicles' = 'jobs';
+  activeTab: 'jobs' | 'vehicles' | 'payments' = 'jobs';
 
   constructor(
     private route: ActivatedRoute,
@@ -192,6 +238,12 @@ export class ClientDetailComponent implements OnInit {
     });
     this.api.getClientVehicles(id).subscribe(v => this.vehicles = v);
     this.api.getClientJobs(id).subscribe(j => this.jobs = j);
+    this.api.getClientFinancials().subscribe(r => {
+      this.financial = r.clients.find(c => c.id === id) || null;
+    });
+    this.api.getRecentPaymentsList(500).subscribe(p => {
+      this.payments = p.filter(pp => pp.client_id === id);
+    });
   }
 
   edit() {

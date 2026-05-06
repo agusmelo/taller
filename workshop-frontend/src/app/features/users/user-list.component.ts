@@ -9,6 +9,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -100,7 +101,7 @@ export class UserFormDialogComponent {
   standalone: true,
   imports: [
     CommonModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatDialogModule, MatProgressSpinnerModule, MatCardModule
+    MatDialogModule, MatProgressSpinnerModule, MatCardModule, MatTooltipModule
   ],
   template: `
     <main class="content">

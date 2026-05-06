@@ -9,11 +9,9 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { ApiService } from '../../core/services/api.service';
 import {
   DashboardSummary, ClientFinancialRow, Job,
@@ -30,8 +28,8 @@ import Chart from 'chart.js/auto';
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
-    MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule, MatDividerModule,
-    MatDatepickerModule, MatNativeDateModule, MatTabsModule, MatTooltipModule,
+    MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule,
+    MatDatepickerModule, MatNativeDateModule, MatTabsModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
@@ -340,20 +338,23 @@ import Chart from 'chart.js/auto';
       <!-- Top 5 Clients -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <h3>Top 5 clientes por ingresos</h3>
+          <h3 class="card-title-lg">Top 5 clientes por ingresos</h3>
           @if (topClients.length > 0) {
-            <table mat-table [dataSource]="topClients" style="width:100%;">
+            <table mat-table [dataSource]="topClients">
               <ng-container matColumnDef="full_name">
                 <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
+                <td mat-cell *matCellDef="let c; let i = index">
+                  {{ c.full_name }}
+                  @if (i === 0) { <span class="badge b-vip" style="margin-left:6px;">VIP</span> }
+                </td>
               </ng-container>
               <ng-container matColumnDef="total_paid">
                 <th mat-header-cell *matHeaderCellDef class="text-right">Total pagado</th>
-                <td mat-cell *matCellDef="let c" class="text-right">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
+                <td mat-cell *matCellDef="let c" class="td-num">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
               </ng-container>
               <ng-container matColumnDef="job_count">
                 <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
-                <td mat-cell *matCellDef="let c" class="text-right">{{ c.job_count }}</td>
+                <td mat-cell *matCellDef="let c" class="td-num">{{ c.job_count }}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="['full_name','total_paid','job_count']"></tr>
               <tr mat-row *matRowDef="let row; columns: ['full_name','total_paid','job_count'];"
@@ -644,19 +645,16 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     Chart.defaults.color = text3;
 
     this.chart = new Chart(this.chartRef.nativeElement, {
-      type: 'line',
+      type: 'bar',
       data: {
         labels,
         datasets: [{
-          label: 'Ingresos',
+          label: 'Cobrado',
           data,
-          borderColor: navy,
-          backgroundColor: 'rgba(17, 24, 39, 0.08)',
-          fill: true,
-          tension: 0.3,
-          pointRadius: 3,
-          pointBackgroundColor: navy,
-          borderWidth: 2,
+          backgroundColor: navy,
+          borderRadius: 5,
+          borderSkipped: false,
+          maxBarThickness: 36,
         }]
       },
       options: {

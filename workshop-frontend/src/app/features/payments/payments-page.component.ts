@@ -13,7 +13,6 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -33,7 +32,7 @@ import Chart from 'chart.js/auto';
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule,
     MatPaginatorModule, MatProgressSpinnerModule, MatTabsModule, MatTooltipModule,
-    MatDividerModule, MatDialogModule,
+    MatDialogModule,
     StatusLabelPipe, PaymentMethodPipe, AppCurrencyPipe
   ],
   template: `
@@ -98,8 +97,10 @@ import Chart from 'chart.js/auto';
             <h3 class="card-title-lg">Antiguedad de deuda</h3>
             <div class="aging-grid">
               @for (bucket of agingBuckets; track bucket.label) {
-                <div class="aging-item" [class.aging-danger]="bucket.label === '90+'">
-                  <div class="aging-label">{{ bucket.label }} dias</div>
+                <div class="aging-item"
+                     [class.aging-danger]="bucket.label === '90+'"
+                     [class.aging-total]="bucket.label === 'Total'">
+                  <div class="aging-label">{{ bucket.label === 'Total' ? 'Total' : bucket.label + ' dias' }}</div>
                   <div class="aging-amount t-mono">{{ bucket.data.total_balance | appCurrency }}</div>
                   <div class="aging-meta">{{ bucket.data.job_count }} trabajos · {{ bucket.data.client_count }} clientes</div>
                 </div>
@@ -374,10 +375,11 @@ import Chart from 'chart.js/auto';
 
     .aging-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 12px;
     }
-    @media (max-width: 768px) { .aging-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 1024px) { .aging-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px)  { .aging-grid { grid-template-columns: repeat(2, 1fr); } }
     .aging-item {
       text-align: center;
       padding: 14px;
@@ -389,6 +391,11 @@ import Chart from 'chart.js/auto';
       background: var(--red-lt);
       border-color: #fecaca;
     }
+    .aging-item.aging-total {
+      background: var(--surface);
+      border-color: var(--navy);
+    }
+    .aging-item.aging-total .aging-amount { color: var(--navy); }
     .aging-label {
       font-size: 10px;
       color: var(--text-3);
@@ -477,12 +484,7 @@ export class PaymentsPageComponent implements OnInit {
     });
     this.api.getAgingReport().subscribe(a => {
       this.aging = a;
-      this.agingBuckets = [
-        { label: '0-30', data: a['0-30'] },
-        { label: '31-60', data: a['31-60'] },
-        { label: '61-90', data: a['61-90'] },
-        { label: '90+', data: a['90+'] },
-      ];
+      this.agingBuckets = this.buildAgingBuckets(a);
     });
     this.api.getRecentPaymentsList(30).subscribe(p => this.recentPayments = p);
     this.loadJobs();
@@ -500,6 +502,21 @@ export class PaymentsPageComponent implements OnInit {
       next: res => { this.jobs = res.data; this.jobsTotal = res.total; this.jobsLoading = false; },
       error: err => { this.notify.handleError(err); this.jobsLoading = false; }
     });
+  }
+
+  private buildAgingBuckets(a: AgingReport): { label: string; data: AgingBucket }[] {
+    const total: AgingBucket = {
+      total_balance: a['0-30'].total_balance + a['31-60'].total_balance + a['61-90'].total_balance + a['90+'].total_balance,
+      job_count:     a['0-30'].job_count     + a['31-60'].job_count     + a['61-90'].job_count     + a['90+'].job_count,
+      client_count:  a['0-30'].client_count  + a['31-60'].client_count  + a['61-90'].client_count  + a['90+'].client_count,
+    };
+    return [
+      { label: '0-30', data: a['0-30'] },
+      { label: '31-60', data: a['31-60'] },
+      { label: '61-90', data: a['61-90'] },
+      { label: '90+', data: a['90+'] },
+      { label: 'Total', data: total },
+    ];
   }
 
   loadDebtors() {
