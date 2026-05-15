@@ -30,12 +30,34 @@ function getItemTypeLabel(type) {
 }
 
 function groupItemsByType(items) {
-  const groups = {};
+  // Build tree first: roots grouped by item_type, each carrying its sorted children.
+  const childrenByParent = new Map();
   for (const item of items) {
-    if (!groups[item.item_type]) groups[item.item_type] = [];
-    groups[item.item_type].push(item);
+    if (item.parent_id) {
+      const arr = childrenByParent.get(item.parent_id) || [];
+      arr.push(item);
+      childrenByParent.set(item.parent_id, arr);
+    }
+  }
+  for (const arr of childrenByParent.values()) {
+    arr.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }
+  const roots = items
+    .filter(i => !i.parent_id)
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const groups = {};
+  for (const root of roots) {
+    if (!groups[root.item_type]) groups[root.item_type] = [];
+    groups[root.item_type].push({ ...root, _children: childrenByParent.get(root.id) || [] });
   }
   return groups;
+}
+
+function lineTotal(rootItem) {
+  if (rootItem._children && rootItem._children.length > 0) {
+    return rootItem._children.reduce((s, c) => s + parseFloat(c.unit_price), 0);
+  }
+  return parseFloat(rootItem.quantity) * parseFloat(rootItem.unit_price);
 }
 
 function buildHtml(job, items, payments, financials) {
@@ -54,6 +76,7 @@ function buildHtml(job, items, payments, financials) {
 
   const grouped = groupItemsByType(items);
   const typeOrder = ['mano_de_obra', 'repuesto', 'otro'];
+  const showDetailsPricing = job.show_item_details_pricing !== false;
 
   let rowIndex = 0;
   let itemsHtml = '';
@@ -62,16 +85,31 @@ function buildHtml(job, items, payments, financials) {
     itemsHtml += `
       <tr><td colspan="4" style="background:#C41E2A;color:white;font-weight:bold;padding:8px 10px;font-size:12px;">${getItemTypeLabel(type)}</td></tr>`;
     for (const item of grouped[type]) {
-      const lineTotal = parseFloat(item.quantity) * parseFloat(item.unit_price);
+      const total = lineTotal(item);
+      const hasChildren = item._children && item._children.length > 0;
       const bgColor = rowIndex % 2 === 0 ? '#ffffff' : '#fff0f0';
+      const parentUnitDisplay = hasChildren ? '—' : formatCurrency(item.unit_price);
       itemsHtml += `
         <tr style="background:${bgColor};">
-          <td style="padding:7px 10px;border-bottom:1px solid #eee;width:50px;text-align:center;">${item.quantity}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #eee;width:50px;text-align:center;">${hasChildren ? '1' : item.quantity}</td>
           <td style="padding:7px 10px;border-bottom:1px solid #eee;">${item.description}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;width:110px;">${formatCurrency(item.unit_price)}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;width:110px;">${formatCurrency(lineTotal)}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;width:110px;">${parentUnitDisplay}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #eee;text-align:right;width:110px;">${formatCurrency(total)}</td>
         </tr>`;
       rowIndex++;
+      if (hasChildren) {
+        for (const child of item._children) {
+          const childPriceCell = showDetailsPricing
+            ? `<td style="padding:5px 10px 5px 26px;border-bottom:1px solid #f4f4f4;text-align:right;width:110px;color:#555;">${formatCurrency(child.unit_price)}</td><td style="padding:5px 10px;border-bottom:1px solid #f4f4f4;"></td>`
+            : `<td colspan="2" style="padding:5px 10px;border-bottom:1px solid #f4f4f4;"></td>`;
+          itemsHtml += `
+            <tr style="background:${bgColor};">
+              <td style="padding:5px 10px;border-bottom:1px solid #f4f4f4;width:50px;"></td>
+              <td style="padding:5px 10px 5px 22px;border-bottom:1px solid #f4f4f4;color:#555;font-size:11px;word-break:break-word;">↳ ${child.description}</td>
+              ${childPriceCell}
+            </tr>`;
+        }
+      }
     }
   }
 
@@ -219,7 +257,11 @@ async function generatePdf(req, res, next) {
     if (!jobRes.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
 
     const job = jobRes.rows[0];
-    const itemsRes = await pool.query(`SELECT * FROM job_items WHERE job_id = $1 ORDER BY item_type, created_at`, [req.params.id]);
+    const itemsRes = await pool.query(
+      `SELECT * FROM job_items WHERE job_id = $1
+       ORDER BY (parent_id IS NULL) DESC, sort_order, created_at`,
+      [req.params.id]
+    );
     const paysRes  = await pool.query(`SELECT * FROM payments WHERE job_id = $1 ORDER BY paid_at`, [req.params.id]);
 
     const financials = calcFinancials(job, itemsRes.rows, paysRes.rows);

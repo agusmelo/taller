@@ -1,7 +1,24 @@
 const pool = require('../config/database');
 
 function calcFinancials(job, items, payments) {
-  const subtotal = items.reduce((s, i) => s + parseFloat(i.quantity) * parseFloat(i.unit_price), 0);
+  // Items with parent_id are children; their unit_price contributes to the parent line total.
+  // Children inherit quantity=1 implicitly and do NOT contribute directly to subtotal.
+  const childrenByParent = new Map();
+  for (const item of items) {
+    if (item.parent_id) {
+      const arr = childrenByParent.get(item.parent_id) || [];
+      arr.push(item);
+      childrenByParent.set(item.parent_id, arr);
+    }
+  }
+  const roots = items.filter(i => !i.parent_id);
+  const subtotal = roots.reduce((s, root) => {
+    const children = childrenByParent.get(root.id);
+    if (children && children.length > 0) {
+      return s + children.reduce((cs, c) => cs + parseFloat(c.unit_price), 0);
+    }
+    return s + parseFloat(root.quantity) * parseFloat(root.unit_price);
+  }, 0);
   const discount = job.discount_type === 'percentage'
     ? subtotal * (parseFloat(job.discount_amount) / 100)
     : parseFloat(job.discount_amount);
@@ -21,7 +38,7 @@ function calcFinancials(job, items, payments) {
 
 async function checkAndPay(client, jobId) {
   const itemsRes = await client.query(
-    `SELECT quantity, unit_price FROM job_items WHERE job_id = $1`, [jobId]);
+    `SELECT id, parent_id, quantity, unit_price FROM job_items WHERE job_id = $1`, [jobId]);
   const paysRes  = await client.query(
     `SELECT amount FROM payments WHERE job_id = $1`, [jobId]);
   const jobRes   = await client.query(
@@ -55,7 +72,13 @@ async function list(req, res, next) {
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
       JOIN vehicles v ON v.id = j.vehicle_id
-      LEFT JOIN (SELECT job_id, SUM(quantity * unit_price) AS subtotal FROM job_items GROUP BY job_id) it ON it.job_id = j.id
+      LEFT JOIN (
+        SELECT i.job_id,
+               SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items c WHERE c.parent_id = i.id)
+                        THEN 0
+                        ELSE i.quantity * i.unit_price END) AS subtotal
+        FROM job_items i GROUP BY i.job_id
+      ) it ON it.job_id = j.id
       LEFT JOIN (SELECT job_id, SUM(amount) AS total_paid FROM payments GROUP BY job_id) py ON py.job_id = j.id
       WHERE ${where.join(' AND ')}
       ORDER BY j.created_at DESC
@@ -80,7 +103,12 @@ async function getOne(req, res, next) {
     );
     if (!jobRes.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
 
-    const itemsRes = await pool.query(`SELECT * FROM job_items WHERE job_id = $1 ORDER BY created_at`, [req.params.id]);
+    const itemsRes = await pool.query(
+      `SELECT * FROM job_items
+       WHERE job_id = $1
+       ORDER BY (parent_id IS NULL) DESC, sort_order, created_at`,
+      [req.params.id]
+    );
     const paysRes  = await pool.query(`SELECT * FROM payments WHERE job_id = $1 ORDER BY paid_at`, [req.params.id]);
 
     const job = jobRes.rows[0];
@@ -129,13 +157,29 @@ async function create(req, res, next) {
        discount_amount, discount_type, notes || null, req.user.id, effectiveJobDate]
     );
     const job = r.rows[0];
+    let parentSortOrder = 0;
     for (const item of items) {
-      await db.query(
-        `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [job.id, item.description, item.quantity || 1, item.unit_price || 0,
-         item.item_type || 'mano_de_obra', item.supplier || null]
+      const itemType = item.item_type || 'mano_de_obra';
+      const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+      const parentR = await db.query(
+        `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, sort_order)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [job.id, item.description,
+         hasChildren ? 1 : (item.quantity || 1),
+         hasChildren ? 0 : (item.unit_price || 0),
+         itemType, item.supplier || null, parentSortOrder++]
       );
+      if (hasChildren) {
+        const parentId = parentR.rows[0].id;
+        let childSortOrder = 0;
+        for (const child of item.children) {
+          await db.query(
+            `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order)
+             VALUES ($1,$2,1,$3,$4,NULL,$5,$6)`,
+            [job.id, child.description, child.unit_price || 0, itemType, parentId, childSortOrder++]
+          );
+        }
+      }
     }
     // Update vehicle mileage
     if (mileage_at_service) {
@@ -153,12 +197,19 @@ async function create(req, res, next) {
 async function update(req, res, next) {
   try {
     const { mileage_at_service, status, tax_enabled, tax_rate,
-            discount_amount, discount_type, notes, internal_notes, job_date } = req.body;
+            discount_amount, discount_type, notes, internal_notes, job_date,
+            show_item_details_pricing } = req.body;
 
-    // Validate all items have price before closing
+    // Validate all priced rows before closing.
+    // A parent item with children doesn't need its own unit_price (its line total
+    // is the sum of children); skip those. Children themselves and leaf root items
+    // both require unit_price > 0.
     if (status === 'terminado' || status === 'pagado') {
       const itemCheck = await pool.query(
-        `SELECT COUNT(*) AS zero_count FROM job_items WHERE job_id = $1 AND (unit_price IS NULL OR unit_price = 0)`,
+        `SELECT COUNT(*) AS zero_count FROM job_items i
+         WHERE i.job_id = $1
+           AND (i.unit_price IS NULL OR i.unit_price = 0)
+           AND NOT (i.parent_id IS NULL AND EXISTS (SELECT 1 FROM job_items c WHERE c.parent_id = i.id))`,
         [req.params.id]
       );
       const zeroCount = parseInt(itemCheck.rows[0].zero_count);
@@ -177,19 +228,21 @@ async function update(req, res, next) {
 
     const r = await pool.query(`
       UPDATE jobs SET
-        mileage_at_service = COALESCE($1, mileage_at_service),
-        status             = COALESCE($2, status),
-        tax_enabled        = COALESCE($3, tax_enabled),
-        tax_rate           = COALESCE($4, tax_rate),
-        discount_amount    = COALESCE($5, discount_amount),
-        discount_type      = COALESCE($6, discount_type),
-        notes              = COALESCE($7, notes),
-        internal_notes     = COALESCE($8, internal_notes),
-        job_date           = COALESCE($9, job_date),
-        is_locked          = COALESCE($10, is_locked)
-      WHERE id = $11 AND deleted_at IS NULL RETURNING *`,
+        mileage_at_service        = COALESCE($1, mileage_at_service),
+        status                    = COALESCE($2, status),
+        tax_enabled               = COALESCE($3, tax_enabled),
+        tax_rate                  = COALESCE($4, tax_rate),
+        discount_amount           = COALESCE($5, discount_amount),
+        discount_type             = COALESCE($6, discount_type),
+        notes                     = COALESCE($7, notes),
+        internal_notes            = COALESCE($8, internal_notes),
+        job_date                  = COALESCE($9, job_date),
+        is_locked                 = COALESCE($10, is_locked),
+        show_item_details_pricing = COALESCE($11, show_item_details_pricing)
+      WHERE id = $12 AND deleted_at IS NULL RETURNING *`,
       [mileage_at_service, status, tax_enabled, tax_rate,
-       discount_amount, discount_type, notes, internal_notes, job_date, is_locked, req.params.id]
+       discount_amount, discount_type, notes, internal_notes, job_date, is_locked,
+       show_item_details_pricing, req.params.id]
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
     res.json(r.rows[0]);
@@ -224,19 +277,77 @@ async function remove(req, res, next) {
 // Items
 async function listItems(req, res, next) {
   try {
-    const r = await pool.query(`SELECT * FROM job_items WHERE job_id = $1 ORDER BY created_at`, [req.params.id]);
+    const r = await pool.query(
+      `SELECT * FROM job_items
+       WHERE job_id = $1
+       ORDER BY (parent_id IS NULL) DESC, sort_order, created_at`,
+      [req.params.id]
+    );
+    res.json(r.rows);
+  } catch (err) { next(err); }
+}
+
+async function searchItemDescriptions(req, res, next) {
+  try {
+    const q = (req.query.q || '').toString().trim();
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    const r = await pool.query(
+      `SELECT description, COUNT(*)::int AS uses
+       FROM job_items
+       WHERE description ILIKE $1
+       GROUP BY description
+       ORDER BY uses DESC, description ASC
+       LIMIT $2`,
+      [`%${q}%`, limit]
+    );
     res.json(r.rows);
   } catch (err) { next(err); }
 }
 
 async function addItem(req, res, next) {
   try {
-    const { description, quantity = 1, unit_price = 0, item_type = 'mano_de_obra', supplier } = req.body;
+    const { description, quantity, unit_price, item_type, supplier, parent_id, sort_order } = req.body;
     if (!description) return res.status(400).json({ error: 'description es requerido' });
+
+    let finalParentId = null;
+    let finalItemType = item_type || 'mano_de_obra';
+    let finalQuantity = quantity != null ? quantity : 1;
+    let finalSupplier = supplier || null;
+
+    if (parent_id) {
+      const parentRes = await pool.query(
+        `SELECT id, item_type, parent_id, job_id FROM job_items WHERE id = $1`, [parent_id]
+      );
+      const parent = parentRes.rows[0];
+      if (!parent) return res.status(400).json({ error: 'parent_id no existe' });
+      if (parent.job_id !== req.params.id) return res.status(400).json({ error: 'parent_id pertenece a otro trabajo' });
+      if (parent.parent_id !== null) return res.status(400).json({ error: 'No se admite anidamiento mayor a 1 nivel' });
+      finalParentId = parent_id;
+      finalItemType = parent.item_type;
+      finalQuantity = 1;
+      finalSupplier = null;
+    }
+
+    let finalSortOrder = sort_order;
+    if (finalSortOrder == null) {
+      const maxRes = finalParentId
+        ? await pool.query(
+            `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM job_items
+             WHERE job_id = $1 AND parent_id = $2`,
+            [req.params.id, finalParentId])
+        : await pool.query(
+            `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM job_items
+             WHERE job_id = $1 AND parent_id IS NULL`,
+            [req.params.id]);
+      finalSortOrder = maxRes.rows[0].next;
+    }
+
     const r = await pool.query(
-      `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier)
-       VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-      [req.params.id, description, quantity, unit_price, item_type, supplier || null]
+      `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [req.params.id, description, finalQuantity,
+       unit_price != null ? unit_price : 0,
+       finalItemType, finalSupplier, finalParentId, finalSortOrder]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) { next(err); }
@@ -244,14 +355,18 @@ async function addItem(req, res, next) {
 
 async function updateItem(req, res, next) {
   try {
-    const { description, quantity, unit_price, item_type, supplier } = req.body;
+    const { description, quantity, unit_price, item_type, supplier, sort_order, parent_id } = req.body;
+    if (parent_id !== undefined) {
+      return res.status(400).json({ error: 'No se admite re-asignar parent_id; eliminar y volver a crear' });
+    }
     const r = await pool.query(`
       UPDATE job_items SET
         description = COALESCE($1, description), quantity   = COALESCE($2, quantity),
         unit_price  = COALESCE($3, unit_price),  item_type  = COALESCE($4, item_type),
-        supplier    = COALESCE($5, supplier)
-      WHERE id = $6 AND job_id = $7 RETURNING *`,
-      [description, quantity, unit_price, item_type, supplier, req.params.itemId, req.params.id]
+        supplier    = COALESCE($5, supplier),    sort_order = COALESCE($6, sort_order)
+      WHERE id = $7 AND job_id = $8 RETURNING *`,
+      [description, quantity, unit_price, item_type, supplier, sort_order,
+       req.params.itemId, req.params.id]
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Item no encontrado' });
     res.json(r.rows[0]);
@@ -285,21 +400,29 @@ async function addPayment(req, res, next) {
       if (!jobRes.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
       const clientId = jobRes.rows[0].client_id;
       const creditRes = await db.query(`
+        WITH job_subtotals AS (
+          SELECT i.job_id,
+                 SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items c WHERE c.parent_id = i.id)
+                          THEN 0
+                          ELSE i.quantity * i.unit_price END) AS subtotal
+          FROM job_items i GROUP BY i.job_id
+        )
         SELECT COALESCE(SUM(GREATEST(sub.total_paid - sub.total, 0)), 0) AS credit_available
         FROM (
           SELECT j.id,
-                 COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
+                 (COALESCE(js.subtotal, 0)
                    - CASE WHEN j.discount_type = 'percentage'
-                     THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
-                     ELSE j.discount_amount END
+                          THEN COALESCE(js.subtotal, 0) * (j.discount_amount / 100)
+                          ELSE j.discount_amount END
                    + CASE WHEN j.tax_enabled
-                     THEN (COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
-                           - CASE WHEN j.discount_type = 'percentage'
-                             THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
-                             ELSE j.discount_amount END) * j.tax_rate
-                     ELSE 0 END AS total,
+                          THEN (COALESCE(js.subtotal, 0)
+                                - CASE WHEN j.discount_type = 'percentage'
+                                       THEN COALESCE(js.subtotal, 0) * (j.discount_amount / 100)
+                                       ELSE j.discount_amount END) * j.tax_rate
+                          ELSE 0 END) AS total,
                  COALESCE((SELECT SUM(amount) FROM payments WHERE job_id = j.id), 0) AS total_paid
           FROM jobs j
+          LEFT JOIN job_subtotals js ON js.job_id = j.id
           WHERE j.client_id = $1 AND j.deleted_at IS NULL
         ) sub
         WHERE sub.total_paid > sub.total
@@ -334,7 +457,7 @@ async function removePayment(req, res, next) {
 module.exports = {
   list, getOne, create, update, remove,
   lockJob, unlockJob,
-  listItems, addItem, updateItem, removeItem,
+  listItems, searchItemDescriptions, addItem, updateItem, removeItem,
   listPayments, addPayment, removePayment,
   calcFinancials
 };
