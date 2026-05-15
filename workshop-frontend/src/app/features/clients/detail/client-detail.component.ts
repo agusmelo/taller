@@ -186,27 +186,6 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     @media (max-width: 900px) {
       .info-cards { grid-template-columns: 1fr; }
     }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0 0 12px;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 4px 0;
-      font-size: 13px;
-    }
-    .info-row > span:first-child {
-      color: var(--text-3);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .table-card { padding: 0 !important; overflow: hidden; }
-    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
   `]
 })
 export class ClientDetailComponent implements OnInit {

@@ -251,12 +251,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     }
     .summary-card h3 { margin-bottom: 12px; }
     .summary-actions { margin-top: 20px; }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0;
-    }
+    .card-title-lg { margin: 0; }
     .totals { display: flex; flex-direction: column; gap: 4px; }
     .totals-row {
       display: flex;

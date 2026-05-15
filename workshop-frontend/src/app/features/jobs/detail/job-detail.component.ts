@@ -382,12 +382,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     }
     .info-cards h3 { margin: 0 0 10px; }
     .info-cards p { margin: 4px 0; color: var(--text-1); font-size: 13px; }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .info-row > span:first-child { color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    .info-row { padding: 0; }
     .card-head {
       display: flex;
       justify-content: space-between;
@@ -396,12 +391,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       gap: 12px;
       margin-bottom: 12px;
     }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0;
-    }
+    .card-title-lg { margin: 0; }
     .totals { display: flex; flex-direction: column; gap: 4px; }
     .totals-row {
       display: flex;

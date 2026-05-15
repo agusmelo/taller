@@ -174,25 +174,6 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     @media (max-width: 900px) {
       .info-cards { grid-template-columns: 1fr; }
     }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0 0 12px;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 4px 0;
-      font-size: 13px;
-    }
-    .info-row > span:first-child {
-      color: var(--text-3);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
   `]
 })
 export class VehicleDetailComponent implements OnInit {
