@@ -100,4 +100,48 @@ describe('calcFinancials', () => {
     expect(result.subtotal).toBe(1001);
     expect(result.total_paid).toBe(100);
   });
+
+  describe('hierarchical items', () => {
+    const noTaxJob = { ...baseJob, tax_enabled: false };
+
+    test('parent with children: line total = sum of children, parent unit_price ignored', () => {
+      const items = [
+        { id: 'p1', parent_id: null, quantity: 1, unit_price: 999 }, // unit_price ignored
+        { id: 'c1', parent_id: 'p1', quantity: 1, unit_price: 1500 },
+        { id: 'c2', parent_id: 'p1', quantity: 1, unit_price: 800 }
+      ];
+      const result = calcFinancials(noTaxJob, items, []);
+      expect(result.subtotal).toBe(2300);
+      expect(result.total).toBe(2300);
+    });
+
+    test('mixed: parent-with-children + standalone item', () => {
+      const items = [
+        { id: 'p1', parent_id: null, quantity: 1, unit_price: 0 },
+        { id: 'c1', parent_id: 'p1', quantity: 1, unit_price: 1500 },
+        { id: 'c2', parent_id: 'p1', quantity: 1, unit_price: 500 },
+        { id: 's1', parent_id: null, quantity: 2, unit_price: 300 }
+      ];
+      const result = calcFinancials(noTaxJob, items, []);
+      // 2000 from parent + 600 from standalone = 2600
+      expect(result.subtotal).toBe(2600);
+    });
+
+    test('parent with empty children list contributes only parent total', () => {
+      const items = [{ id: 'p1', parent_id: null, quantity: 1, unit_price: 0 }];
+      const result = calcFinancials(noTaxJob, items, []);
+      expect(result.subtotal).toBe(0);
+    });
+
+    test('children contribute via parent grouping, not directly to subtotal', () => {
+      // Two children both belonging to same parent — must NOT be summed twice.
+      const items = [
+        { id: 'p1', parent_id: null, quantity: 5, unit_price: 9999 }, // qty/price ignored
+        { id: 'c1', parent_id: 'p1', quantity: 1, unit_price: 100 },
+        { id: 'c2', parent_id: 'p1', quantity: 1, unit_price: 200 }
+      ];
+      const result = calcFinancials(noTaxJob, items, []);
+      expect(result.subtotal).toBe(300);
+    });
+  });
 });

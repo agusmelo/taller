@@ -17,13 +17,13 @@
   --border:   #e5e7eb;
   --border2:  #f3f4f6;
 
-  /* Status */
-  --blue:     #2563eb;   --blue-lt:   #eff6ff;
-  --amber:    #d97706;   --amber-lt:  #fef3c7;
-  --green:    #16a34a;   --green-lt:  #f0fdf4;
-  --red:      #dc2626;   --red-lt:    #fef2f2;
-  --purple:   #7c3aed;   --purple-lt: #f5f3ff;
-  --teal:     #0d9488;   --teal-lt:   #f0fdfa;
+  /* Status (base / light tint / border tint) */
+  --blue:     #2563eb;   --blue-lt:   #eff6ff;   --blue-bd:   #bfdbfe;
+  --amber:    #d97706;   --amber-lt:  #fef3c7;   --amber-bd:  #fde68a;
+  --green:    #16a34a;   --green-lt:  #f0fdf4;   --green-bd:  #bbf7d0;
+  --red:      #dc2626;   --red-lt:    #fef2f2;   --red-bd:    #fecaca;
+  --purple:   #7c3aed;   --purple-lt: #f5f3ff;   --purple-bd: #ddd6fe;
+  --teal:     #0d9488;   --teal-lt:   #f0fdfa;   --teal-bd:   #99f6e4;
 
   /* Radius */
   --r:        10px;
@@ -222,7 +222,45 @@ html, body {
 .btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
 .btn-ghost:hover { color: var(--text-1); background: var(--bg); }
 .btn-danger { color: var(--red); border-color: var(--border); }
-.btn-danger:hover { background: var(--red-lt); border-color: #fecaca; }
+.btn-danger:hover { background: var(--red-lt); border-color: var(--red-bd); }
+
+// ============================
+// SHARED CARD / ROW / FILTER PRIMITIVES
+// (promoted from per-component inline styles)
+// ============================
+.card-title-lg {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-1);
+  margin: 0 0 12px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.info-row > span:first-child {
+  color: var(--text-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.filter-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.table-card { padding: 0 !important; overflow: hidden; }
+.table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+.table-card mat-paginator { padding: 0 12px; }
+
 
 // ============================
 // FORMS
@@ -448,10 +486,10 @@ html, body {
   margin-bottom: 16px;
   border: 1px solid transparent;
 }
-.banner-warn  { background: var(--amber-lt); color: var(--amber); border-color: #fde68a; }
-.banner-error { background: var(--red-lt);   color: var(--red);   border-color: #fecaca; }
-.banner-ok    { background: var(--green-lt); color: var(--green); border-color: #bbf7d0; }
-.banner-info  { background: var(--blue-lt);  color: var(--blue);  border-color: #bfdbfe; }
+.banner-warn  { background: var(--amber-lt); color: var(--amber); border-color: var(--amber-bd); }
+.banner-error { background: var(--red-lt);   color: var(--red);   border-color: var(--red-bd); }
+.banner-ok    { background: var(--green-lt); color: var(--green); border-color: var(--green-bd); }
+.banner-info  { background: var(--blue-lt);  color: var(--blue);  border-color: var(--blue-bd); }
 
 // ============================
 // SNACKBAR

@@ -72,12 +72,7 @@ import { AppSettings } from '../../core/models';
   styles: [`
     .full-width { width: 100%; }
     .settings-card { max-width: 720px; }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0 0 4px;
-    }
+    .card-title-lg { margin: 0 0 4px; }
     .section-hint {
       font-size: 12px;
       color: var(--text-3);

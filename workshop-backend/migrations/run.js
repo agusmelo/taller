@@ -18,6 +18,7 @@ const migrations = [
   '004_polish.sql',
   '005_settings.sql',
   '006_import_source.sql',
+  '007_item_hierarchy_and_pdf_visibility.sql',
 ];
 
 async function run() {

@@ -72,6 +72,9 @@ const createJobRules = [
   body('items.*.quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
   body('items.*.unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario debe ser positivo'),
   body('items.*.item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  body('items.*.children').optional().isArray().withMessage('children debe ser un array'),
+  body('items.*.children.*.description').optional().trim().notEmpty().withMessage('Descripcion del detalle es requerida'),
+  body('items.*.children.*.unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario del detalle debe ser positivo'),
   handleValidation
 ];
 
@@ -82,6 +85,7 @@ const updateJobRules = [
   body('discount_amount').optional().isFloat({ min: 0 }).withMessage('Descuento debe ser positivo'),
   body('discount_type').optional().isIn(['fixed', 'percentage']).withMessage('Tipo de descuento invalido'),
   body('job_date').optional().isISO8601().withMessage('Fecha del trabajo invalida'),
+  body('show_item_details_pricing').optional().isBoolean().withMessage('show_item_details_pricing debe ser booleano'),
   handleValidation
 ];
 
@@ -92,6 +96,8 @@ const addItemRules = [
   body('quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
   body('unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario debe ser positivo'),
   body('item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  body('parent_id').optional({ values: 'null' }).isUUID().withMessage('parent_id debe ser un UUID valido'),
+  body('sort_order').optional().isInt({ min: 0 }).withMessage('sort_order debe ser entero >= 0'),
   handleValidation
 ];
 
@@ -101,6 +107,7 @@ const updateItemRules = [
   body('quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
   body('unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario debe ser positivo'),
   body('item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  body('sort_order').optional().isInt({ min: 0 }).withMessage('sort_order debe ser entero >= 0'),
   handleValidation
 ];
 
