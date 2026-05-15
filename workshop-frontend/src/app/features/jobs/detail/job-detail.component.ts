@@ -6,10 +6,10 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
-import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -27,7 +27,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
-    MatTableModule, MatDividerModule, MatFormFieldModule, MatInputModule, MatSelectModule,
+    MatTableModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatTooltipModule,
     MatDialogModule, MatProgressSpinnerModule, MatDatepickerModule, MatNativeDateModule,
     StatusLabelPipe, PaymentMethodPipe, ItemTypePipe, AppCurrencyPipe
   ],
@@ -35,22 +35,22 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     @if (loading) {
       <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
     } @else if (job) {
-    <div class="page-container">
-      <div class="page-header">
-        <div>
-          <h1>Trabajo {{ job.job_number }}</h1>
-          <span [class]="'status-badge status-' + job.status" style="font-size:14px;">{{ job.status | statusLabel }}</span>
+    <main class="content">
+      <div class="page-head">
+        <div class="page-head-title">
+          <h1>Trabajo <span class="t-mono">{{ job.job_number }}</span></h1>
+          <span [class]="'badge b-' + job.status">{{ job.status | statusLabel }}</span>
           @if (job.is_locked) {
-            <mat-icon style="vertical-align:middle;margin-left:8px;color:var(--color-warning);">lock</mat-icon>
+            <mat-icon class="lock-ico" aria-label="Bloqueado">lock</mat-icon>
           }
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="page-head-actions">
           @if (auth.isAdminOrRecep() && job.status === 'abierto') {
-            <button mat-raised-button color="accent" (click)="confirmMarkDone()">
+            <button mat-raised-button color="primary" (click)="confirmMarkDone()">
               <mat-icon>check</mat-icon> Marcar terminado
             </button>
           }
-          <button mat-raised-button (click)="printPdf()" [disabled]="pdfLoading">
+          <button mat-stroked-button (click)="printPdf()" [disabled]="pdfLoading">
             <mat-icon>print</mat-icon> {{ pdfLoading ? 'Generando...' : 'Imprimir PDF' }}
           </button>
           @if (auth.isAdmin()) {
@@ -64,7 +64,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 
       <!-- Lock banner -->
       @if (job.is_locked) {
-        <div class="lock-banner">
+        <div class="banner banner-warn">
           <mat-icon>lock</mat-icon>
           <span>Este trabajo esta bloqueado para edicion.
             @if (job.status === 'terminado') { Se pueden registrar pagos. }
@@ -84,40 +84,46 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       }
 
       <!-- Info cards -->
-      <div class="card-grid">
+      <div class="info-cards">
         <mat-card>
           <mat-card-content>
-            <h3>Cliente</h3>
+            <h3 class="card-title-lg">Cliente</h3>
             <p><strong><a [routerLink]="['/clientes', job.client_id]">{{ job.client_name }}</a></strong></p>
-            @if (job.client_rut) { <p>RUT: {{ job.client_rut }}</p> }
-            @if (job.client_phone) { <p>Tel: {{ job.client_phone }}</p> }
+            @if (job.client_rut) { <p class="info-row"><span>RUT</span><span class="t-mono">{{ job.client_rut }}</span></p> }
+            @if (job.client_phone) { <p class="info-row"><span>Telefono</span><span>{{ job.client_phone }}</span></p> }
           </mat-card-content>
         </mat-card>
         <mat-card>
           <mat-card-content>
-            <h3>Vehiculo</h3>
-            <p><strong><a [routerLink]="['/vehiculos', job.vehicle_id]">{{ job.plate_number }}</a></strong></p>
+            <h3 class="card-title-lg">Vehiculo</h3>
+            <p><strong><a [routerLink]="['/vehiculos', job.vehicle_id]" class="t-mono">{{ job.plate_number }}</a></strong></p>
             <p>{{ job.make }} {{ job.model }} {{ job.year || '' }}</p>
-            @if (job.mileage_at_service) { <p>Km: {{ job.mileage_at_service.toLocaleString() }}</p> }
-            @if (job.job_date) { <p>Fecha: {{ job.job_date | date:'dd/MM/yyyy' }}</p> }
+            @if (job.mileage_at_service) { <p class="info-row"><span>Kilometraje</span><span class="t-mono">{{ job.mileage_at_service.toLocaleString() }}</span></p> }
+            @if (job.job_date) { <p class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy' }}</span></p> }
           </mat-card-content>
         </mat-card>
         <mat-card>
           <mat-card-content>
-            <h3>Financiero</h3>
+            <h3 class="card-title-lg">Financiero</h3>
             @if (job.financials; as f) {
-              <p>Subtotal: {{ f.subtotal | appCurrency }}</p>
-              @if (f.discount > 0) { <p style="color:var(--color-warning);">Descuento: -{{ f.discount | appCurrency }}</p> }
-              @if (job.tax_enabled) { <p>IVA (22%): +{{ f.tax | appCurrency }}</p> }
-              <p><strong>Total: {{ f.total | appCurrency }}</strong></p>
-              <p>Pagado: {{ f.total_paid | appCurrency }}</p>
-              @if (f.balance > 0) {
-                <p class="balance-positive"><strong>Saldo: {{ f.balance | appCurrency }}</strong></p>
-              } @else if (f.balance < 0) {
-                <p class="balance-overpaid"><strong>Excedente: {{ (f.balance * -1) | appCurrency }}</strong></p>
-              } @else {
-                <p class="balance-zero"><strong>Saldo: {{ f.balance | appCurrency }}</strong></p>
-              }
+              <div class="totals">
+                <div class="totals-row"><span>Subtotal</span><span class="t-mono">{{ f.subtotal | appCurrency }}</span></div>
+                @if (f.discount > 0) {
+                  <div class="totals-row" style="color:var(--amber);"><span>Descuento</span><span class="t-mono">-{{ f.discount | appCurrency }}</span></div>
+                }
+                @if (job.tax_enabled) {
+                  <div class="totals-row"><span>IVA (22%)</span><span class="t-mono">+{{ f.tax | appCurrency }}</span></div>
+                }
+                <div class="totals-row totals-total"><span>Total</span><span class="t-mono">{{ f.total | appCurrency }}</span></div>
+                <div class="totals-row"><span>Pagado</span><span class="t-mono" style="color:var(--green);">{{ f.total_paid | appCurrency }}</span></div>
+                @if (f.balance > 0) {
+                  <div class="totals-row totals-balance" style="color:var(--red);"><span>Saldo</span><span class="t-mono">{{ f.balance | appCurrency }}</span></div>
+                } @else if (f.balance < 0) {
+                  <div class="totals-row totals-balance" style="color:var(--purple);"><span>Excedente</span><span class="t-mono">{{ (f.balance * -1) | appCurrency }}</span></div>
+                } @else {
+                  <div class="totals-row totals-balance" style="color:var(--green);"><span>Saldo</span><span class="t-mono">{{ f.balance | appCurrency }}</span></div>
+                }
+              </div>
             }
           </mat-card-content>
         </mat-card>
@@ -126,8 +132,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       <!-- Items -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h3>Items</h3>
+          <div class="card-head">
+            <h3 class="card-title-lg">Items</h3>
             @if (!job.is_locked) {
               <button mat-stroked-button (click)="showAddItem = !showAddItem">
                 <mat-icon>add</mat-icon> Agregar
@@ -175,7 +181,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
                     </mat-select>
                   </mat-form-field>
                 } @else {
-                  {{ i.item_type | itemType }}
+                  <span [class]="i.item_type === 'mano_de_obra' ? 'badge b-teal' : 'badge b-reg'">{{ i.item_type | itemType }}</span>
                 }
               </td>
             </ng-container>
@@ -188,7 +194,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
                   </mat-form-field>
                 } @else {
                   {{ i.description }}
-                  @if (i.supplier) { <small style="color:#888;"> ({{ i.supplier }})</small> }
+                  @if (i.supplier) { <small style="color:var(--text-3);"> ({{ i.supplier }})</small> }
                 }
               </td>
             </ng-container>
@@ -255,8 +261,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       <!-- Payments -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h3>Pagos</h3>
+          <div class="card-head">
+            <h3 class="card-title-lg">Pagos</h3>
             @if (auth.isAdminOrRecep() && canAddPayments()) {
               <button mat-stroked-button (click)="showAddPayment = !showAddPayment">
                 <mat-icon>payment</mat-icon> Registrar pago
@@ -300,12 +306,12 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
               </button>
             </div>
             @if (newPayment.method === 'credito' && clientCredit <= 0) {
-              <div style="color:var(--color-error);font-size:13px;margin-bottom:8px;">
+              <div class="banner banner-error">
                 Este cliente no tiene credito disponible.
               </div>
             }
             @if (newPayment.method === 'credito' && newPayment.amount > clientCredit && clientCredit > 0) {
-              <div style="color:var(--color-error);font-size:13px;margin-bottom:8px;">
+              <div class="banner banner-error">
                 El monto excede el credito disponible ({{ clientCredit | appCurrency }}).
               </div>
             }
@@ -347,7 +353,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       <!-- Notes -->
       <mat-card class="mb-16">
         <mat-card-content>
-          <h3>Notas</h3>
+          <h3 class="card-title-lg">Notas</h3>
           @if (job.notes) { <p><strong>Notas (visibles en PDF):</strong> {{ job.notes }}</p> }
           @if (auth.currentUser()?.role !== 'mecanico') {
             <mat-form-field appearance="outline" style="width:100%;">
@@ -358,9 +364,65 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
           }
         </mat-card-content>
       </mat-card>
-    </div>
+    </main>
     }
-  `
+  `,
+  styles: [`
+    .page-head-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .page-head-title h1 { margin: 0; }
+    .lock-ico { color: var(--amber); font-size: 20px; width: 20px; height: 20px; }
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .info-cards { grid-template-columns: 1fr; }
+    }
+    .info-cards h3 { margin: 0 0 10px; }
+    .info-cards p { margin: 4px 0; color: var(--text-1); font-size: 13px; }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .info-row > span:first-child { color: var(--text-3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0;
+    }
+    .totals { display: flex; flex-direction: column; gap: 4px; }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .totals-total {
+      border-top: 1px solid var(--border);
+      padding-top: 8px;
+      margin-top: 4px;
+      font-weight: 700;
+    }
+    .totals-balance {
+      font-weight: 700;
+      border-top: 1px dashed var(--border);
+      padding-top: 6px;
+      margin-top: 2px;
+    }
+  `]
 })
 export class JobDetailComponent implements OnInit {
   job: Job | null = null;

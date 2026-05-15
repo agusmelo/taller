@@ -20,7 +20,7 @@ import { Client, Vehicle } from '../../../core/models';
   template: `
     <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Vehiculo</h2>
     <mat-dialog-content>
-      @if (error) { <div class="error-msg">{{ error }}</div> }
+      @if (error) { <div class="banner banner-error">{{ error }}</div> }
 
       @if (!isEdit) {
         <div class="form-grid">
@@ -40,7 +40,7 @@ import { Client, Vehicle } from '../../../core/models';
                 <mat-option [value]="c">
                   <strong>{{ c.full_name }}</strong>
                   {{ c.rut ? '(' + c.rut + ')' : '' }}
-                  @if (c.phone) { <small style="color:#666;"> - {{ c.phone }}</small> }
+                  @if (c.phone) { <small style="color:var(--text-3);"> - {{ c.phone }}</small> }
                 </mat-option>
               }
               @if (clientSearch.length >= 2 && clientResults.length === 0 && !searching) {
@@ -50,11 +50,13 @@ import { Client, Vehicle } from '../../../core/models';
           </mat-form-field>
         </div>
         @if (selectedClient) {
-          <div class="info-msg" style="margin-bottom:16px;">
-            <mat-icon style="vertical-align:middle;margin-right:4px;font-size:18px;">person</mat-icon>
-            <strong>{{ selectedClient.full_name }}</strong>
-            {{ selectedClient.rut ? '- RUT: ' + selectedClient.rut : '' }}
-            {{ selectedClient.phone ? '- Tel: ' + selectedClient.phone : '' }}
+          <div class="banner banner-info">
+            <mat-icon>person</mat-icon>
+            <span>
+              <strong>{{ selectedClient.full_name }}</strong>
+              {{ selectedClient.rut ? '· RUT: ' + selectedClient.rut : '' }}
+              {{ selectedClient.phone ? '· Tel: ' + selectedClient.phone : '' }}
+            </span>
           </div>
         }
       }
@@ -94,7 +96,6 @@ import { Client, Vehicle } from '../../../core/models';
   `,
   styles: [`
     .full-width { width: 100%; }
-    .error-msg { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; margin-bottom: 16px; }
   `]
 })
 export class VehicleFormComponent {

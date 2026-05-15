@@ -20,7 +20,7 @@ import { Client } from '../../../core/models';
   template: `
     <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Cliente</h2>
     <mat-dialog-content>
-      @if (error) { <div class="error-msg">{{ error }}</div> }
+      @if (error) { <div class="banner banner-error">{{ error }}</div> }
 
       <div class="form-grid">
         <mat-form-field appearance="outline">
@@ -37,16 +37,18 @@ import { Client } from '../../../core/models';
       </div>
 
       @if (nameMatches.length > 0 && !isEdit) {
-        <div class="warning-msg">
-          <mat-icon style="vertical-align:middle;margin-right:4px;font-size:18px;">warning</mat-icon>
-          Ya existe un cliente con nombre similar:
-          @for (m of nameMatches; track m.id) {
-            <div style="margin-top:4px;">
-              <strong>{{ m.full_name }}</strong>
-              {{ m.rut ? '(RUT: ' + m.rut + ')' : '' }}
-              {{ m.phone ? '- Tel: ' + m.phone : '' }}
-            </div>
-          }
+        <div class="banner banner-warn warn-stack">
+          <mat-icon>warning</mat-icon>
+          <div>
+            <div>Ya existe un cliente con nombre similar:</div>
+            @for (m of nameMatches; track m.id) {
+              <div class="match-line">
+                <strong>{{ m.full_name }}</strong>
+                {{ m.rut ? '(RUT: ' + m.rut + ')' : '' }}
+                {{ m.phone ? '- Tel: ' + m.phone : '' }}
+              </div>
+            }
+          </div>
         </div>
       }
 
@@ -62,11 +64,12 @@ import { Client } from '../../../core/models';
       </div>
 
       @if (rutMatch && !isEdit) {
-        <div class="error-msg">
-          <mat-icon style="vertical-align:middle;margin-right:4px;font-size:18px;">error</mat-icon>
-          Ya existe un cliente con este RUT:
-          <strong>{{ rutMatch.full_name }}</strong>
-          {{ rutMatch.phone ? '- Tel: ' + rutMatch.phone : '' }}
+        <div class="banner banner-error">
+          <mat-icon>error</mat-icon>
+          <span>Ya existe un cliente con este RUT:
+            <strong>{{ rutMatch.full_name }}</strong>
+            {{ rutMatch.phone ? '- Tel: ' + rutMatch.phone : '' }}
+          </span>
         </div>
       }
 
@@ -92,8 +95,9 @@ import { Client } from '../../../core/models';
   `,
   styles: [`
     .full-width { width: 100%; }
-    .error-msg { background: #ffebee; color: #c62828; padding: 12px; border-radius: 4px; margin-bottom: 16px; }
-    .warning-msg { background: #fff8e1; color: #f57f17; padding: 12px; border-radius: 4px; margin-bottom: 16px; font-size: 13px; }
+    .warn-stack { align-items: flex-start; }
+    .warn-stack mat-icon { font-size: 18px; width: 18px; height: 18px; margin-top: 2px; }
+    .match-line { margin-top: 4px; font-size: 12px; font-weight: 500; }
   `]
 })
 export class ClientFormComponent {

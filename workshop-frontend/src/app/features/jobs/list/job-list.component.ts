@@ -7,8 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatCardModule } from '@angular/material/card';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -25,15 +24,15 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
   standalone: true,
   imports: [
     CommonModule, FormsModule, RouterLink, MatTableModule, MatButtonModule, MatIconModule,
-    MatFormFieldModule, MatInputModule, MatSelectModule, MatChipsModule,
+    MatFormFieldModule, MatInputModule, MatCardModule,
     MatPaginatorModule, MatProgressSpinnerModule, MatDatepickerModule, MatNativeDateModule,
     StatusLabelPipe, AppCurrencyPipe
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Trabajos</h1>
-        <div style="display:flex;gap:8px;">
+        <div class="page-head-actions">
           @if (auth.isAdmin()) {
             <button mat-stroked-button (click)="exportCsv()">
               <mat-icon>download</mat-icon> CSV
@@ -47,20 +46,17 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
         </div>
       </div>
 
-      <div style="display:flex;gap:16px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+      <div class="filter-row">
+        <div class="filt">
+          <button class="chip" [class.on]="statusFilter === ''" (click)="setStatus('')">Todos</button>
+          <button class="chip" [class.on]="statusFilter === 'abierto'" (click)="setStatus('abierto')">Abierto</button>
+          <button class="chip" [class.on]="statusFilter === 'terminado'" (click)="setStatus('terminado')">Terminado</button>
+          <button class="chip" [class.on]="statusFilter === 'pagado'" (click)="setStatus('pagado')">Pagado</button>
+        </div>
         <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
           <mat-label>Buscar...</mat-label>
           <input matInput [(ngModel)]="searchQuery" (input)="onSearch()">
           <mat-icon matPrefix>search</mat-icon>
-        </mat-form-field>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Estado</mat-label>
-          <mat-select [(ngModel)]="statusFilter" (selectionChange)="load()">
-            <mat-option value="">Todos</mat-option>
-            <mat-option value="abierto">Abierto</mat-option>
-            <mat-option value="terminado">Terminado</mat-option>
-            <mat-option value="pagado">Pagado</mat-option>
-          </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:140px;">
           <mat-label>Desde</mat-label>
@@ -90,51 +86,67 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
           @if (searchQuery) { <p class="empty-hint">Intenta con otro termino de busqueda</p> }
         </div>
       } @else {
-        <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
-          <ng-container matColumnDef="job_number">
-            <th mat-header-cell *matHeaderCellDef>Numero</th>
-            <td mat-cell *matCellDef="let j"><strong>{{ j.job_number }}</strong></td>
-          </ng-container>
-          <ng-container matColumnDef="client_name">
-            <th mat-header-cell *matHeaderCellDef>Cliente</th>
-            <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
-          </ng-container>
-          <ng-container matColumnDef="plate_number">
-            <th mat-header-cell *matHeaderCellDef>Patente</th>
-            <td mat-cell *matCellDef="let j">{{ j.plate_number }}</td>
-          </ng-container>
-          <ng-container matColumnDef="vehicle">
-            <th mat-header-cell *matHeaderCellDef>Vehiculo</th>
-            <td mat-cell *matCellDef="let j">{{ j.make }} {{ j.model }}</td>
-          </ng-container>
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef>Estado</th>
-            <td mat-cell *matCellDef="let j">
-              <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="subtotal">
-            <th mat-header-cell *matHeaderCellDef class="text-right">Subtotal</th>
-            <td mat-cell *matCellDef="let j" class="text-right">{{ j.subtotal | appCurrency }}</td>
-          </ng-container>
-          <ng-container matColumnDef="job_date">
-            <th mat-header-cell *matHeaderCellDef>Fecha</th>
-            <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              class="clickable-row" (click)="goToDetail(row.id)"></tr>
-        </table>
-        <mat-paginator [length]="totalItems"
-                       [pageIndex]="page"
-                       [pageSize]="pageSize"
-                       [pageSizeOptions]="[10, 20, 50]"
-                       (page)="onPage($event)"
-                       showFirstLastButtons>
-        </mat-paginator>
+        <mat-card class="table-card">
+          <mat-card-content>
+            <table mat-table [dataSource]="jobs">
+              <ng-container matColumnDef="job_number">
+                <th mat-header-cell *matHeaderCellDef>Numero</th>
+                <td mat-cell *matCellDef="let j" class="t-mono"><strong>{{ j.job_number }}</strong></td>
+              </ng-container>
+              <ng-container matColumnDef="client_name">
+                <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                <td mat-cell *matCellDef="let j">{{ j.client_name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="plate_number">
+                <th mat-header-cell *matHeaderCellDef>Patente</th>
+                <td mat-cell *matCellDef="let j" class="t-mono">{{ j.plate_number }}</td>
+              </ng-container>
+              <ng-container matColumnDef="vehicle">
+                <th mat-header-cell *matHeaderCellDef>Vehiculo</th>
+                <td mat-cell *matCellDef="let j">{{ j.make }} {{ j.model }}</td>
+              </ng-container>
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let j">
+                  <span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="subtotal">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Subtotal</th>
+                <td mat-cell *matCellDef="let j" class="td-num">{{ j.subtotal | appCurrency }}</td>
+              </ng-container>
+              <ng-container matColumnDef="job_date">
+                <th mat-header-cell *matHeaderCellDef>Fecha</th>
+                <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                  class="clickable-row" (click)="goToDetail(row.id)"></tr>
+            </table>
+            <mat-paginator [length]="totalItems"
+                           [pageIndex]="page"
+                           [pageSize]="pageSize"
+                           [pageSizeOptions]="[10, 20, 50]"
+                           (page)="onPage($event)"
+                           showFirstLastButtons>
+            </mat-paginator>
+          </mat-card-content>
+        </mat-card>
       }
-    </div>
-  `
+    </main>
+  `,
+  styles: [`
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .table-card { padding: 0 !important; overflow: hidden; }
+    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+    .table-card mat-paginator { padding: 0 12px; }
+  `]
 })
 export class JobListComponent implements OnInit {
   jobs: Job[] = [];
@@ -175,6 +187,12 @@ export class JobListComponent implements OnInit {
     clearTimeout(this.searchTimeout);
     this.page = 0;
     this.searchTimeout = setTimeout(() => this.load(), 300);
+  }
+
+  setStatus(status: string) {
+    this.statusFilter = status;
+    this.page = 0;
+    this.load();
   }
 
   onPage(event: PageEvent) {

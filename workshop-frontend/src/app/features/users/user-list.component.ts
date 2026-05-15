@@ -8,7 +8,8 @@ import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angu
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatChipsModule } from '@angular/material/chips';
+import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
@@ -25,7 +26,7 @@ import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/c
   template: `
     <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Usuario</h2>
     <mat-dialog-content>
-      @if (error) { <div style="background:#ffebee;color:#c62828;padding:12px;border-radius:4px;margin-bottom:16px;">{{ error }}</div> }
+      @if (error) { <div class="banner banner-error">{{ error }}</div> }
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Username</mat-label>
         <input matInput [(ngModel)]="form.username" required [disabled]="isEdit">
@@ -100,11 +101,11 @@ export class UserFormDialogComponent {
   standalone: true,
   imports: [
     CommonModule, MatTableModule, MatButtonModule, MatIconModule,
-    MatDialogModule, MatChipsModule, MatProgressSpinnerModule
+    MatDialogModule, MatProgressSpinnerModule, MatCardModule, MatTooltipModule
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Usuarios</h1>
         <button mat-raised-button color="primary" (click)="openForm()">
           <mat-icon>person_add</mat-icon> Nuevo Usuario
@@ -114,50 +115,58 @@ export class UserFormDialogComponent {
       @if (loading) {
         <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
       } @else {
-        <table mat-table [dataSource]="users" class="mat-elevation-z1">
-          <ng-container matColumnDef="username">
-            <th mat-header-cell *matHeaderCellDef>Username</th>
-            <td mat-cell *matCellDef="let u">{{ u.username }}</td>
-          </ng-container>
-          <ng-container matColumnDef="full_name">
-            <th mat-header-cell *matHeaderCellDef>Nombre</th>
-            <td mat-cell *matCellDef="let u">{{ u.full_name }}</td>
-          </ng-container>
-          <ng-container matColumnDef="role">
-            <th mat-header-cell *matHeaderCellDef>Rol</th>
-            <td mat-cell *matCellDef="let u">
-              <span [class]="'status-badge status-' + (u.role === 'admin' ? 'pagado' : u.role === 'recepcionista' ? 'abierto' : 'terminado')">
-                {{ roleLabel(u.role) }}
-              </span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="is_active">
-            <th mat-header-cell *matHeaderCellDef>Estado</th>
-            <td mat-cell *matCellDef="let u">
-              <span [style.color]="u.is_active ? '#2e7d32' : '#c62828'">
-                {{ u.is_active ? 'Activo' : 'Inactivo' }}
-              </span>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef>Acciones</th>
-            <td mat-cell *matCellDef="let u">
-              <button mat-icon-button (click)="openForm(u)" matTooltip="Editar">
-                <mat-icon>edit</mat-icon>
-              </button>
-              @if (u.is_active) {
-                <button mat-icon-button color="warn" (click)="confirmDeactivate(u)" matTooltip="Desactivar">
-                  <mat-icon>block</mat-icon>
-                </button>
-              }
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['username','full_name','role','is_active','actions']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['username','full_name','role','is_active','actions'];"></tr>
-        </table>
+        <mat-card class="table-card">
+          <mat-card-content>
+            <table mat-table [dataSource]="users">
+              <ng-container matColumnDef="username">
+                <th mat-header-cell *matHeaderCellDef>Username</th>
+                <td mat-cell *matCellDef="let u" class="t-mono">{{ u.username }}</td>
+              </ng-container>
+              <ng-container matColumnDef="full_name">
+                <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                <td mat-cell *matCellDef="let u">{{ u.full_name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="role">
+                <th mat-header-cell *matHeaderCellDef>Rol</th>
+                <td mat-cell *matCellDef="let u">
+                  <span [class]="'badge ' + roleBadgeClass(u.role)">
+                    {{ roleLabel(u.role) }}
+                  </span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="is_active">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let u">
+                  <span [class]="u.is_active ? 'badge b-pagado' : 'badge b-reg'">
+                    {{ u.is_active ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Acciones</th>
+                <td mat-cell *matCellDef="let u" class="text-right">
+                  <button mat-icon-button (click)="openForm(u)" matTooltip="Editar">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  @if (u.is_active) {
+                    <button mat-icon-button color="warn" (click)="confirmDeactivate(u)" matTooltip="Desactivar">
+                      <mat-icon>block</mat-icon>
+                    </button>
+                  }
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['username','full_name','role','is_active','actions']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['username','full_name','role','is_active','actions'];"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
       }
-    </div>
-  `
+    </main>
+  `,
+  styles: [`
+    .table-card { padding: 0 !important; overflow: hidden; }
+    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+  `]
 })
 export class UserListComponent implements OnInit {
   users: User[] = [];
@@ -182,6 +191,15 @@ export class UserListComponent implements OnInit {
   roleLabel(role: string): string {
     const labels: Record<string, string> = { admin: 'Administrador', recepcionista: 'Recepcionista', mecanico: 'Mecanico' };
     return labels[role] || role;
+  }
+
+  roleBadgeClass(role: string): string {
+    const classes: Record<string, string> = {
+      admin: 'b-vip',
+      recepcionista: 'b-pro',
+      mecanico: 'b-teal'
+    };
+    return classes[role] || 'b-reg';
   }
 
   openForm(user?: User) {

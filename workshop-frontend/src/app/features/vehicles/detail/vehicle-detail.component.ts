@@ -31,17 +31,20 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     @if (loading) {
       <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
     } @else if (vehicle) {
-    <div class="page-container">
-      <div class="page-header">
-        <h1>{{ vehicle.plate_number }} - {{ vehicle.make }} {{ vehicle.model }}</h1>
-        <div>
+    <main class="content">
+      <div class="page-head">
+        <div class="page-head-title">
+          <h1 class="t-mono">{{ vehicle.plate_number }}</h1>
+          <span class="vehicle-sub">{{ vehicle.make }} {{ vehicle.model }}</span>
+        </div>
+        <div class="page-head-actions">
           @if (auth.isAdminOrRecep()) {
-            <button mat-raised-button color="accent" (click)="edit()" class="mr-8">
+            <button mat-raised-button color="primary" (click)="edit()">
               <mat-icon>edit</mat-icon> Editar
             </button>
           }
           @if (auth.isAdmin()) {
-            <button mat-raised-button color="warn" (click)="showTransfer = !showTransfer" class="mr-8">
+            <button mat-stroked-button (click)="showTransfer = !showTransfer">
               <mat-icon>swap_horiz</mat-icon> Transferir
             </button>
           }
@@ -52,9 +55,9 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       @if (showTransfer) {
         <mat-card class="mb-16">
           <mat-card-content>
-            <h3>Transferir propiedad</h3>
+            <h3 class="card-title-lg">Transferir propiedad</h3>
             <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
-              <mat-form-field appearance="outline" style="flex:1;min-width:200px;">
+              <mat-form-field appearance="outline" style="flex:1;min-width:200px;" subscriptSizing="dynamic">
                 <mat-label>Buscar nuevo dueno</mat-label>
                 <input matInput [(ngModel)]="transferSearch" (input)="searchTransferClients()"
                        [matAutocomplete]="transferAuto">
@@ -64,7 +67,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
                   }
                 </mat-autocomplete>
               </mat-form-field>
-              <mat-form-field appearance="outline" style="flex:1;min-width:200px;">
+              <mat-form-field appearance="outline" style="flex:1;min-width:200px;" subscriptSizing="dynamic">
                 <mat-label>Nota de transferencia</mat-label>
                 <input matInput [(ngModel)]="transferNotes">
               </mat-form-field>
@@ -76,65 +79,121 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
         </mat-card>
       }
 
-      <div class="card-grid">
+      <div class="info-cards">
         <mat-card>
           <mat-card-content>
-            <p><strong>Dueno:</strong> <a [routerLink]="['/clientes', vehicle.client_id]">{{ vehicle.client_name }}</a></p>
-            <p><strong>Ano:</strong> {{ vehicle.year || '-' }}</p>
-            <p><strong>Color:</strong> {{ vehicle.color || '-' }}</p>
-            <p><strong>Kilometraje:</strong> {{ vehicle.mileage ? vehicle.mileage.toLocaleString() + ' km' : '-' }}</p>
-            @if (vehicle.notes) { <p><strong>Notas:</strong> {{ vehicle.notes }}</p> }
+            <h3 class="card-title-lg">Dueno actual</h3>
+            <p><strong><a [routerLink]="['/clientes', vehicle.client_id]">{{ vehicle.client_name }}</a></strong></p>
+          </mat-card-content>
+        </mat-card>
+        <mat-card>
+          <mat-card-content>
+            <h3 class="card-title-lg">Datos</h3>
+            <div class="info-row"><span>Ano</span><span>{{ vehicle.year || '-' }}</span></div>
+            <div class="info-row"><span>Color</span><span>{{ vehicle.color || '-' }}</span></div>
+            <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ vehicle.mileage ? vehicle.mileage.toLocaleString() + ' km' : '-' }}</span></div>
+          </mat-card-content>
+        </mat-card>
+        <mat-card>
+          <mat-card-content>
+            <h3 class="card-title-lg">Resumen</h3>
+            <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
+            <div class="info-row"><span>Duenos previos</span><span class="t-mono">{{ history.length }}</span></div>
+            @if (vehicle.notes) {
+              <div class="info-row"><span>Notas</span><span>{{ vehicle.notes }}</span></div>
+            }
           </mat-card-content>
         </mat-card>
       </div>
 
       @if (history.length > 0) {
-        <h2>Historial de propiedad</h2>
-        <table mat-table [dataSource]="history" class="mat-elevation-z1 mb-16">
-          <ng-container matColumnDef="client_name">
-            <th mat-header-cell *matHeaderCellDef>Dueno</th>
-            <td mat-cell *matCellDef="let h">{{ h.client_name }}</td>
-          </ng-container>
-          <ng-container matColumnDef="started_at">
-            <th mat-header-cell *matHeaderCellDef>Desde</th>
-            <td mat-cell *matCellDef="let h">{{ h.started_at | date:'dd/MM/yyyy' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="ended_at">
-            <th mat-header-cell *matHeaderCellDef>Hasta</th>
-            <td mat-cell *matCellDef="let h">{{ h.ended_at ? (h.ended_at | date:'dd/MM/yyyy') : 'Actual' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="transfer_notes">
-            <th mat-header-cell *matHeaderCellDef>Nota</th>
-            <td mat-cell *matCellDef="let h">{{ h.transfer_notes || '-' }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="['client_name','started_at','ended_at','transfer_notes']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['client_name','started_at','ended_at','transfer_notes'];"></tr>
-        </table>
+        <mat-card class="mb-16">
+          <mat-card-content>
+            <h3 class="card-title-lg">Historial de propiedad</h3>
+            <table mat-table [dataSource]="history">
+              <ng-container matColumnDef="client_name">
+                <th mat-header-cell *matHeaderCellDef>Dueno</th>
+                <td mat-cell *matCellDef="let h">{{ h.client_name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="started_at">
+                <th mat-header-cell *matHeaderCellDef>Desde</th>
+                <td mat-cell *matCellDef="let h">{{ h.started_at | date:'dd/MM/yyyy' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="ended_at">
+                <th mat-header-cell *matHeaderCellDef>Hasta</th>
+                <td mat-cell *matCellDef="let h">{{ h.ended_at ? (h.ended_at | date:'dd/MM/yyyy') : 'Actual' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="transfer_notes">
+                <th mat-header-cell *matHeaderCellDef>Nota</th>
+                <td mat-cell *matCellDef="let h">{{ h.transfer_notes || '-' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['client_name','started_at','ended_at','transfer_notes']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['client_name','started_at','ended_at','transfer_notes'];"></tr>
+            </table>
+          </mat-card-content>
+        </mat-card>
       }
 
-      <h2>Trabajos</h2>
-      <table mat-table [dataSource]="jobs" class="mat-elevation-z1">
-        <ng-container matColumnDef="job_number">
-          <th mat-header-cell *matHeaderCellDef>Numero</th>
-          <td mat-cell *matCellDef="let j">{{ j.job_number }}</td>
-        </ng-container>
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Estado</th>
-          <td mat-cell *matCellDef="let j">
-            <span [class]="'status-badge status-' + j.status">{{ j.status | statusLabel }}</span>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="created_at">
-          <th mat-header-cell *matHeaderCellDef>Fecha</th>
-          <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="['job_number','status','created_at']"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['job_number','status','created_at'];"
-            class="clickable-row" (click)="goToJob(row.id)"></tr>
-      </table>
-    </div>
+      <mat-card>
+        <mat-card-content>
+          <h3 class="card-title-lg">Trabajos</h3>
+          <table mat-table [dataSource]="jobs">
+            <ng-container matColumnDef="job_number">
+              <th mat-header-cell *matHeaderCellDef>Numero</th>
+              <td mat-cell *matCellDef="let j" class="t-mono">{{ j.job_number }}</td>
+            </ng-container>
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Estado</th>
+              <td mat-cell *matCellDef="let j">
+                <span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span>
+              </td>
+            </ng-container>
+            <ng-container matColumnDef="created_at">
+              <th mat-header-cell *matHeaderCellDef>Fecha</th>
+              <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="['job_number','status','created_at']"></tr>
+            <tr mat-row *matRowDef="let row; columns: ['job_number','status','created_at'];"
+                class="clickable-row" (click)="goToJob(row.id)"></tr>
+          </table>
+        </mat-card-content>
+      </mat-card>
+    </main>
     }
-  `
+  `,
+  styles: [`
+    .page-head-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .page-head-title h1 { margin: 0; }
+    .vehicle-sub { color: var(--text-2); font-size: 14px; font-weight: 500; }
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .info-cards { grid-template-columns: 1fr; }
+    }
+    .card-title-lg {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin: 0 0 12px;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 4px 0;
+      font-size: 13px;
+    }
+    .info-row > span:first-child {
+      color: var(--text-3);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+  `]
 })
 export class VehicleDetailComponent implements OnInit {
   vehicle: Vehicle | null = null;

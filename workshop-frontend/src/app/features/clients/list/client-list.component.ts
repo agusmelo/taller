@@ -26,10 +26,10 @@ import { ClientFormComponent } from '../form/client-form.component';
     MatPaginatorModule, MatProgressSpinnerModule
   ],
   template: `
-    <div class="page-container">
-      <div class="page-header">
+    <main class="content">
+      <div class="page-head">
         <h1>Clientes</h1>
-        <div style="display:flex;gap:8px;">
+        <div class="page-head-actions">
           @if (auth.isAdmin()) {
             <button mat-stroked-button (click)="exportCsv()">
               <mat-icon>download</mat-icon> CSV
@@ -43,11 +43,13 @@ import { ClientFormComponent } from '../form/client-form.component';
         </div>
       </div>
 
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Buscar por nombre, RUT, telefono...</mat-label>
-        <input matInput [(ngModel)]="searchQuery" (input)="onSearch()">
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
+      <div class="filter-row">
+        <mat-form-field appearance="outline" class="search-field" subscriptSizing="dynamic">
+          <mat-label>Buscar por nombre, RUT, telefono...</mat-label>
+          <input matInput [(ngModel)]="searchQuery" (input)="onSearch()">
+          <mat-icon matPrefix>search</mat-icon>
+        </mat-form-field>
+      </div>
 
       @if (loading) {
         <div class="loading-overlay"><mat-spinner diameter="40"></mat-spinner></div>
@@ -58,41 +60,57 @@ import { ClientFormComponent } from '../form/client-form.component';
           @if (searchQuery) { <p class="empty-hint">Intenta con otro termino de busqueda</p> }
         </div>
       } @else {
-        <table mat-table [dataSource]="clients" class="mat-elevation-z1">
-          <ng-container matColumnDef="full_name">
-            <th mat-header-cell *matHeaderCellDef>Nombre</th>
-            <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
-          </ng-container>
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef>Tipo</th>
-            <td mat-cell *matCellDef="let c">{{ c.type === 'empresa' ? 'Empresa' : 'Individual' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="rut">
-            <th mat-header-cell *matHeaderCellDef>RUT</th>
-            <td mat-cell *matCellDef="let c">{{ c.rut || '-' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="phone">
-            <th mat-header-cell *matHeaderCellDef>Telefono</th>
-            <td mat-cell *matCellDef="let c">{{ c.phone || '-' }}</td>
-          </ng-container>
-          <ng-container matColumnDef="vehicle_count">
-            <th mat-header-cell *matHeaderCellDef>Vehiculos</th>
-            <td mat-cell *matCellDef="let c">{{ c.vehicle_count }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-              class="clickable-row" (click)="goToDetail(row.id)"></tr>
-        </table>
-        <mat-paginator [length]="totalItems"
-                       [pageIndex]="page"
-                       [pageSize]="pageSize"
-                       [pageSizeOptions]="[10, 20, 50]"
-                       (page)="onPage($event)"
-                       showFirstLastButtons>
-        </mat-paginator>
+        <mat-card class="table-card">
+          <mat-card-content>
+            <table mat-table [dataSource]="clients">
+              <ng-container matColumnDef="full_name">
+                <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                <td mat-cell *matCellDef="let c">{{ c.full_name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                <td mat-cell *matCellDef="let c">{{ c.type === 'empresa' ? 'Empresa' : 'Individual' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="rut">
+                <th mat-header-cell *matHeaderCellDef>RUT</th>
+                <td mat-cell *matCellDef="let c" class="t-mono">{{ c.rut || '-' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="phone">
+                <th mat-header-cell *matHeaderCellDef>Telefono</th>
+                <td mat-cell *matCellDef="let c">{{ c.phone || '-' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="vehicle_count">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Vehiculos</th>
+                <td mat-cell *matCellDef="let c" class="td-num">{{ c.vehicle_count }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"
+                  class="clickable-row" (click)="goToDetail(row.id)"></tr>
+            </table>
+            <mat-paginator [length]="totalItems"
+                           [pageIndex]="page"
+                           [pageSize]="pageSize"
+                           [pageSizeOptions]="[10, 20, 50]"
+                           (page)="onPage($event)"
+                           showFirstLastButtons>
+            </mat-paginator>
+          </mat-card-content>
+        </mat-card>
       }
-    </div>
-  `
+    </main>
+  `,
+  styles: [`
+    .filter-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .table-card { padding: 0 !important; overflow: hidden; }
+    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
+    .table-card mat-paginator { padding: 0 12px; }
+  `]
 })
 export class ClientListComponent implements OnInit {
   clients: Client[] = [];
