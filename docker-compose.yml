@@ -60,7 +60,7 @@ services:
       WORKSHOP_LOGO_URL: /assets/logo.png
       WORKSHOP_SERVICES: "Diagnostico y Reparacion Mecanica · Inyeccion Electronica · Scanner · Inyeccion Diesel · Electronica Automotriz · Programacion y Codificacion del Automovil · Reparacion de Modulos"
       CORS_ORIGIN: http://localhost:4200,http://localhost
-      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
     depends_on:
       db:
         condition: service_healthy
