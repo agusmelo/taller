@@ -645,16 +645,22 @@ export class DashboardComponent implements OnInit, AfterViewInit {
     Chart.defaults.color = text3;
 
     this.chart = new Chart(this.chartRef.nativeElement, {
-      type: 'bar',
+      type: 'line',
       data: {
         labels,
         datasets: [{
           label: 'Cobrado',
           data,
+          borderColor: navy,
           backgroundColor: navy,
-          borderRadius: 5,
-          borderSkipped: false,
-          maxBarThickness: 36,
+          pointBackgroundColor: navy,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          borderWidth: 2,
+          tension: 0,
+          fill: false,
         }]
       },
       options: {
