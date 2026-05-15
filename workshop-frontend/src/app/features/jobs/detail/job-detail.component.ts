@@ -14,10 +14,13 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Job } from '../../../core/models';
+import { Job, JobItem, JobItemNode, ItemDescriptionSuggestion } from '../../../core/models';
+import { buildItemsTree, computeLineTotal } from '../../../core/utils/items-tree';
 import { StatusLabelPipe, PaymentMethodPipe, ItemTypePipe } from '../../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
@@ -29,6 +32,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     CommonModule, FormsModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatTooltipModule,
     MatDialogModule, MatProgressSpinnerModule, MatDatepickerModule, MatNativeDateModule,
+    MatSlideToggleModule, MatAutocompleteModule,
     StatusLabelPipe, PaymentMethodPipe, ItemTypePipe, AppCurrencyPipe
   ],
   template: `
@@ -50,6 +54,12 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
               <mat-icon>check</mat-icon> Marcar terminado
             </button>
           }
+          <mat-slide-toggle [(ngModel)]="job.show_item_details_pricing"
+                            (change)="saveVisibility($event.checked)"
+                            matTooltip="Si esta apagado, el PDF muestra el desglose sin precios"
+                            class="visibility-toggle">
+            Desglose con precios
+          </mat-slide-toggle>
           <button mat-stroked-button (click)="printPdf()" [disabled]="pdfLoading">
             <mat-icon>print</mat-icon> {{ pdfLoading ? 'Generando...' : 'Imprimir PDF' }}
           </button>
@@ -134,33 +144,42 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
         <mat-card-content>
           <div class="card-head">
             <h3 class="card-title-lg">Items</h3>
-            @if (!job.is_locked) {
+            @if (canEditItems()) {
               <button mat-stroked-button (click)="showAddItem = !showAddItem">
-                <mat-icon>add</mat-icon> Agregar
+                <mat-icon>add</mat-icon> Agregar item
               </button>
             }
           </div>
 
-          @if (showAddItem && !job.is_locked) {
-            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap;">
-              <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
+          <mat-autocomplete #descAuto="matAutocomplete" (optionSelected)="onDescriptionSelected($event)">
+            @for (s of descriptionSuggestions; track s.description) {
+              <mat-option [value]="s.description">
+                {{ s.description }}<small style="color:var(--text-3);"> ({{ s.uses }})</small>
+              </mat-option>
+            }
+          </mat-autocomplete>
+
+          @if (showAddItem && canEditItems()) {
+            <div class="add-row">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:130px;">
                 <mat-select [(ngModel)]="newItem.item_type">
                   <mat-option value="mano_de_obra">Mano de obra</mat-option>
                   <mat-option value="repuesto">Repuesto</mat-option>
                   <mat-option value="otro">Otro</mat-option>
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline" style="flex:2;min-width:160px;" subscriptSizing="dynamic">
-                <input matInput [(ngModel)]="newItem.description" placeholder="Descripcion">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="flex:1;min-width:160px;">
+                <input matInput [(ngModel)]="newItem.description"
+                       placeholder="Descripcion"
+                       [matAutocomplete]="descAuto"
+                       (focus)="autocompleteTarget = 'new'"
+                       (input)="onDescriptionInput(newItem.description)">
               </mat-form-field>
-              <mat-form-field appearance="outline" style="width:80px;" subscriptSizing="dynamic">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:70px;">
                 <input matInput [(ngModel)]="newItem.quantity" type="number" placeholder="Cant.">
               </mat-form-field>
-              <mat-form-field appearance="outline" style="width:100px;" subscriptSizing="dynamic">
+              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:110px;">
                 <input matInput [(ngModel)]="newItem.unit_price" type="number" placeholder="Precio">
-              </mat-form-field>
-              <mat-form-field appearance="outline" style="width:140px;" subscriptSizing="dynamic">
-                <input matInput [(ngModel)]="newItem.supplier" placeholder="Proveedor">
               </mat-form-field>
               <button mat-raised-button color="primary" (click)="addItem()" [disabled]="!newItem.description || savingItem">
                 {{ savingItem ? '...' : 'Agregar' }}
@@ -168,93 +187,135 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
             </div>
           }
 
-          <table mat-table [dataSource]="job.items || []" style="width:100%;">
-            <ng-container matColumnDef="item_type">
-              <th mat-header-cell *matHeaderCellDef>Tipo</th>
-              <td mat-cell *matCellDef="let i">
-                @if (editingItemId === i.id) {
-                  <mat-form-field appearance="outline" style="width:130px;" subscriptSizing="dynamic">
+          @if (!itemsTree.length) {
+            <div class="empty-items">Sin items todavia.</div>
+          }
+
+          @for (node of itemsTree; track node.id; let pIdx = $index) {
+            <div class="item-block">
+              <div class="parent-row" [class.has-children]="node.children.length > 0">
+                @if (editingItemId === node.id) {
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-type">
                     <mat-select [(ngModel)]="editItem.item_type">
                       <mat-option value="mano_de_obra">Mano de obra</mat-option>
                       <mat-option value="repuesto">Repuesto</mat-option>
                       <mat-option value="otro">Otro</mat-option>
                     </mat-select>
                   </mat-form-field>
-                } @else {
-                  <span [class]="i.item_type === 'mano_de_obra' ? 'badge b-teal' : 'badge b-reg'">{{ i.item_type | itemType }}</span>
-                }
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="description">
-              <th mat-header-cell *matHeaderCellDef>Descripcion</th>
-              <td mat-cell *matCellDef="let i">
-                @if (editingItemId === i.id) {
-                  <mat-form-field appearance="outline" style="width:100%;" subscriptSizing="dynamic">
-                    <input matInput [(ngModel)]="editItem.description">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-desc">
+                    <input matInput [(ngModel)]="editItem.description"
+                           [matAutocomplete]="descAuto"
+                           (focus)="autocompleteTarget = node.id"
+                           (input)="onDescriptionInput(editItem.description)">
                   </mat-form-field>
-                } @else {
-                  {{ i.description }}
-                  @if (i.supplier) { <small style="color:var(--text-3);"> ({{ i.supplier }})</small> }
-                }
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="quantity">
-              <th mat-header-cell *matHeaderCellDef class="text-right">Cant.</th>
-              <td mat-cell *matCellDef="let i" class="text-right">
-                @if (editingItemId === i.id) {
-                  <mat-form-field appearance="outline" style="width:70px;" subscriptSizing="dynamic">
-                    <input matInput [(ngModel)]="editItem.quantity" type="number" min="1">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-qty">
+                    <input matInput [(ngModel)]="editItem.quantity" type="number" min="1"
+                           [disabled]="node.children.length > 0">
                   </mat-form-field>
-                } @else {
-                  {{ i.quantity }}
-                }
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="unit_price">
-              <th mat-header-cell *matHeaderCellDef class="text-right">Precio</th>
-              <td mat-cell *matCellDef="let i" class="text-right">
-                @if (editingItemId === i.id) {
-                  <mat-form-field appearance="outline" style="width:100px;" subscriptSizing="dynamic">
-                    <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-price">
+                    @if (node.children.length > 0) {
+                      <input matInput [value]="lineTotal(node).toFixed(2)" disabled class="input-computed">
+                    } @else {
+                      <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
+                    }
                   </mat-form-field>
+                  <span class="cell-total t-mono">{{ (editItem.quantity * editItem.unit_price) | appCurrency }}</span>
+                  <div class="cell-actions">
+                    <button mat-icon-button color="primary" (click)="saveEditItem()" [disabled]="savingItem">
+                      <mat-icon>check</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="cancelEditItem()">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
                 } @else {
-                  {{ i.unit_price | appCurrency }}
+                  <span class="cell-type">
+                    <span [class]="'badge b-' + typeBadge(node.item_type)">{{ node.item_type | itemType }}</span>
+                  </span>
+                  <span class="cell-desc">
+                    {{ node.description }}
+                    @if (node.supplier) { <small style="color:var(--text-3);"> ({{ node.supplier }})</small> }
+                  </span>
+                  <span class="cell-qty t-mono">{{ node.children.length > 0 ? '1' : node.quantity }}</span>
+                  <span class="cell-price t-mono">{{ node.children.length > 0 ? '—' : (node.unit_price | appCurrency) }}</span>
+                  <span class="cell-total t-mono">{{ lineTotal(node) | appCurrency }}</span>
+                  <div class="cell-actions">
+                    @if (canEditItems()) {
+                      <button mat-icon-button (click)="startEditItem(node)" matTooltip="Editar">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="confirmDeleteItem(node.id, node.description)" matTooltip="Eliminar">
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    }
+                  </div>
                 }
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="total">
-              <th mat-header-cell *matHeaderCellDef class="text-right">Total</th>
-              <td mat-cell *matCellDef="let i" class="text-right">
-                @if (editingItemId === i.id) {
-                  {{ editItem.quantity * editItem.unit_price | appCurrency }}
-                } @else {
-                  {{ i.quantity * i.unit_price | appCurrency }}
-                }
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef></th>
-              <td mat-cell *matCellDef="let i">
-                @if (editingItemId === i.id) {
-                  <button mat-icon-button color="primary" (click)="saveEditItem()" [disabled]="savingItem">
+              </div>
+
+              @if (node.children.length > 0) {
+                <div class="children-block">
+                  @for (child of node.children; track child.id; let cIdx = $index) {
+                    <div class="child-row">
+                      @if (editingItemId === child.id) {
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-desc">
+                          <input matInput [(ngModel)]="editItem.description">
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
+                          <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
+                        </mat-form-field>
+                        <div class="cell-actions">
+                          <button mat-icon-button color="primary" (click)="saveEditItem()" [disabled]="savingItem">
+                            <mat-icon>check</mat-icon>
+                          </button>
+                          <button mat-icon-button (click)="cancelEditItem()">
+                            <mat-icon>close</mat-icon>
+                          </button>
+                        </div>
+                      } @else {
+                        <span class="child-desc">↳ {{ child.description }}</span>
+                        <span class="child-price t-mono">{{ child.unit_price | appCurrency }}</span>
+                        <div class="cell-actions">
+                          @if (canEditItems()) {
+                            <button mat-icon-button (click)="startEditItem(child)" matTooltip="Editar">
+                              <mat-icon>edit</mat-icon>
+                            </button>
+                            <button mat-icon-button (click)="confirmDeleteItem(child.id, child.description)" matTooltip="Eliminar">
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (showAddChildFor === node.id && canEditItems()) {
+                <div class="add-child-row children-block">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-desc">
+                    <input matInput [(ngModel)]="newChild.description" placeholder="Detalle"
+                           (keydown.enter)="addChildInline(node.id)">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
+                    <input matInput [(ngModel)]="newChild.unit_price" type="number" placeholder="P. unit."
+                           (keydown.enter)="addChildInline(node.id)">
+                  </mat-form-field>
+                  <button mat-icon-button color="primary" (click)="addChildInline(node.id)" [disabled]="!newChild.description">
                     <mat-icon>check</mat-icon>
                   </button>
-                  <button mat-icon-button (click)="cancelEditItem()">
+                  <button mat-icon-button (click)="showAddChildFor = null">
                     <mat-icon>close</mat-icon>
                   </button>
-                } @else if (canEditItems()) {
-                  <button mat-icon-button (click)="startEditItem(i)">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button color="warn" (click)="confirmDeleteItem(i.id, i.description)">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                }
-              </td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="itemColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: itemColumns;"></tr>
-          </table>
+                </div>
+              }
+
+              @if (canEditItems() && showAddChildFor !== node.id) {
+                <button class="add-child-btn" type="button" (click)="openAddChild(node.id)">
+                  <mat-icon>subdirectory_arrow_right</mat-icon> Agregar detalle
+                </button>
+              }
+            </div>
+          }
         </mat-card-content>
       </mat-card>
 
@@ -412,13 +473,94 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       padding-top: 6px;
       margin-top: 2px;
     }
+    .visibility-toggle {
+      margin-right: 6px;
+      font-size: 12px;
+    }
+    .empty-items {
+      padding: 24px 0;
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+    .add-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .item-block {
+      border-bottom: 1px solid var(--border2);
+      padding: 8px 0 6px;
+    }
+    .item-block:last-of-type { border-bottom: none; }
+    .parent-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 70px 110px 100px auto;
+      gap: 8px;
+      align-items: center;
+    }
+    .parent-row.has-children .cell-price,
+    .parent-row.has-children .cell-qty {
+      color: var(--text-3);
+      font-style: italic;
+    }
+    .cell-desc { min-width: 0; }
+    .cell-qty, .cell-price { text-align: right; }
+    .cell-total { text-align: right; font-weight: 600; white-space: nowrap; }
+    .cell-actions { display: flex; gap: 2px; justify-content: flex-end; }
+    .cell-actions mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    .input-computed { font-style: italic; color: var(--text-3) !important; }
+    .children-block {
+      padding: 4px 0 4px 12px;
+      margin: 4px 0 4px 18px;
+      border-left: 2px solid var(--navy);
+    }
+    .child-row {
+      display: grid;
+      grid-template-columns: 1fr 130px auto;
+      gap: 8px;
+      align-items: center;
+      padding: 3px 0;
+      font-size: 12px;
+      color: var(--text-2);
+    }
+    .child-desc, .child-price { min-width: 0; }
+    .add-child-row {
+      display: grid;
+      grid-template-columns: 1fr 130px 36px 36px;
+      gap: 8px;
+      align-items: center;
+      padding: 4px 0 4px 12px;
+      margin: 4px 0 4px 18px;
+    }
+    .add-child-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin: 4px 0 4px 18px;
+      font-size: 11px;
+      color: var(--navy);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: var(--r-sm);
+    }
+    .add-child-btn:hover { background: var(--bg); }
+    .add-child-btn mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    @media (max-width: 720px) {
+      .parent-row { grid-template-columns: 1fr 1fr; }
+    }
   `]
 })
 export class JobDetailComponent implements OnInit {
   job: Job | null = null;
-  itemColumns = ['item_type', 'description', 'quantity', 'unit_price', 'total', 'actions'];
+  itemsTree: JobItemNode[] = [];
   paymentColumns = ['payment_date', 'method', 'amount', 'reference', 'actions'];
   showAddItem = false;
+  showAddChildFor: string | null = null;
   showAddPayment = false;
   internalNotes = '';
   loading = true;
@@ -426,10 +568,15 @@ export class JobDetailComponent implements OnInit {
   savingItem = false;
   savingPayment = false;
   newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
+  newChild: { description: string; unit_price: number } = { description: '', unit_price: 0 };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '', payment_date: new Date() };
   clientCredit = 0;
   editingItemId: string | null = null;
   editItem: any = {};
+
+  descriptionSuggestions: ItemDescriptionSuggestion[] = [];
+  autocompleteTarget: string | 'new' | null = null;
+  private descTimeout: any;
 
   constructor(
     private route: ActivatedRoute,
@@ -446,9 +593,82 @@ export class JobDetailComponent implements OnInit {
     this.loading = true;
     const id = this.route.snapshot.paramMap.get('id')!;
     this.api.getJob(id).subscribe({
-      next: j => { this.job = j; this.internalNotes = j.internal_notes || ''; this.loading = false; },
+      next: j => {
+        this.job = j;
+        this.itemsTree = buildItemsTree(j.items || []);
+        this.internalNotes = j.internal_notes || '';
+        this.loading = false;
+      },
       error: err => { this.notify.handleError(err); this.loading = false; }
     });
+  }
+
+  lineTotal(node: JobItemNode): number { return computeLineTotal(node); }
+
+  typeBadge(t: string): string {
+    return t === 'mano_de_obra' ? 'teal' : 'reg';
+  }
+
+  saveVisibility(checked: boolean) {
+    if (!this.job) return;
+    this.api.updateJob(this.job.id, { show_item_details_pricing: checked } as any).subscribe({
+      next: () => this.notify.success(checked ? 'Desglose visible en PDF' : 'Desglose oculto en PDF'),
+      error: err => this.notify.handleError(err)
+    });
+  }
+
+  openAddChild(parentId: string) {
+    this.showAddChildFor = parentId;
+    this.newChild = { description: '', unit_price: 0 };
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.add-child-row input');
+      const first = inputs[0] as HTMLInputElement | undefined;
+      if (first) first.focus();
+    }, 0);
+  }
+
+  addChildInline(parentId: string) {
+    if (!this.newChild.description) return;
+    this.api.addJobItem(this.job!.id, {
+      description: this.newChild.description,
+      unit_price: Number(this.newChild.unit_price) || 0,
+      parent_id: parentId,
+    }).subscribe({
+      next: () => {
+        this.newChild = { description: '', unit_price: 0 };
+        this.notify.success('Detalle agregado');
+        const keepOpenFor = parentId;
+        this.load();
+        // Keep the inline-add form open on the same parent so the user can
+        // add several details in a row without re-clicking.
+        setTimeout(() => { this.showAddChildFor = keepOpenFor; }, 0);
+      },
+      error: err => this.notify.handleError(err)
+    });
+  }
+
+  onDescriptionInput(value: string) {
+    clearTimeout(this.descTimeout);
+    const q = (value || '').trim();
+    if (q.length < 2) {
+      this.descriptionSuggestions = [];
+      return;
+    }
+    this.descTimeout = setTimeout(() => {
+      this.api.searchItemDescriptions(q).subscribe(results => {
+        this.descriptionSuggestions = results;
+      });
+    }, 200);
+  }
+
+  onDescriptionSelected(event: any) {
+    const value = event.option.value as string;
+    if (this.autocompleteTarget === 'new') {
+      this.newItem.description = value;
+    } else if (this.autocompleteTarget) {
+      this.editItem.description = value;
+    }
+    this.descriptionSuggestions = [];
   }
 
   canAddPayments(): boolean {
@@ -546,10 +766,12 @@ export class JobDetailComponent implements OnInit {
 
   canEditItems(): boolean {
     if (!this.job) return false;
-    return this.auth.isAdmin() && !this.job.is_locked && this.job.status !== 'pagado';
+    if (this.job.is_locked || this.job.status === 'pagado') return false;
+    return this.auth.isAdmin() || this.auth.isAdminOrRecep();
   }
 
-  startEditItem(item: any) {
+  startEditItem(item: JobItem) {
+    if (!this.canEditItems()) return;
     this.editingItemId = item.id;
     this.editItem = {
       item_type: item.item_type,
