@@ -10,7 +10,7 @@ import {
   TopClient, PaymentMethodBreakdown, NewClientsData,
   RevenueTrendItem, JobWithBalance, RecentPayment,
   AgingReport, Debtor, PaymentsSummary, AppSettings,
-  MonthlyClosing
+  MonthlyClosing, ItemDescriptionSuggestion
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -74,11 +74,19 @@ export class ApiService {
 
   // Job Items
   getJobItems(jobId: string) { return this.http.get<JobItem[]>(`${this.url}/jobs/${jobId}/items`); }
-  addJobItem(jobId: string, data: Partial<JobItem>) { return this.http.post<JobItem>(`${this.url}/jobs/${jobId}/items`, data); }
+  addJobItem(jobId: string, data: Partial<JobItem> & { parent_id?: string | null; sort_order?: number }) {
+    return this.http.post<JobItem>(`${this.url}/jobs/${jobId}/items`, data);
+  }
   updateJobItem(jobId: string, itemId: string, data: Partial<JobItem>) {
     return this.http.put<JobItem>(`${this.url}/jobs/${jobId}/items/${itemId}`, data);
   }
   deleteJobItem(jobId: string, itemId: string) { return this.http.delete(`${this.url}/jobs/${jobId}/items/${itemId}`); }
+  searchItemDescriptions(q: string, limit = 20) {
+    return this.http.get<ItemDescriptionSuggestion[]>(
+      `${this.url}/jobs/items/descriptions`,
+      { params: { q, limit: limit.toString() } }
+    );
+  }
 
   // Payments
   getJobPayments(jobId: string) { return this.http.get<Payment[]>(`${this.url}/jobs/${jobId}/payments`); }

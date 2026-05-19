@@ -319,22 +319,6 @@ import Chart from 'chart.js/auto';
     </main>
   `,
   styles: [`
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0 0 12px;
-    }
-    .filter-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .table-card { padding: 0 !important; overflow: hidden; }
-    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
-    .table-card mat-paginator { padding: 0 12px; }
     .kpi-chart { padding: 12px 14px; gap: 4px; }
     .kpi-chart canvas { max-height: 60px; }
 
@@ -581,10 +565,6 @@ export class PaymentsPageComponent implements OnInit {
     };
     const css = getComputedStyle(document.documentElement);
     const navy = css.getPropertyValue('--navy').trim() || '#111827';
-    const text2 = css.getPropertyValue('--text-2').trim() || '#6b7280';
-    const fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
-    Chart.defaults.font.family = fontFamily;
-    Chart.defaults.color = text2;
     // Monochrome ramp from navy to mid-grey
     const ramp = [navy, '#374151', '#6b7280', '#9ca3af'];
     this.methodChart = new Chart(this.methodChartRef.nativeElement, {
@@ -607,8 +587,7 @@ export class PaymentsPageComponent implements OnInit {
             labels: {
               boxWidth: 8,
               boxHeight: 8,
-              font: { size: 11, family: fontFamily },
-              color: text2
+              font: { size: 11 }
             }
           },
           tooltip: {

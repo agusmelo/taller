@@ -1,4 +1,4 @@
-import { Component, ViewChild } from '@angular/core';
+import { Component, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
@@ -45,38 +45,38 @@ import { SearchResults } from '../core/models';
 
         <nav class="nav">
           @if (auth.isAdmin()) {
-            <a class="nav-item" routerLink="/dashboard" routerLinkActive="active" (click)="onNavClick()">
+            <a class="nav-item" routerLink="/dashboard" routerLinkActive="active" #l1="routerLinkActive" [attr.aria-current]="l1.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>dashboard</mat-icon><span>Dashboard</span>
             </a>
           }
-          <a class="nav-item" routerLink="/trabajos" routerLinkActive="active" (click)="onNavClick()">
+          <a class="nav-item" routerLink="/trabajos" routerLinkActive="active" #l2="routerLinkActive" [attr.aria-current]="l2.isActive ? 'page' : null" (click)="onNavClick()">
             <mat-icon>work</mat-icon><span>Trabajos</span>
           </a>
           @if (auth.isAdminOrRecep()) {
-            <a class="nav-item" routerLink="/clientes" routerLinkActive="active" (click)="onNavClick()">
+            <a class="nav-item" routerLink="/clientes" routerLinkActive="active" #l3="routerLinkActive" [attr.aria-current]="l3.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>people</mat-icon><span>Clientes</span>
             </a>
           }
-          <a class="nav-item" routerLink="/vehiculos" routerLinkActive="active" (click)="onNavClick()">
+          <a class="nav-item" routerLink="/vehiculos" routerLinkActive="active" #l4="routerLinkActive" [attr.aria-current]="l4.isActive ? 'page' : null" (click)="onNavClick()">
             <mat-icon>directions_car</mat-icon><span>Vehiculos</span>
           </a>
           @if (auth.isAdmin()) {
-            <a class="nav-item" routerLink="/pagos" routerLinkActive="active" (click)="onNavClick()">
+            <a class="nav-item" routerLink="/pagos" routerLinkActive="active" #l5="routerLinkActive" [attr.aria-current]="l5.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>payments</mat-icon><span>Pagos</span>
             </a>
           }
           @if (auth.isAdmin()) {
-            <a class="nav-item" routerLink="/usuarios" routerLinkActive="active" (click)="onNavClick()">
+            <a class="nav-item" routerLink="/usuarios" routerLinkActive="active" #l6="routerLinkActive" [attr.aria-current]="l6.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>manage_accounts</mat-icon><span>Usuarios</span>
             </a>
           }
           @if (auth.isAdmin()) {
-            <a class="nav-item" routerLink="/importar" routerLinkActive="active" (click)="onNavClick()">
+            <a class="nav-item" routerLink="/importar" routerLinkActive="active" #l7="routerLinkActive" [attr.aria-current]="l7.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>upload_file</mat-icon><span>Importar</span>
             </a>
           }
           @if (auth.isAdmin()) {
-            <a class="nav-item" routerLink="/ajustes" routerLinkActive="active" (click)="onNavClick()">
+            <a class="nav-item" routerLink="/ajustes" routerLinkActive="active" #l8="routerLinkActive" [attr.aria-current]="l8.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>settings</mat-icon><span>Ajustes</span>
             </a>
           }
@@ -359,13 +359,14 @@ import { SearchResults } from '../core/models';
     .page-wrapper { flex: 1; overflow: auto; background: var(--bg); }
   `]
 })
-export class LayoutComponent {
+export class LayoutComponent implements OnDestroy {
   @ViewChild('sidenav') sidenav!: MatSidenav;
   searchQuery = '';
   searchResults: SearchResults | null = null;
   isMobile = false;
   todayChip = '';
   private searchTimeout: any;
+  private dateTimer: any;
 
   constructor(
     public auth: AuthService,
@@ -377,8 +378,16 @@ export class LayoutComponent {
     this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(result => {
       this.isMobile = result.matches;
     });
-    const now = new Date();
-    this.todayChip = now.toLocaleDateString('es-UY', { day: '2-digit', month: 'short', year: 'numeric' });
+    this.refreshDateChip();
+    this.dateTimer = setInterval(() => this.refreshDateChip(), 60_000);
+  }
+
+  ngOnDestroy() {
+    if (this.dateTimer) clearInterval(this.dateTimer);
+  }
+
+  private refreshDateChip() {
+    this.todayChip = new Date().toLocaleDateString('es-UY', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   onNavClick() {

@@ -475,12 +475,7 @@ import Chart from 'chart.js/auto';
       gap: 12px;
       margin-bottom: 12px;
     }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0;
-    }
+    .card-title-lg { margin: 0; }
     .alerts-body {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -638,11 +633,7 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
     const css = getComputedStyle(document.documentElement);
     const navy = css.getPropertyValue('--navy').trim() || '#111827';
-    const text3 = css.getPropertyValue('--text-3').trim() || '#9ca3af';
     const border2 = css.getPropertyValue('--border2').trim() || '#f3f4f6';
-    const fontFamily = "'Plus Jakarta Sans', -apple-system, sans-serif";
-    Chart.defaults.font.family = fontFamily;
-    Chart.defaults.color = text3;
 
     this.chart = new Chart(this.chartRef.nativeElement, {
       type: 'line',
@@ -669,15 +660,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: text3, font: { family: fontFamily, size: 11 } }
+            ticks: { font: { size: 11 } }
           },
           y: {
             beginAtZero: true,
             display: !this.privacyMode,
             grid: { color: border2 },
             ticks: {
-              color: text3,
-              font: { family: fontFamily, size: 11 },
+              font: { size: 11 },
               callback: (v) => '$ ' + Number(v).toLocaleString('es-UY')
             }
           }

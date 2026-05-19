@@ -15,9 +15,22 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { VehicleSearchResult } from '../../../core/models';
+import { VehicleSearchResult, ItemDescriptionSuggestion } from '../../../core/models';
 import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
+
+interface ChildDraft {
+  description: string;
+  unit_price: number;
+}
+interface ParentDraft {
+  description: string;
+  quantity: number;
+  unit_price: number;
+  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
+  supplier: string;
+  children: ChildDraft[];
+}
 
 @Component({
   selector: 'app-job-create',
@@ -127,38 +140,88 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
             <mat-card class="mb-16">
               <mat-card-content>
                 <div class="form-section-title">Items</div>
-                @for (item of items; track $index) {
-                  <div class="item-row">
-                    <mat-form-field appearance="outline" class="item-desc" subscriptSizing="dynamic">
-                      <mat-label>Descripcion</mat-label>
-                      <input matInput [(ngModel)]="item.description">
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="item-qty" subscriptSizing="dynamic">
-                      <mat-label>Cant.</mat-label>
-                      <input matInput [(ngModel)]="item.quantity" type="number" (ngModelChange)="calcTotals()">
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="item-price" subscriptSizing="dynamic">
-                      <mat-label>Precio</mat-label>
-                      <input matInput [(ngModel)]="item.unit_price" type="number" (ngModelChange)="calcTotals()">
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="item-type" subscriptSizing="dynamic">
-                      <mat-select [(ngModel)]="item.item_type">
-                        <mat-option value="mano_de_obra">Mano de obra</mat-option>
-                        <mat-option value="repuesto">Repuesto</mat-option>
-                        <mat-option value="otro">Otro</mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="item-supplier" subscriptSizing="dynamic">
-                      <mat-label>Proveedor</mat-label>
-                      <input matInput [(ngModel)]="item.supplier">
-                    </mat-form-field>
-                    <span class="item-total text-right">{{ (item.quantity * item.unit_price) | appCurrency }}</span>
-                    <button mat-icon-button color="warn" (click)="removeItem($index)">
-                      <mat-icon>delete</mat-icon>
+                <mat-autocomplete #descAuto="matAutocomplete" (optionSelected)="onDescriptionSelected($event)">
+                  @for (s of descriptionSuggestions; track s.description) {
+                    <mat-option [value]="s.description">
+                      {{ s.description }}
+                      <small style="color:var(--text-3);"> ({{ s.uses }})</small>
+                    </mat-option>
+                  }
+                </mat-autocomplete>
+
+                @for (item of items; track $index; let pIdx = $index) {
+                  <div class="item-block">
+                    <div class="parent-row">
+                      <mat-form-field appearance="outline" class="item-type" subscriptSizing="dynamic">
+                        <mat-select [(ngModel)]="item.item_type">
+                          <mat-option value="mano_de_obra">Mano de obra</mat-option>
+                          <mat-option value="repuesto">Repuesto</mat-option>
+                          <mat-option value="otro">Otro</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="item-desc" subscriptSizing="dynamic">
+                        <mat-label>Descripcion</mat-label>
+                        <input matInput [(ngModel)]="item.description"
+                               [matAutocomplete]="descAuto"
+                               (focus)="activeDescriptionTarget = pIdx"
+                               (input)="onDescriptionInput(pIdx, item.description)">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="item-qty" subscriptSizing="dynamic">
+                        <mat-label>Cant.</mat-label>
+                        <input matInput [(ngModel)]="item.quantity" type="number"
+                               [disabled]="item.children.length > 0"
+                               (ngModelChange)="calcTotals()">
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="item-price" subscriptSizing="dynamic">
+                        <mat-label>P. unit.</mat-label>
+                        @if (item.children.length > 0) {
+                          <input matInput [value]="parentSum(item)" disabled
+                                 class="input-computed" title="Suma de detalles">
+                        } @else {
+                          <input matInput [(ngModel)]="item.unit_price" type="number"
+                                 (ngModelChange)="calcTotals()">
+                        }
+                      </mat-form-field>
+                      <span class="item-total text-right t-mono">{{ lineTotal(item) | appCurrency }}</span>
+                      <button mat-icon-button (click)="removeItem(pIdx)" aria-label="Eliminar item">
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    </div>
+
+                    @if (item.children.length > 0) {
+                      <div class="children-block">
+                        @for (child of item.children; track $index; let cIdx = $index) {
+                          <div class="child-row">
+                            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-desc">
+                              <mat-label>Detalle</mat-label>
+                              <input matInput [(ngModel)]="child.description"
+                                     [attr.data-row]="'p' + pIdx + 'c' + cIdx + 'd'"
+                                     (keydown.enter)="onChildEnter($event, pIdx, cIdx)"
+                                     (keydown.backspace)="onChildBackspace($event, pIdx, cIdx, child.description)">
+                            </mat-form-field>
+                            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
+                              <mat-label>P. unit.</mat-label>
+                              <input matInput [(ngModel)]="child.unit_price" type="number"
+                                     [attr.data-row]="'p' + pIdx + 'c' + cIdx + 'p'"
+                                     (ngModelChange)="calcTotals()"
+                                     (keydown.enter)="onChildEnter($event, pIdx, cIdx)">
+                            </mat-form-field>
+                            <button mat-icon-button class="child-delete"
+                                    (click)="removeChild(pIdx, cIdx)" aria-label="Eliminar detalle">
+                              <mat-icon>close</mat-icon>
+                            </button>
+                          </div>
+                        }
+                      </div>
+                    }
+
+                    <button class="add-child-btn" type="button" (click)="addChild(pIdx)">
+                      <mat-icon>subdirectory_arrow_right</mat-icon> Agregar detalle
                     </button>
                   </div>
                 }
-                <button mat-stroked-button (click)="addItem()">
+
+                <button mat-stroked-button (click)="addItem()" style="margin-top:8px;">
                   <mat-icon>add</mat-icon> Agregar item
                 </button>
               </mat-card-content>
@@ -226,24 +289,72 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     .job-create-form { min-width: 0; }
     .job-create-sidebar { min-width: 0; }
     .full-width { width: 100%; }
-    .item-row {
-      display: flex;
+    .item-block {
+      border-bottom: 1px solid var(--border2);
+      padding: 8px 0 4px;
+    }
+    .item-block:last-of-type { border-bottom: none; }
+    .parent-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 70px 110px 100px 36px;
       gap: 8px;
       align-items: center;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
     }
-    .item-desc { flex: 2; min-width: 160px; }
-    .item-qty { width: 80px; }
-    .item-price { width: 100px; }
-    .item-type { width: 140px; }
-    .item-supplier { width: 130px; }
+    .item-desc { min-width: 0; }
+    .item-qty { width: 70px; }
+    .item-price { width: 110px; }
+    .item-type { width: 130px; }
     .item-total {
-      width: 100px;
       font-weight: 600;
       font-size: 13px;
       white-space: nowrap;
-      font-family: 'JetBrains Mono', monospace;
+      text-align: right;
+    }
+    .input-computed {
+      font-style: italic;
+      color: var(--text-3) !important;
+    }
+    .children-block {
+      padding: 4px 0 4px 12px;
+      margin: 4px 0 4px 16px;
+      border-left: 2px solid var(--navy);
+    }
+    .child-row {
+      display: grid;
+      grid-template-columns: 1fr 130px 32px;
+      gap: 8px;
+      align-items: center;
+      padding: 2px 0;
+    }
+    .child-desc, .child-price { min-width: 0; }
+    .child-delete mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      color: var(--text-3);
+    }
+    .add-child-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin: 4px 0 4px 16px;
+      font-size: 11px;
+      color: var(--navy);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: var(--r-sm);
+    }
+    .add-child-btn:hover { background: var(--bg); }
+    .add-child-btn mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+    @media (max-width: 720px) {
+      .parent-row { grid-template-columns: 1fr 1fr; }
+      .item-type, .item-qty, .item-price { width: auto; }
     }
     .summary-card {
       position: sticky;
@@ -251,12 +362,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     }
     .summary-card h3 { margin-bottom: 12px; }
     .summary-actions { margin-top: 20px; }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0;
-    }
+    .card-title-lg { margin: 0; }
     .totals { display: flex; flex-direction: column; gap: 4px; }
     .totals-row {
       display: flex;
@@ -296,12 +402,16 @@ export class JobCreateComponent {
   taxEnabled = true;
   discountAmount = 0;
   discountType: 'fixed' | 'percentage' = 'fixed';
-  items: any[] = [];
+  items: ParentDraft[] = [];
   saving = false;
   error = '';
   totals = { subtotal: 0, discount: 0, tax: 0, total: 0 };
 
+  descriptionSuggestions: ItemDescriptionSuggestion[] = [];
+  activeDescriptionTarget: number | null = null;
+
   private searchTimeout: any;
+  private descTimeout: any;
 
   constructor(
     private api: ApiService,
@@ -368,7 +478,10 @@ export class JobCreateComponent {
   }
 
   addItem() {
-    this.items.push({ description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' });
+    this.items.push({
+      description: '', quantity: 1, unit_price: 0,
+      item_type: 'mano_de_obra', supplier: '', children: []
+    });
   }
 
   removeItem(index: number) {
@@ -376,8 +489,83 @@ export class JobCreateComponent {
     this.calcTotals();
   }
 
+  addChild(parentIdx: number) {
+    const parent = this.items[parentIdx];
+    parent.children.push({ description: '', unit_price: 0 });
+    this.calcTotals();
+    const newIdx = parent.children.length - 1;
+    this.focusChildField(parentIdx, newIdx, 'd');
+  }
+
+  removeChild(parentIdx: number, childIdx: number) {
+    this.items[parentIdx].children.splice(childIdx, 1);
+    this.calcTotals();
+  }
+
+  onChildEnter(event: Event, parentIdx: number, childIdx: number) {
+    event.preventDefault();
+    const parent = this.items[parentIdx];
+    if (childIdx === parent.children.length - 1) {
+      this.addChild(parentIdx);
+    } else {
+      this.focusChildField(parentIdx, childIdx + 1, 'd');
+    }
+  }
+
+  onChildBackspace(event: Event, parentIdx: number, childIdx: number, currentDescription: string) {
+    if (currentDescription && currentDescription.length > 0) return;
+    event.preventDefault();
+    this.removeChild(parentIdx, childIdx);
+    if (childIdx > 0) {
+      this.focusChildField(parentIdx, childIdx - 1, 'd');
+    }
+  }
+
+  private focusChildField(parentIdx: number, childIdx: number, field: 'd' | 'p') {
+    setTimeout(() => {
+      const el = document.querySelector(
+        `[data-row="p${parentIdx}c${childIdx}${field}"]`
+      ) as HTMLInputElement | null;
+      if (el) el.focus();
+    }, 0);
+  }
+
+  parentSum(item: ParentDraft): string {
+    const sum = item.children.reduce((s, c) => s + (Number(c.unit_price) || 0), 0);
+    return sum.toFixed(2);
+  }
+
+  lineTotal(item: ParentDraft): number {
+    if (item.children.length > 0) {
+      return item.children.reduce((s, c) => s + (Number(c.unit_price) || 0), 0);
+    }
+    return (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
+  }
+
+  onDescriptionInput(parentIdx: number, value: string) {
+    this.activeDescriptionTarget = parentIdx;
+    clearTimeout(this.descTimeout);
+    const q = (value || '').trim();
+    if (q.length < 2) {
+      this.descriptionSuggestions = [];
+      return;
+    }
+    this.descTimeout = setTimeout(() => {
+      this.api.searchItemDescriptions(q).subscribe(results => {
+        this.descriptionSuggestions = results;
+      });
+    }, 200);
+  }
+
+  onDescriptionSelected(event: any) {
+    if (this.activeDescriptionTarget == null) return;
+    const value = event.option.value as string;
+    this.items[this.activeDescriptionTarget].description = value;
+    this.descriptionSuggestions = [];
+  }
+
   calcTotals() {
-    const subtotal = this.items.reduce((s: number, i: any) => s + (i.quantity || 0) * (i.unit_price || 0), 0);
+    const subtotal = this.items.reduce((s, i) => s + this.lineTotal(i), 0);
     const discount = this.discountType === 'percentage'
       ? subtotal * (this.discountAmount / 100)
       : this.discountAmount;
@@ -403,6 +591,21 @@ export class JobCreateComponent {
     const jobDate = this.jobDate instanceof Date
       ? this.jobDate.toISOString().split('T')[0]
       : this.jobDate;
+    const payloadItems = this.items
+      .filter(i => i.description)
+      .map(i => {
+        const cleanChildren = i.children
+          .filter(c => c.description)
+          .map(c => ({ description: c.description, unit_price: Number(c.unit_price) || 0 }));
+        return {
+          description: i.description,
+          quantity: cleanChildren.length > 0 ? 1 : i.quantity,
+          unit_price: cleanChildren.length > 0 ? 0 : i.unit_price,
+          item_type: i.item_type,
+          supplier: i.supplier || null,
+          children: cleanChildren
+        };
+      });
     this.api.createJob({
       client_id: this.vehicle.client_id,
       vehicle_id: this.vehicle.id,
@@ -413,7 +616,7 @@ export class JobCreateComponent {
       discount_type: this.discountType,
       notes: this.notes || null,
       job_date: jobDate,
-      items: this.items.filter(i => i.description)
+      items: payloadItems
     }).subscribe({
       next: (job) => { this.notify.success('Trabajo creado'); this.router.navigate(['/trabajos', job.id]); },
       error: (err) => { this.saving = false; this.error = this.notify.handleError(err); }

@@ -62,6 +62,7 @@ export interface Job {
   created_by: string | null;
   job_date: string;
   is_locked: boolean;
+  show_item_details_pricing: boolean;
   client_name?: string;
   client_rut?: string;
   client_phone?: string;
@@ -90,8 +91,19 @@ export interface JobItem {
   unit_price: number;
   item_type: 'mano_de_obra' | 'repuesto' | 'otro';
   supplier: string | null;
+  parent_id: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface JobItemNode extends JobItem {
+  children: JobItem[];
+}
+
+export interface ItemDescriptionSuggestion {
+  description: string;
+  uses: number;
 }
 
 export interface Payment {

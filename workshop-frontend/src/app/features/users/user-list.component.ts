@@ -163,10 +163,7 @@ export class UserFormDialogComponent {
       }
     </main>
   `,
-  styles: [`
-    .table-card { padding: 0 !important; overflow: hidden; }
-    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
-  `]
+  styles: [``]
 })
 export class UserListComponent implements OnInit {
   users: User[] = [];

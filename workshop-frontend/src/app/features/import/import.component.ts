@@ -220,19 +220,6 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
       margin-top: 12px;
       height: 40px;
     }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 4px 0;
-      font-size: 13px;
-    }
-    .info-row > span:first-child {
-      color: var(--text-3);
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
     .result-block {
       margin-top: 18px;
       padding-top: 16px;
@@ -251,12 +238,6 @@ import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
       flex-direction: column;
       gap: 8px;
       margin-top: 12px;
-    }
-    .card-title-lg {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-1);
-      margin: 0 0 12px;
     }
     .upload-zone {
       border: 2px dashed var(--border);

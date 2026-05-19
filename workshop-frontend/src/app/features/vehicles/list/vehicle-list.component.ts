@@ -92,18 +92,7 @@ import { VehicleFormComponent } from '../form/vehicle-form.component';
       }
     </main>
   `,
-  styles: [`
-    .filter-row {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 16px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .table-card { padding: 0 !important; overflow: hidden; }
-    .table-card .mat-mdc-card-content { padding: 6px 0 0 !important; }
-    .table-card mat-paginator { padding: 0 12px; }
-  `]
+  styles: [``]
 })
 export class VehicleListComponent implements OnInit {
   vehicles: Vehicle[] = [];
