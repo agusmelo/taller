@@ -19,6 +19,7 @@ services:
       retries: 10
 
   migrate:
+    image: ozzon42/ozzon-images:migrate-latest
     build:
       context: ./workshop-backend
     container_name: workshop-migrate
@@ -35,6 +36,7 @@ services:
     restart: "no"
 
   api:
+    image: ozzon42/ozzon-images:api-latest
     build:
       context: ./workshop-backend
     container_name: workshop-api
@@ -68,6 +70,7 @@ services:
         condition: service_completed_successfully
 
   frontend:
+    image: ozzon42/ozzon-images:web-latest
     build:
       context: ./workshop-frontend
     container_name: workshop-frontend
