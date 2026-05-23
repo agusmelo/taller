@@ -5,9 +5,9 @@ services:
     container_name: workshop-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: workshop
-      POSTGRES_PASSWORD: workshop123
-      POSTGRES_DB: workshop_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -26,9 +26,12 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: workshop_db
-      DB_USER: workshop
-      DB_PASSWORD: workshop123
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_RECEP_PASSWORD: ${SEED_RECEP_PASSWORD}
+      SEED_MECH_PASSWORD: ${SEED_MECH_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -50,10 +53,10 @@ services:
       PORT: 3000
       DB_HOST: db
       DB_PORT: 5432
-      DB_NAME: workshop_db
-      DB_USER: workshop
-      DB_PASSWORD: workshop123
-      JWT_SECRET: CAMBIA-ESTO-EN-PRODUCCION
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 24h
       WORKSHOP_NAME: Taller La Llave
       WORKSHOP_ADDRESS: Ildemaro Ribas 1320, Sarandi Grande, Uruguay
@@ -61,7 +64,7 @@ services:
       WORKSHOP_EMAIL: lallavetaller@gmail.com
       WORKSHOP_LOGO_URL: /assets/logo.png
       WORKSHOP_SERVICES: "Diagnostico y Reparacion Mecanica · Inyeccion Electronica · Scanner · Inyeccion Diesel · Electronica Automotriz · Programacion y Codificacion del Automovil · Reparacion de Modulos"
-      CORS_ORIGIN: http://localhost:4200,http://localhost
+      CORS_ORIGIN: ${CORS_ORIGIN}
       PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
     depends_on:
       db:

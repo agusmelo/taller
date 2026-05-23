@@ -18,9 +18,12 @@ async function seed() {
     await client.query('BEGIN');
 
     // Usuarios
-    const adminHash = await bcrypt.hash('admin123', 12);
-    const recepHash = await bcrypt.hash('recep123', 12);
-    const mecHash   = await bcrypt.hash('mec123', 12);
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'admin123';
+    const recepPassword = process.env.SEED_RECEP_PASSWORD || 'recep123';
+    const mecPassword   = process.env.SEED_MECH_PASSWORD  || 'mec123';
+    const adminHash = await bcrypt.hash(adminPassword, 12);
+    const recepHash = await bcrypt.hash(recepPassword, 12);
+    const mecHash   = await bcrypt.hash(mecPassword,   12);
 
     await client.query(`
       INSERT INTO users (username, password_hash, full_name, role)
@@ -88,10 +91,7 @@ async function seed() {
     }
 
     await client.query('COMMIT');
-    console.log('Seed completado.');
-    console.log('   admin / admin123');
-    console.log('   recepcionista1 / recep123');
-    console.log('   mecanico1 / mec123');
+    console.log('Seed completado: 3 usuarios, 3 clientes, 2 vehiculos, 1 orden.');
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error en seed:', err.message);

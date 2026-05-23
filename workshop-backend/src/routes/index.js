@@ -64,7 +64,7 @@ router.get('/jobs',                          authenticate, jobs.list);
 router.get('/jobs/items/descriptions',       authenticate, jobs.searchItemDescriptions);
 router.post('/jobs',                         authenticate, requireAdminOrRecep, v.createJobRules, jobs.create);
 router.get('/jobs/:id',                      authenticate, v.uuidParam, jobs.getOne);
-router.put('/jobs/:id',          authenticate, v.updateJobRules, jobs.update);
+router.put('/jobs/:id',          authenticate, requireAdminOrRecep, v.updateJobRules, jobs.update);
 router.delete('/jobs/:id',       authenticate, requireAdmin, v.uuidParam, jobs.remove);
 router.put('/jobs/:id/lock',     authenticate, requireAdminOrRecep, v.uuidParam, jobs.lockJob);
 router.put('/jobs/:id/unlock',   authenticate, requireAdmin, v.uuidParam, jobs.unlockJob);

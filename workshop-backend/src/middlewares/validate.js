@@ -125,7 +125,9 @@ const createUserRules = [
   body('username').trim().notEmpty().withMessage('Username es requerido')
     .isLength({ min: 3 }).withMessage('Username debe tener al menos 3 caracteres'),
   body('password').notEmpty().withMessage('Contrasena es requerida')
-    .isLength({ min: 6 }).withMessage('Contrasena debe tener al menos 6 caracteres'),
+    .isLength({ min: 8 }).withMessage('Contrasena debe tener al menos 8 caracteres')
+    .matches(/[A-Z]/).withMessage('Contrasena debe tener al menos una mayuscula')
+    .matches(/[0-9]/).withMessage('Contrasena debe tener al menos un numero'),
   body('full_name').trim().notEmpty().withMessage('Nombre completo es requerido'),
   body('role').optional().isIn(['admin', 'recepcionista', 'mecanico']).withMessage('Rol invalido'),
   handleValidation
@@ -133,7 +135,10 @@ const createUserRules = [
 
 const updateUserRules = [
   param('id').isUUID().withMessage('ID invalido'),
-  body('password').optional().isLength({ min: 6 }).withMessage('Contrasena debe tener al menos 6 caracteres'),
+  body('password').optional()
+    .isLength({ min: 8 }).withMessage('Contrasena debe tener al menos 8 caracteres')
+    .matches(/[A-Z]/).withMessage('Contrasena debe tener al menos una mayuscula')
+    .matches(/[0-9]/).withMessage('Contrasena debe tener al menos un numero'),
   body('role').optional().isIn(['admin', 'recepcionista', 'mecanico']).withMessage('Rol invalido'),
   handleValidation
 ];
