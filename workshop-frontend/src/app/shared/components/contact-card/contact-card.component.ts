@@ -1,19 +1,21 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { InfoCardComponent, InfoCardAccent } from '../info-card/info-card.component';
 import { ContactActionsComponent } from '../contact-actions/contact-actions.component';
 
 @Component({
   selector: 'app-contact-card',
   standalone: true,
-  imports: [CommonModule, RouterLink, InfoCardComponent, ContactActionsComponent],
+  imports: [CommonModule, RouterLink, MatIconModule, MatTooltipModule, InfoCardComponent, ContactActionsComponent],
   template: `
     <app-info-card [title]="title" [icon]="icon" [accent]="accent">
       @if (name) {
         <p class="cc-name">
           @if (nameLink) {
-            <a [routerLink]="nameLink">{{ name }}</a>
+            <a [routerLink]="nameLink" class="cc-name-link" matTooltip="Ver ficha"><span class="cc-name-text">{{ name }}</span><mat-icon class="link-ico">open_in_new</mat-icon></a>
           } @else {
             {{ name }}
           }
@@ -52,7 +54,17 @@ import { ContactActionsComponent } from '../contact-actions/contact-actions.comp
       color: var(--text-1);
     }
     .cc-name a { color: var(--text-1); text-decoration: none; }
-    .cc-name a:hover { color: var(--blue); text-decoration: underline; }
+    .cc-name-link { display: inline-flex; align-items: center; gap: 4px; }
+    .cc-name a:hover { color: var(--blue); }
+    .cc-name a:hover .cc-name-text { text-decoration: underline; }
+    .link-ico {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      color: var(--text-3);
+      transition: color .14s;
+    }
+    .cc-name a:hover .link-ico { color: var(--blue); }
     .cc-type {
       display: inline-block;
       font-size: 11px;

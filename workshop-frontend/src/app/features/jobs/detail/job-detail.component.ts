@@ -111,7 +111,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
         </app-contact-card>
 
         <app-info-card title="Vehículo" icon="directions_car" accent="teal">
-          <p class="v-plate"><a [routerLink]="['/vehiculos', job.vehicle_id]" class="t-mono">{{ job.plate_number }}</a></p>
+          <p class="v-plate"><a [routerLink]="['/vehiculos', job.vehicle_id]" matTooltip="Ver ficha del vehículo"><span class="t-mono">{{ job.plate_number }}</span><mat-icon class="link-ico">open_in_new</mat-icon></a></p>
           <p class="v-make">{{ job.make }} {{ job.model }} {{ job.year || '' }}</p>
           @if (job.mileage_at_service) {
             <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ job.mileage_at_service.toLocaleString() }} km</span></div>
@@ -439,8 +439,11 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
     .page-head-title h1 { margin: 0; }
     .lock-ico { color: var(--amber); font-size: 20px; width: 20px; height: 20px; }
     .v-plate { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
-    .v-plate a { color: var(--text-1); text-decoration: none; }
-    .v-plate a:hover { color: var(--blue); text-decoration: underline; }
+    .v-plate a { color: var(--text-1); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+    .v-plate a:hover { color: var(--blue); }
+    .v-plate a:hover .t-mono { text-decoration: underline; }
+    .v-plate .link-ico { font-size: 14px; width: 14px; height: 14px; color: var(--text-3); transition: color .14s; }
+    .v-plate a:hover .link-ico { color: var(--blue); }
     .v-make { margin: 0 0 8px; color: var(--text-2); font-size: 13px; }
     .card-head {
       display: flex;
