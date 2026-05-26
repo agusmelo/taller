@@ -18,6 +18,8 @@ import { Vehicle, Job, OwnershipHistory, Client } from '../../../core/models';
 import { VehicleFormComponent } from '../form/vehicle-form.component';
 import { StatusLabelPipe } from '../../../shared/pipes/status.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { InfoCardComponent } from '../../../shared/components/info-card/info-card.component';
+import { ContactCardComponent } from '../../../shared/components/contact-card/contact-card.component';
 
 @Component({
   selector: 'app-vehicle-detail',
@@ -25,7 +27,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   imports: [
     CommonModule, RouterLink, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatDialogModule, MatFormFieldModule, MatInputModule,
-    MatAutocompleteModule, MatProgressSpinnerModule, StatusLabelPipe
+    MatAutocompleteModule, MatProgressSpinnerModule, StatusLabelPipe,
+    InfoCardComponent, ContactCardComponent
   ],
   template: `
     @if (loading) {
@@ -80,30 +83,31 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
       }
 
       <div class="info-cards">
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Dueno actual</h3>
-            <p><strong><a [routerLink]="['/clientes', vehicle.client_id]">{{ vehicle.client_name }}</a></strong></p>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Datos</h3>
-            <div class="info-row"><span>Ano</span><span>{{ vehicle.year || '-' }}</span></div>
-            <div class="info-row"><span>Color</span><span>{{ vehicle.color || '-' }}</span></div>
-            <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ vehicle.mileage ? vehicle.mileage.toLocaleString() + ' km' : '-' }}</span></div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Resumen</h3>
-            <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
-            <div class="info-row"><span>Duenos previos</span><span class="t-mono">{{ history.length }}</span></div>
-            @if (vehicle.notes) {
-              <div class="info-row"><span>Notas</span><span>{{ vehicle.notes }}</span></div>
-            }
-          </mat-card-content>
-        </mat-card>
+        <app-contact-card
+          title="Dueño actual"
+          icon="person"
+          accent="blue"
+          [name]="vehicle.client_name || null"
+          [nameLink]="['/clientes', vehicle.client_id]"
+          [rut]="vehicle.client_rut || null"
+          [phone]="vehicle.client_phone || null"
+          [email]="vehicle.client_email || null"
+          [address]="vehicle.client_address || null">
+        </app-contact-card>
+
+        <app-info-card title="Datos" icon="directions_car" accent="teal">
+          <div class="info-row"><span>Año</span><span>{{ vehicle.year || '-' }}</span></div>
+          <div class="info-row"><span>Color</span><span>{{ vehicle.color || '-' }}</span></div>
+          <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ vehicle.mileage ? vehicle.mileage.toLocaleString() + ' km' : '-' }}</span></div>
+        </app-info-card>
+
+        <app-info-card title="Resumen" icon="summarize" accent="purple">
+          <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
+          <div class="info-row"><span>Dueños previos</span><span class="t-mono">{{ history.length }}</span></div>
+          @if (vehicle.notes) {
+            <div class="info-row info-row-wrap"><span>Notas</span><span>{{ vehicle.notes }}</span></div>
+          }
+        </app-info-card>
       </div>
 
       @if (history.length > 0) {
@@ -165,15 +169,8 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     .page-head-title { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
     .page-head-title h1 { margin: 0; }
     .vehicle-sub { color: var(--text-2); font-size: 14px; font-weight: 500; }
-    .info-cards {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    @media (max-width: 900px) {
-      .info-cards { grid-template-columns: 1fr; }
-    }
+    .info-row-wrap { align-items: flex-start; }
+    .info-row-wrap > span:last-child { text-align: right; word-break: break-word; }
   `]
 })
 export class VehicleDetailComponent implements OnInit {
