@@ -306,10 +306,10 @@ function buildHtml(job, items, financials) {
     text-transform: uppercase; letter-spacing: 2.5px; padding-left: 10px;
     border-left: 3px solid ${RED}; margin-bottom: 11px; line-height: 1.1;
   }
-  .info-row { display: flex; padding: 2.5px 0; }
+  .info-row { display: flex; align-items: baseline; padding: 2.5px 0; }
   .info-label { width: 92px; flex: none; color: ${MUTED}; font-size: 11px; }
   .info-value { font-weight: 500; }
-  .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; }
+  .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; line-height: 1; }
 
   /* Items table */
   .items { width: 100%; border-collapse: collapse; }
