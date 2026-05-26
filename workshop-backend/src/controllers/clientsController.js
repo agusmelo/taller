@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const { validateRut, formatRut } = require('../utils/rut');
+const { JOB_SUBTOTALS_SUBQUERY, JOB_PAID_SUBQUERY, jobTotalRounded } = require('../utils/financials');
 
 async function list(req, res, next) {
   try {
@@ -151,19 +152,11 @@ async function getCredit(req, res, next) {
     const r = await pool.query(`
       SELECT COALESCE(SUM(GREATEST(sub.total_paid - sub.total, 0)), 0) AS credit_available
       FROM (
-        SELECT j.id,
-               COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
-                 - CASE WHEN j.discount_type = 'percentage'
-                   THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
-                   ELSE j.discount_amount END
-                 + CASE WHEN j.tax_enabled
-                   THEN (COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0)
-                         - CASE WHEN j.discount_type = 'percentage'
-                           THEN COALESCE((SELECT SUM(quantity * unit_price) FROM job_items WHERE job_id = j.id), 0) * (j.discount_amount / 100)
-                           ELSE j.discount_amount END) * j.tax_rate
-                   ELSE 0 END AS total,
-               COALESCE((SELECT SUM(amount) FROM payments WHERE job_id = j.id), 0) AS total_paid
+        SELECT ${jobTotalRounded('j', 'COALESCE(it.subtotal, 0)')} AS total,
+               COALESCE(p.paid, 0) AS total_paid
         FROM jobs j
+        LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+        LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
         WHERE j.client_id = $1 AND j.deleted_at IS NULL
       ) sub
       WHERE sub.total_paid > sub.total

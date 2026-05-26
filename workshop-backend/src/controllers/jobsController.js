@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { JOB_SUBTOTALS_SUBQUERY, JOB_PAID_SUBQUERY, jobTotalRounded } = require('../utils/financials');
 
 function calcFinancials(job, items, payments) {
   // Items with parent_id are children; their unit_price contributes to the parent line total.
@@ -400,29 +401,13 @@ async function addPayment(req, res, next) {
       if (!jobRes.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
       const clientId = jobRes.rows[0].client_id;
       const creditRes = await db.query(`
-        WITH job_subtotals AS (
-          SELECT i.job_id,
-                 SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items c WHERE c.parent_id = i.id)
-                          THEN 0
-                          ELSE i.quantity * i.unit_price END) AS subtotal
-          FROM job_items i GROUP BY i.job_id
-        )
         SELECT COALESCE(SUM(GREATEST(sub.total_paid - sub.total, 0)), 0) AS credit_available
         FROM (
-          SELECT j.id,
-                 (COALESCE(js.subtotal, 0)
-                   - CASE WHEN j.discount_type = 'percentage'
-                          THEN COALESCE(js.subtotal, 0) * (j.discount_amount / 100)
-                          ELSE j.discount_amount END
-                   + CASE WHEN j.tax_enabled
-                          THEN (COALESCE(js.subtotal, 0)
-                                - CASE WHEN j.discount_type = 'percentage'
-                                       THEN COALESCE(js.subtotal, 0) * (j.discount_amount / 100)
-                                       ELSE j.discount_amount END) * j.tax_rate
-                          ELSE 0 END) AS total,
-                 COALESCE((SELECT SUM(amount) FROM payments WHERE job_id = j.id), 0) AS total_paid
+          SELECT ${jobTotalRounded('j', 'COALESCE(it.subtotal, 0)')} AS total,
+                 COALESCE(p.paid, 0) AS total_paid
           FROM jobs j
-          LEFT JOIN job_subtotals js ON js.job_id = j.id
+          LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+          LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
           WHERE j.client_id = $1 AND j.deleted_at IS NULL
         ) sub
         WHERE sub.total_paid > sub.total

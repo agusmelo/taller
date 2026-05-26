@@ -1,4 +1,8 @@
 const pool = require('../config/database');
+const { JOB_SUBTOTALS_SUBQUERY, JOB_PAID_SUBQUERY, jobTotalRounded, jobBalanceRounded } = require('../utils/financials');
+
+const TOTAL   = jobTotalRounded('j', 'COALESCE(it.subtotal, 0)');
+const BALANCE = jobBalanceRounded('j', 'COALESCE(it.subtotal, 0)', 'COALESCE(p.paid, 0)');
 
 async function summary(req, res, next) {
   try {
@@ -10,22 +14,18 @@ async function summary(req, res, next) {
       pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE created_at >= $1 AND deleted_at IS NULL`, [monthStart]),
       pool.query(`SELECT COUNT(*) AS total FROM jobs WHERE status IN ('abierto','terminado') AND deleted_at IS NULL`),
       pool.query(`
-        SELECT COALESCE(SUM(sub.subtotal), 0) AS total FROM (
-          SELECT SUM(ji.quantity * ji.unit_price) AS subtotal
-          FROM jobs j JOIN job_items ji ON ji.job_id = j.id
-          WHERE j.deleted_at IS NULL AND j.created_at >= $1
-          GROUP BY j.id
-        ) sub`, [monthStart]),
+        SELECT COALESCE(SUM(${TOTAL}), 0) AS total
+        FROM jobs j
+        LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+        WHERE j.deleted_at IS NULL AND j.created_at >= $1`, [monthStart]),
       pool.query(`
-        SELECT COALESCE(SUM(sub.balance), 0) AS total FROM (
-          SELECT COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance
+        SELECT COALESCE(SUM(balance), 0) AS total FROM (
+          SELECT ${BALANCE} AS balance
           FROM jobs j
-          LEFT JOIN job_items ji ON ji.job_id = j.id
-          LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
+          LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+          LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
           WHERE j.status != 'pagado' AND j.deleted_at IS NULL
-          GROUP BY j.id, p.paid
-          HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
-        ) sub`),
+        ) sub WHERE balance > 0`),
     ]);
 
     const cobrado = parseFloat(cobradoMonth.rows[0].total);
@@ -105,22 +105,16 @@ async function clientFinancials(req, res, next) {
     const r = await pool.query(`
       SELECT
         c.id, c.full_name, c.rut,
-        COUNT(DISTINCT j.id) AS job_count,
-        COALESCE(SUM(DISTINCT it.subtotal_per_job), 0) AS total_facturado,
-        COALESCE(SUM(DISTINCT py.paid_per_job), 0) AS total_pagado
+        COUNT(j.id) AS job_count,
+        COALESCE(SUM(${TOTAL}), 0) AS total_facturado,
+        COALESCE(SUM(COALESCE(py.paid, 0)), 0) AS total_pagado
       FROM clients c
       LEFT JOIN jobs j ON j.client_id = c.id AND j.deleted_at IS NULL
-      LEFT JOIN (
-        SELECT job_id, SUM(quantity * unit_price) AS subtotal_per_job
-        FROM job_items GROUP BY job_id
-      ) it ON it.job_id = j.id
-      LEFT JOIN (
-        SELECT job_id, SUM(amount) AS paid_per_job
-        FROM payments GROUP BY job_id
-      ) py ON py.job_id = j.id
+      LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+      LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) py ON py.job_id = j.id
       WHERE c.deleted_at IS NULL
       GROUP BY c.id, c.full_name, c.rut
-      ORDER BY (COALESCE(SUM(DISTINCT it.subtotal_per_job), 0) - COALESCE(SUM(DISTINCT py.paid_per_job), 0)) DESC
+      ORDER BY (COALESCE(SUM(${TOTAL}), 0) - COALESCE(SUM(COALESCE(py.paid, 0)), 0)) DESC
     `);
 
     let rows = r.rows.map(row => ({
@@ -170,14 +164,14 @@ async function overdueDebts(req, res, next) {
              CURRENT_DATE - MIN(sub.job_date)::date AS days_overdue
       FROM clients c
       JOIN (
-        SELECT j.id, j.client_id, j.job_date,
-               COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance
-        FROM jobs j
-        LEFT JOIN job_items ji ON ji.job_id = j.id
-        LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
-        WHERE j.status != 'pagado' AND j.deleted_at IS NULL
-        GROUP BY j.id, j.client_id, j.job_date, p.paid
-        HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
+        SELECT * FROM (
+          SELECT j.id, j.client_id, j.job_date,
+                 ${BALANCE} AS balance
+          FROM jobs j
+          LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+          LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
+          WHERE j.status != 'pagado' AND j.deleted_at IS NULL
+        ) z WHERE z.balance > 0
       ) sub ON sub.client_id = c.id
       WHERE c.deleted_at IS NULL
       GROUP BY c.id, c.full_name, c.rut, c.phone
@@ -198,23 +192,23 @@ async function unpaidJobs(req, res, next) {
   try {
     const days = parseInt(req.query.days) || 30;
     const r = await pool.query(`
-      SELECT j.id, j.job_number, j.job_date,
-             COALESCE(SUM(ji.quantity * ji.unit_price), 0) AS total,
-             COALESCE(p.paid, 0) AS paid,
-             COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance,
-             CURRENT_DATE - j.job_date::date AS days_pending,
-             c.full_name AS client_name, c.id AS client_id,
-             v.plate_number
-      FROM jobs j
-      JOIN clients c ON c.id = j.client_id
-      JOIN vehicles v ON v.id = j.vehicle_id
-      LEFT JOIN job_items ji ON ji.job_id = j.id
-      LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
-      WHERE j.status = 'terminado' AND j.deleted_at IS NULL
-      GROUP BY j.id, j.job_number, j.job_date, c.full_name, c.id, v.plate_number, p.paid
-      HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
-        AND CURRENT_DATE - j.job_date::date > $1
-      ORDER BY days_pending DESC
+      SELECT * FROM (
+        SELECT j.id, j.job_number, j.job_date,
+               ${TOTAL} AS total,
+               COALESCE(p.paid, 0) AS paid,
+               ${BALANCE} AS balance,
+               CURRENT_DATE - j.job_date::date AS days_pending,
+               c.full_name AS client_name, c.id AS client_id,
+               v.plate_number
+        FROM jobs j
+        JOIN clients c ON c.id = j.client_id
+        JOIN vehicles v ON v.id = j.vehicle_id
+        LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+        LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
+        WHERE j.status = 'terminado' AND j.deleted_at IS NULL
+      ) sub
+      WHERE sub.balance > 0 AND sub.days_pending > $1
+      ORDER BY sub.days_pending DESC
       LIMIT 20
     `, [days]);
     res.json(r.rows.map(row => ({
@@ -305,24 +299,29 @@ async function monthlyClosing(req, res, next) {
 
     const r = await pool.query(`
       SELECT
-        j.id, j.job_number, j.tax_enabled, j.status, j.job_date,
+        j.id, j.job_number, j.tax_enabled, j.tax_rate,
+        j.discount_amount, j.discount_type, j.status, j.job_date,
         c.full_name AS client_name,
-        COALESCE(SUM(ji.quantity * ji.unit_price), 0) AS subtotal,
+        COALESCE(it.subtotal, 0) AS subtotal,
         COALESCE(p.paid, 0) AS total_paid
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
-      LEFT JOIN job_items ji ON ji.job_id = j.id
-      LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
+      LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+      LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
       WHERE j.deleted_at IS NULL
         AND j.job_date >= $1 AND j.job_date < $2
-      GROUP BY j.id, j.job_number, j.tax_enabled, j.status, j.job_date, c.full_name, p.paid
       ORDER BY j.job_date
     `, [monthStart, monthEnd]);
 
     const jobs = r.rows.map(row => {
       const subtotal = parseFloat(row.subtotal);
-      const tax = row.tax_enabled ? Math.round(subtotal * 0.22 * 100) / 100 : 0;
-      const total = subtotal + tax;
+      const discount = row.discount_type === 'percentage'
+        ? subtotal * (parseFloat(row.discount_amount) / 100)
+        : parseFloat(row.discount_amount);
+      const taxBase = subtotal - discount;
+      const rawTax = row.tax_enabled ? taxBase * parseFloat(row.tax_rate) : 0;
+      const tax = Math.round(rawTax * 100) / 100;
+      const total = Math.round((taxBase + rawTax) * 100) / 100;
       const paid = parseFloat(row.total_paid);
       return {
         id: row.id,
@@ -332,6 +331,7 @@ async function monthlyClosing(req, res, next) {
         status: row.status,
         tax_enabled: row.tax_enabled,
         subtotal,
+        discount: Math.round(discount * 100) / 100,
         tax,
         total,
         paid,
@@ -342,6 +342,7 @@ async function monthlyClosing(req, res, next) {
     const calc = (list) => ({
       count: list.length,
       subtotal: list.reduce((s, j) => s + j.subtotal, 0),
+      discount: list.reduce((s, j) => s + j.discount, 0),
       tax: list.reduce((s, j) => s + j.tax, 0),
       total: list.reduce((s, j) => s + j.total, 0),
       paid: list.reduce((s, j) => s + j.paid, 0),
