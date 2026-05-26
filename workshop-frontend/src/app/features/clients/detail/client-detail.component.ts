@@ -13,6 +13,8 @@ import { NotificationService } from '../../../core/services/notification.service
 import { Client, Vehicle, Job, ClientFinancialRow, RecentPayment } from '../../../core/models';
 import { ClientFormComponent } from '../form/client-form.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { InfoCardComponent } from '../../../shared/components/info-card/info-card.component';
+import { ContactActionsComponent } from '../../../shared/components/contact-actions/contact-actions.component';
 import { StatusLabelPipe, PaymentMethodPipe } from '../../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 
@@ -22,6 +24,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
   imports: [
     CommonModule, RouterLink, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatDialogModule, MatProgressSpinnerModule,
+    InfoCardComponent, ContactActionsComponent,
     StatusLabelPipe, PaymentMethodPipe, AppCurrencyPipe
   ],
   template: `
@@ -47,41 +50,35 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
       </div>
 
       <div class="info-cards">
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Identificacion</h3>
-            <div class="info-row"><span>Tipo</span><span>{{ client.type === 'empresa' ? 'Empresa' : 'Individual' }}</span></div>
-            <div class="info-row"><span>RUT</span><span class="t-mono">{{ client.rut || '-' }}</span></div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Contacto</h3>
-            <div class="info-row"><span>Telefono</span><span>{{ client.phone || '-' }}</span></div>
-            <div class="info-row"><span>Email</span><span>{{ client.email || '-' }}</span></div>
-            <div class="info-row"><span>Direccion</span><span>{{ client.address || '-' }}</span></div>
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Financiero</h3>
-            @if (financial; as f) {
-              <div class="info-row"><span>Facturado</span><span class="t-mono">{{ f.total_facturado | appCurrency }}</span></div>
-              <div class="info-row"><span>Pagado</span><span class="t-mono" style="color:var(--green);">{{ f.total_pagado | appCurrency }}</span></div>
-              <div class="info-row">
-                <span>Saldo</span>
-                <span class="t-mono" [class.money-neg]="f.saldo > 0" [class.money-zero]="f.saldo <= 0">{{ f.saldo | appCurrency }}</span>
-              </div>
-              <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ f.job_count }}</span></div>
-            } @else {
-              <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
-              <div class="info-row"><span>Vehiculos</span><span class="t-mono">{{ vehicles.length }}</span></div>
-            }
-            @if (client.notes) {
-              <div class="info-row"><span>Notas</span><span>{{ client.notes }}</span></div>
-            }
-          </mat-card-content>
-        </mat-card>
+        <app-info-card title="Identificación" icon="badge" accent="blue">
+          <div class="info-row"><span>Tipo</span><span>{{ client.type === 'empresa' ? 'Empresa' : 'Individual' }}</span></div>
+          <div class="info-row"><span>RUT</span><span class="t-mono">{{ client.rut || '-' }}</span></div>
+        </app-info-card>
+
+        <app-info-card title="Contacto" icon="contact_phone" accent="teal">
+          <div class="info-row"><span>Teléfono</span><span class="t-mono">{{ client.phone || '-' }}</span></div>
+          <div class="info-row info-row-wrap"><span>Email</span><span>{{ client.email || '-' }}</span></div>
+          <div class="info-row info-row-wrap"><span>Dirección</span><span>{{ client.address || '-' }}</span></div>
+          <app-contact-actions [phone]="client.phone" [email]="client.email"></app-contact-actions>
+        </app-info-card>
+
+        <app-info-card title="Financiero" icon="payments" accent="green">
+          @if (financial; as f) {
+            <div class="info-row"><span>Facturado</span><span class="t-mono">{{ f.total_facturado | appCurrency }}</span></div>
+            <div class="info-row"><span>Pagado</span><span class="t-mono" style="color:var(--green);">{{ f.total_pagado | appCurrency }}</span></div>
+            <div class="info-row">
+              <span>Saldo</span>
+              <span class="t-mono" [class.money-neg]="f.saldo > 0" [class.money-zero]="f.saldo <= 0">{{ f.saldo | appCurrency }}</span>
+            </div>
+            <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ f.job_count }}</span></div>
+          } @else {
+            <div class="info-row"><span>Trabajos</span><span class="t-mono">{{ jobs.length }}</span></div>
+            <div class="info-row"><span>Vehiculos</span><span class="t-mono">{{ vehicles.length }}</span></div>
+          }
+          @if (client.notes) {
+            <div class="info-row info-row-wrap"><span>Notas</span><span>{{ client.notes }}</span></div>
+          }
+        </app-info-card>
       </div>
 
       <div class="tabs">
@@ -177,15 +174,8 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
     }
   `,
   styles: [`
-    .info-cards {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    @media (max-width: 900px) {
-      .info-cards { grid-template-columns: 1fr; }
-    }
+    .info-row-wrap { align-items: flex-start; }
+    .info-row-wrap > span:last-child { text-align: right; word-break: break-word; }
   `]
 })
 export class ClientDetailComponent implements OnInit {

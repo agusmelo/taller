@@ -24,6 +24,8 @@ import { buildItemsTree, computeLineTotal } from '../../../core/utils/items-tree
 import { StatusLabelPipe, PaymentMethodPipe, ItemTypePipe } from '../../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
+import { InfoCardComponent } from '../../../shared/components/info-card/info-card.component';
+import { ContactCardComponent } from '../../../shared/components/contact-card/contact-card.component';
 
 @Component({
   selector: 'app-job-detail',
@@ -33,6 +35,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     MatTableModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatTooltipModule,
     MatDialogModule, MatProgressSpinnerModule, MatDatepickerModule, MatNativeDateModule,
     MatSlideToggleModule, MatAutocompleteModule,
+    InfoCardComponent, ContactCardComponent,
     StatusLabelPipe, PaymentMethodPipe, ItemTypePipe, AppCurrencyPipe
   ],
   template: `
@@ -95,48 +98,51 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
 
       <!-- Info cards -->
       <div class="info-cards">
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Cliente</h3>
-            <p><strong><a [routerLink]="['/clientes', job.client_id]">{{ job.client_name }}</a></strong></p>
-            @if (job.client_rut) { <p class="info-row"><span>RUT</span><span class="t-mono">{{ job.client_rut }}</span></p> }
-            @if (job.client_phone) { <p class="info-row"><span>Telefono</span><span>{{ job.client_phone }}</span></p> }
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Vehiculo</h3>
-            <p><strong><a [routerLink]="['/vehiculos', job.vehicle_id]" class="t-mono">{{ job.plate_number }}</a></strong></p>
-            <p>{{ job.make }} {{ job.model }} {{ job.year || '' }}</p>
-            @if (job.mileage_at_service) { <p class="info-row"><span>Kilometraje</span><span class="t-mono">{{ job.mileage_at_service.toLocaleString() }}</span></p> }
-            @if (job.job_date) { <p class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy' }}</span></p> }
-          </mat-card-content>
-        </mat-card>
-        <mat-card>
-          <mat-card-content>
-            <h3 class="card-title-lg">Financiero</h3>
-            @if (job.financials; as f) {
-              <div class="totals">
-                <div class="totals-row"><span>Subtotal</span><span class="t-mono">{{ f.subtotal | appCurrency }}</span></div>
-                @if (f.discount > 0) {
-                  <div class="totals-row" style="color:var(--amber);"><span>Descuento</span><span class="t-mono">-{{ f.discount | appCurrency }}</span></div>
-                }
-                @if (job.tax_enabled) {
-                  <div class="totals-row"><span>IVA (22%)</span><span class="t-mono">+{{ f.tax | appCurrency }}</span></div>
-                }
-                <div class="totals-row totals-total"><span>Total</span><span class="t-mono">{{ f.total | appCurrency }}</span></div>
-                <div class="totals-row"><span>Pagado</span><span class="t-mono" style="color:var(--green);">{{ f.total_paid | appCurrency }}</span></div>
-                @if (f.balance > 0) {
-                  <div class="totals-row totals-balance" style="color:var(--red);"><span>Saldo</span><span class="t-mono">{{ f.balance | appCurrency }}</span></div>
-                } @else if (f.balance < 0) {
-                  <div class="totals-row totals-balance" style="color:var(--purple);"><span>Excedente</span><span class="t-mono">{{ (f.balance * -1) | appCurrency }}</span></div>
-                } @else {
-                  <div class="totals-row totals-balance" style="color:var(--green);"><span>Saldo</span><span class="t-mono">{{ f.balance | appCurrency }}</span></div>
-                }
-              </div>
-            }
-          </mat-card-content>
-        </mat-card>
+        <app-contact-card
+          title="Cliente"
+          icon="person"
+          accent="blue"
+          [name]="job.client_name || null"
+          [nameLink]="['/clientes', job.client_id]"
+          [rut]="job.client_rut || null"
+          [phone]="job.client_phone || null"
+          [email]="job.client_email || null"
+          [address]="job.client_address || null">
+        </app-contact-card>
+
+        <app-info-card title="Vehículo" icon="directions_car" accent="teal">
+          <p class="v-plate"><a [routerLink]="['/vehiculos', job.vehicle_id]" class="t-mono">{{ job.plate_number }}</a></p>
+          <p class="v-make">{{ job.make }} {{ job.model }} {{ job.year || '' }}</p>
+          @if (job.mileage_at_service) {
+            <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ job.mileage_at_service.toLocaleString() }} km</span></div>
+          }
+          @if (job.job_date) {
+            <div class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy' }}</span></div>
+          }
+        </app-info-card>
+
+        <app-info-card title="Financiero" icon="payments" accent="green">
+          @if (job.financials; as f) {
+            <div class="totals">
+              <div class="totals-row"><span>Subtotal</span><span class="t-mono">{{ f.subtotal | appCurrency }}</span></div>
+              @if (f.discount > 0) {
+                <div class="totals-row" style="color:var(--amber);"><span>Descuento</span><span class="t-mono">-{{ f.discount | appCurrency }}</span></div>
+              }
+              @if (job.tax_enabled) {
+                <div class="totals-row"><span>IVA (22%)</span><span class="t-mono">+{{ f.tax | appCurrency }}</span></div>
+              }
+              <div class="totals-row totals-total"><span>Total</span><span class="t-mono">{{ f.total | appCurrency }}</span></div>
+              <div class="totals-row"><span>Pagado</span><span class="t-mono" style="color:var(--green);">{{ f.total_paid | appCurrency }}</span></div>
+              @if (f.balance > 0) {
+                <div class="totals-row totals-balance" style="color:var(--red);"><span>Saldo</span><span class="t-mono">{{ f.balance | appCurrency }}</span></div>
+              } @else if (f.balance < 0) {
+                <div class="totals-row totals-balance" style="color:var(--purple);"><span>Excedente</span><span class="t-mono">{{ (f.balance * -1) | appCurrency }}</span></div>
+              } @else {
+                <div class="totals-row totals-balance" style="color:var(--green);"><span>Saldo</span><span class="t-mono">{{ f.balance | appCurrency }}</span></div>
+              }
+            </div>
+          }
+        </app-info-card>
       </div>
 
       <!-- Items -->
@@ -432,18 +438,10 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     .page-head-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .page-head-title h1 { margin: 0; }
     .lock-ico { color: var(--amber); font-size: 20px; width: 20px; height: 20px; }
-    .info-cards {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 14px;
-      margin-bottom: 16px;
-    }
-    @media (max-width: 900px) {
-      .info-cards { grid-template-columns: 1fr; }
-    }
-    .info-cards h3 { margin: 0 0 10px; }
-    .info-cards p { margin: 4px 0; color: var(--text-1); font-size: 13px; }
-    .info-row { padding: 0; }
+    .v-plate { margin: 0 0 2px; font-size: 15px; font-weight: 700; }
+    .v-plate a { color: var(--text-1); text-decoration: none; }
+    .v-plate a:hover { color: var(--blue); text-decoration: underline; }
+    .v-make { margin: 0 0 8px; color: var(--text-2); font-size: 13px; }
     .card-head {
       display: flex;
       justify-content: space-between;
