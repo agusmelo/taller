@@ -15,7 +15,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { VehicleSearchResult, ItemDescriptionSuggestion } from '../../../core/models';
+import { VehicleSearchResult, CatalogItem } from '../../../core/models';
 import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 
@@ -141,10 +141,10 @@ interface ParentDraft {
               <mat-card-content>
                 <div class="form-section-title">Items</div>
                 <mat-autocomplete #descAuto="matAutocomplete" (optionSelected)="onDescriptionSelected($event)">
-                  @for (s of descriptionSuggestions; track s.description) {
+                  @for (s of descriptionSuggestions; track s.id) {
                     <mat-option [value]="s.description">
-                      {{ s.description }}
-                      <small style="color:var(--text-3);"> ({{ s.uses }})</small>
+                      <span>{{ s.description }}</span>
+                      <small style="color:var(--text-3); margin-left:8px;">{{ typeLabel(s.item_type) }}</small>
                     </mat-option>
                   }
                 </mat-autocomplete>
@@ -407,7 +407,7 @@ export class JobCreateComponent {
   error = '';
   totals = { subtotal: 0, discount: 0, tax: 0, total: 0 };
 
-  descriptionSuggestions: ItemDescriptionSuggestion[] = [];
+  descriptionSuggestions: CatalogItem[] = [];
   activeDescriptionTarget: number | null = null;
 
   private searchTimeout: any;
@@ -551,16 +551,23 @@ export class JobCreateComponent {
       return;
     }
     this.descTimeout = setTimeout(() => {
-      this.api.searchItemDescriptions(q).subscribe(results => {
+      this.api.searchCatalogItems(q).subscribe(results => {
         this.descriptionSuggestions = results;
       });
     }, 200);
   }
 
+  typeLabel(t: CatalogItem['item_type']): string {
+    return t === 'mano_de_obra' ? 'Mano de obra' : t === 'repuesto' ? 'Repuesto' : 'Otro';
+  }
+
   onDescriptionSelected(event: any) {
     if (this.activeDescriptionTarget == null) return;
     const value = event.option.value as string;
-    this.items[this.activeDescriptionTarget].description = value;
+    const target = this.items[this.activeDescriptionTarget];
+    target.description = value;
+    const match = this.descriptionSuggestions.find(s => s.description === value);
+    if (match) target.item_type = match.item_type;
     this.descriptionSuggestions = [];
   }
 

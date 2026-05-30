@@ -10,7 +10,8 @@ import {
   TopClient, PaymentMethodBreakdown, NewClientsData,
   RevenueTrendItem, JobWithBalance, RecentPayment,
   AgingReport, Debtor, PaymentsSummary, AppSettings,
-  MonthlyClosing, ItemDescriptionSuggestion
+  MonthlyClosing,
+  CatalogItem, CatalogSuggestion, CatalogBulkResult
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -81,11 +82,31 @@ export class ApiService {
     return this.http.put<JobItem>(`${this.url}/jobs/${jobId}/items/${itemId}`, data);
   }
   deleteJobItem(jobId: string, itemId: string) { return this.http.delete(`${this.url}/jobs/${jobId}/items/${itemId}`); }
-  searchItemDescriptions(q: string, limit = 20) {
-    return this.http.get<ItemDescriptionSuggestion[]>(
-      `${this.url}/jobs/items/descriptions`,
+  searchCatalogItems(q: string, limit = 20) {
+    return this.http.get<CatalogItem[]>(
+      `${this.url}/item-catalog/search`,
       { params: { q, limit: limit.toString() } }
     );
+  }
+
+  // Item catalog
+  listCatalog(params?: Record<string, string>) {
+    return this.http.get<CatalogItem[]>(`${this.url}/item-catalog`, { params });
+  }
+  getCatalogSuggestions() {
+    return this.http.get<CatalogSuggestion[]>(`${this.url}/item-catalog/suggestions`);
+  }
+  createCatalogItem(data: { description: string; item_type: CatalogItem['item_type'] }) {
+    return this.http.post<CatalogItem>(`${this.url}/item-catalog`, data);
+  }
+  bulkCreateCatalogItems(items: { description: string; item_type: CatalogItem['item_type'] }[]) {
+    return this.http.post<CatalogBulkResult>(`${this.url}/item-catalog/bulk`, { items });
+  }
+  updateCatalogItem(id: string, data: Partial<{ description: string; item_type: CatalogItem['item_type'] }>) {
+    return this.http.patch<CatalogItem>(`${this.url}/item-catalog/${id}`, data);
+  }
+  deleteCatalogItem(id: string) {
+    return this.http.delete(`${this.url}/item-catalog/${id}`);
   }
 
   // Payments

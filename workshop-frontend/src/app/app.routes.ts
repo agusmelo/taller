@@ -27,6 +27,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/jobs/create/job-create.component').then(m => m.JobCreateComponent)
       },
       {
+        path: 'trabajos/catalogo-items',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/jobs/catalog/catalog-list.component').then(m => m.CatalogListComponent)
+      },
+      {
         path: 'trabajos/:id',
         loadComponent: () => import('./features/jobs/detail/job-detail.component').then(m => m.JobDetailComponent)
       },

@@ -19,6 +19,7 @@ const migrations = [
   '005_settings.sql',
   '006_import_source.sql',
   '007_item_hierarchy_and_pdf_visibility.sql',
+  '008_item_catalog.sql',
 ];
 
 async function run() {
