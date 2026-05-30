@@ -100,6 +100,10 @@ async function suggestions(req, res, next) {
     // Group historical job_items (parents) together with their exact set of
     // children descriptions. Two groups with the same parent description but
     // different child sets count separately.
+    //
+    // Children are serialized as a single string with a unit-separator (U+001F)
+    // to avoid array_agg-of-empty-arrays type inference issues in Postgres.
+    const SEP = '';
     const r = await pool.query(
       `WITH per_parent AS (
          SELECT
@@ -112,10 +116,10 @@ async function suggestions(req, res, next) {
              ''
            ) AS children_key,
            COALESCE(
-             array_agg(TRIM(c.description) ORDER BY LOWER(TRIM(c.description)))
+             string_agg(TRIM(c.description), $1 ORDER BY LOWER(TRIM(c.description)))
                FILTER (WHERE c.description IS NOT NULL AND TRIM(c.description) <> ''),
-             ARRAY[]::text[]
-           ) AS children
+             ''
+           ) AS children_str
          FROM job_items p
          LEFT JOIN job_items c ON c.parent_id = p.id
          WHERE p.parent_id IS NULL AND TRIM(p.description) <> ''
@@ -126,25 +130,29 @@ async function suggestions(req, res, next) {
            parent_desc,
            children_key,
            MODE() WITHIN GROUP (ORDER BY item_type) AS item_type,
-           (array_agg(children))[1] AS children,
+           (array_agg(children_str))[1] AS children_str,
            COUNT(*)::int AS uses
          FROM per_parent
          GROUP BY parent_desc, children_key
        )
-       SELECT parent_desc AS description, item_type, children, uses
+       SELECT parent_desc AS description, item_type, children_str, uses
        FROM grouped
        WHERE LOWER(parent_desc) NOT IN (
          SELECT LOWER(TRIM(description)) FROM item_catalog WHERE parent_id IS NULL
        )
        ORDER BY uses DESC, description ASC
-       LIMIT 10`
+       LIMIT 10`,
+      [SEP]
     );
-    res.json(r.rows.map(row => ({
-      description: row.description,
-      item_type: row.item_type,
-      uses: row.uses,
-      children: (row.children || []).map((d, i) => ({ description: d, sort_order: i })),
-    })));
+    res.json(r.rows.map(row => {
+      const parts = row.children_str ? row.children_str.split(SEP).filter(Boolean) : [];
+      return {
+        description: row.description,
+        item_type: row.item_type,
+        uses: row.uses,
+        children: parts.map((d, i) => ({ description: d, sort_order: i })),
+      };
+    }));
   } catch (err) { next(err); }
 }
 
