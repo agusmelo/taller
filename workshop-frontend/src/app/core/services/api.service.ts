@@ -96,14 +96,31 @@ export class ApiService {
   getCatalogSuggestions() {
     return this.http.get<CatalogSuggestion[]>(`${this.url}/item-catalog/suggestions`);
   }
-  createCatalogItem(data: { description: string; item_type: CatalogItem['item_type'] }) {
+  getCatalogItem(id: string) {
+    return this.http.get<CatalogItem>(`${this.url}/item-catalog/${id}`);
+  }
+  createCatalogItem(data: {
+    description: string;
+    item_type: CatalogItem['item_type'];
+    children?: { description: string; sort_order?: number }[];
+  }) {
     return this.http.post<CatalogItem>(`${this.url}/item-catalog`, data);
   }
-  bulkCreateCatalogItems(items: { description: string; item_type: CatalogItem['item_type'] }[]) {
+  bulkCreateCatalogItems(items: {
+    description: string;
+    item_type: CatalogItem['item_type'];
+    children?: { description: string; sort_order?: number }[];
+  }[]) {
     return this.http.post<CatalogBulkResult>(`${this.url}/item-catalog/bulk`, { items });
   }
   updateCatalogItem(id: string, data: Partial<{ description: string; item_type: CatalogItem['item_type'] }>) {
     return this.http.patch<CatalogItem>(`${this.url}/item-catalog/${id}`, data);
+  }
+  replaceCatalogChildren(id: string, children: { description: string; sort_order?: number }[]) {
+    return this.http.put<{ children: { id: string; description: string; sort_order: number }[] }>(
+      `${this.url}/item-catalog/${id}/children`,
+      { children }
+    );
   }
   deleteCatalogItem(id: string) {
     return this.http.delete(`${this.url}/item-catalog/${id}`);

@@ -20,6 +20,7 @@ const migrations = [
   '006_import_source.sql',
   '007_item_hierarchy_and_pdf_visibility.sql',
   '008_item_catalog.sql',
+  '009_item_catalog_children.sql',
 ];
 
 async function run() {

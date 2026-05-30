@@ -567,7 +567,19 @@ export class JobCreateComponent {
     const target = this.items[this.activeDescriptionTarget];
     target.description = value;
     const match = this.descriptionSuggestions.find(s => s.description === value);
-    if (match) target.item_type = match.item_type;
+    if (match) {
+      target.item_type = match.item_type;
+      const incomingChildren = (match.children || []).map(c => ({
+        description: c.description,
+        unit_price: 0,
+      }));
+      if (incomingChildren.length > 0 && target.children.length === 0) {
+        target.children = incomingChildren;
+        target.quantity = 1;
+        target.unit_price = 0;
+        this.calcTotals();
+      }
+    }
     this.descriptionSuggestions = [];
   }
 
