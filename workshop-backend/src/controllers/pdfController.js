@@ -11,7 +11,8 @@ const RED   = '#CC1B1B';
 const INK   = '#1a1a1a';
 const MUTED = '#8a8a8a';
 const LINE  = '#e4e4e4';
-const PAGE_BG = '#f0efed';
+// const PAGE_BG = '#f0efed';
+const PAGE_BG = '#fff';
 
 // ---------------------------------------------------------------------------
 // Embedded fonts. Google serves a single variable woff2 per subset, so one
