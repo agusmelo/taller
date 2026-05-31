@@ -287,26 +287,10 @@ async function listItems(req, res, next) {
   } catch (err) { next(err); }
 }
 
-async function searchItemDescriptions(req, res, next) {
-  try {
-    const q = (req.query.q || '').toString().trim();
-    const limit = Math.min(parseInt(req.query.limit) || 20, 50);
-    const r = await pool.query(
-      `SELECT description, COUNT(*)::int AS uses
-       FROM job_items
-       WHERE description ILIKE $1
-       GROUP BY description
-       ORDER BY uses DESC, description ASC
-       LIMIT $2`,
-      [`%${q}%`, limit]
-    );
-    res.json(r.rows);
-  } catch (err) { next(err); }
-}
-
 async function addItem(req, res, next) {
+  const client = await pool.connect();
   try {
-    const { description, quantity, unit_price, item_type, supplier, parent_id, sort_order } = req.body;
+    const { description, quantity, unit_price, item_type, supplier, parent_id, sort_order, children } = req.body;
     if (!description) return res.status(400).json({ error: 'description es requerido' });
 
     let finalParentId = null;
@@ -315,7 +299,7 @@ async function addItem(req, res, next) {
     let finalSupplier = supplier || null;
 
     if (parent_id) {
-      const parentRes = await pool.query(
+      const parentRes = await client.query(
         `SELECT id, item_type, parent_id, job_id FROM job_items WHERE id = $1`, [parent_id]
       );
       const parent = parentRes.rows[0];
@@ -328,29 +312,54 @@ async function addItem(req, res, next) {
       finalSupplier = null;
     }
 
+    const cleanChildren = !finalParentId && Array.isArray(children)
+      ? children
+          .map(c => ({ description: (c?.description || '').toString().trim(), unit_price: Number(c?.unit_price) || 0 }))
+          .filter(c => c.description)
+      : [];
+    if (cleanChildren.length > 0) {
+      finalQuantity = 1;
+    }
+
     let finalSortOrder = sort_order;
     if (finalSortOrder == null) {
       const maxRes = finalParentId
-        ? await pool.query(
+        ? await client.query(
             `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM job_items
              WHERE job_id = $1 AND parent_id = $2`,
             [req.params.id, finalParentId])
-        : await pool.query(
+        : await client.query(
             `SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM job_items
              WHERE job_id = $1 AND parent_id IS NULL`,
             [req.params.id]);
       finalSortOrder = maxRes.rows[0].next;
     }
 
-    const r = await pool.query(
+    await client.query('BEGIN');
+    const r = await client.query(
       `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
       [req.params.id, description, finalQuantity,
-       unit_price != null ? unit_price : 0,
+       cleanChildren.length > 0 ? 0 : (unit_price != null ? unit_price : 0),
        finalItemType, finalSupplier, finalParentId, finalSortOrder]
     );
-    res.status(201).json(r.rows[0]);
-  } catch (err) { next(err); }
+    const created = r.rows[0];
+    for (let i = 0; i < cleanChildren.length; i++) {
+      const c = cleanChildren[i];
+      await client.query(
+        `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order)
+         VALUES ($1,$2,1,$3,$4,NULL,$5,$6)`,
+        [req.params.id, c.description, c.unit_price, finalItemType, created.id, i]
+      );
+    }
+    await client.query('COMMIT');
+    res.status(201).json(created);
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    client.release();
+  }
 }
 
 async function updateItem(req, res, next) {
@@ -457,7 +466,7 @@ async function removePayment(req, res, next) {
 module.exports = {
   list, getOne, create, update, remove,
   lockJob, unlockJob,
-  listItems, searchItemDescriptions, addItem, updateItem, removeItem,
+  listItems, addItem, updateItem, removeItem,
   listPayments, addPayment, removePayment,
   calcFinancials
 };

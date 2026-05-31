@@ -16,6 +16,7 @@ const csv       = require('../controllers/exportController');
 const settings  = require('../controllers/settingsController');
 const paymentsPage = require('../controllers/paymentsPageController');
 const importCtrl   = require('../controllers/importController');
+const itemCatalog  = require('../controllers/itemCatalogController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -61,7 +62,6 @@ router.delete('/vehicles/:id',                 authenticate, requireAdmin, v.uui
 
 // Jobs
 router.get('/jobs',                          authenticate, jobs.list);
-router.get('/jobs/items/descriptions',       authenticate, jobs.searchItemDescriptions);
 router.post('/jobs',                         authenticate, requireAdminOrRecep, v.createJobRules, jobs.create);
 router.get('/jobs/:id',                      authenticate, v.uuidParam, jobs.getOne);
 router.put('/jobs/:id',          authenticate, requireAdminOrRecep, v.updateJobRules, jobs.update);
@@ -112,6 +112,17 @@ router.get('/export/clients', authenticate, requireAdmin, csv.exportClients);
 // Import (admin only)
 router.post('/import/preview', authenticate, requireAdmin, importCtrl.preview);
 router.post('/import/execute', authenticate, requireAdmin, importCtrl.execute);
+
+// Item catalog (autocomplete source for job items)
+router.get('/item-catalog/search',           authenticate, itemCatalog.search);
+router.get('/item-catalog/suggestions',      authenticate, requireAdmin, itemCatalog.suggestions);
+router.get('/item-catalog',                  authenticate, itemCatalog.list);
+router.post('/item-catalog/bulk',            authenticate, requireAdmin, itemCatalog.bulkCreate);
+router.post('/item-catalog',                 authenticate, requireAdmin, itemCatalog.create);
+router.get('/item-catalog/:id',              authenticate, v.uuidParam, itemCatalog.getOne);
+router.patch('/item-catalog/:id',            authenticate, requireAdmin, v.uuidParam, itemCatalog.update);
+router.put('/item-catalog/:id/children',     authenticate, requireAdmin, v.uuidParam, itemCatalog.replaceChildren);
+router.delete('/item-catalog/:id',           authenticate, requireAdmin, v.uuidParam, itemCatalog.remove);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

@@ -101,9 +101,31 @@ export interface JobItemNode extends JobItem {
   children: JobItem[];
 }
 
-export interface ItemDescriptionSuggestion {
+export interface CatalogChild {
+  id?: string;
   description: string;
+  sort_order: number;
+}
+
+export interface CatalogItem {
+  id: string;
+  description: string;
+  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
+  children?: CatalogChild[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CatalogSuggestion {
+  description: string;
+  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
   uses: number;
+  children: CatalogChild[];
+}
+
+export interface CatalogBulkResult {
+  inserted: CatalogItem[];
+  skipped: { description: string; reason: 'duplicate' | 'empty' }[];
 }
 
 export interface Payment {
