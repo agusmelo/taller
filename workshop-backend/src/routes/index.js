@@ -62,7 +62,6 @@ router.delete('/vehicles/:id',                 authenticate, requireAdmin, v.uui
 
 // Jobs
 router.get('/jobs',                          authenticate, jobs.list);
-router.get('/jobs/items/descriptions',       authenticate, jobs.searchItemDescriptions);
 router.post('/jobs',                         authenticate, requireAdminOrRecep, v.createJobRules, jobs.create);
 router.get('/jobs/:id',                      authenticate, v.uuidParam, jobs.getOne);
 router.put('/jobs/:id',          authenticate, requireAdminOrRecep, v.updateJobRules, jobs.update);

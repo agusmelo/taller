@@ -573,11 +573,12 @@ export class JobCreateComponent {
         description: c.description,
         unit_price: 0,
       }));
-      if (incomingChildren.length > 0 && target.children.length === 0) {
-        target.children = incomingChildren;
-        target.quantity = 1;
-        target.unit_price = 0;
-        this.calcTotals();
+      if (incomingChildren.length > 0) {
+        const hasExistingChildren = target.children.some((c: any) => (c?.description || '').trim());
+        if (!hasExistingChildren || confirm(`Esta plantilla incluye ${incomingChildren.length} subitem(s). Reemplazar los actuales?`)) {
+          target.children = incomingChildren;
+          this.calcTotals();
+        }
       }
     }
     this.descriptionSuggestions = [];

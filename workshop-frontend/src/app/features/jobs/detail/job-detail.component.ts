@@ -569,7 +569,7 @@ export class JobDetailComponent implements OnInit {
   pdfLoading = false;
   savingItem = false;
   savingPayment = false;
-  newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
+  newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [] };
   newChild: { description: string; unit_price: number } = { description: '', unit_price: 0 };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '', payment_date: new Date() };
   clientCredit = 0;
@@ -672,7 +672,16 @@ export class JobDetailComponent implements OnInit {
     const match = this.descriptionSuggestions.find(s => s.description === value);
     if (this.autocompleteTarget === 'new') {
       this.newItem.description = value;
-      if (match) this.newItem.item_type = match.item_type;
+      if (match) {
+        this.newItem.item_type = match.item_type;
+        const incomingChildren = (match.children || []).map(c => ({
+          description: c.description,
+          unit_price: 0,
+        }));
+        if (incomingChildren.length > 0) {
+          this.newItem.children = incomingChildren;
+        }
+      }
     } else if (this.autocompleteTarget) {
       this.editItem.description = value;
       if (match) this.editItem.item_type = match.item_type;
@@ -763,7 +772,7 @@ export class JobDetailComponent implements OnInit {
     this.savingItem = true;
     this.api.addJobItem(this.job!.id, this.newItem).subscribe({
       next: () => {
-        this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '' };
+        this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [] };
         this.showAddItem = false;
         this.savingItem = false;
         this.notify.success('Item agregado');

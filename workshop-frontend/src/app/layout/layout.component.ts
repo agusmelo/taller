@@ -49,11 +49,11 @@ import { SearchResults } from '../core/models';
               <mat-icon>dashboard</mat-icon><span>Dashboard</span>
             </a>
           }
-          <a class="nav-item" routerLink="/trabajos" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" #l2="routerLinkActive" [attr.aria-current]="l2.isActive ? 'page' : null" (click)="onNavClick()">
+          <a class="nav-item" routerLink="/trabajos" routerLinkActive="active" #l2="routerLinkActive" [attr.aria-current]="l2.isActive ? 'page' : null" (click)="onNavClick()">
             <mat-icon>work</mat-icon><span>Trabajos</span>
           </a>
           @if (auth.isAdmin()) {
-            <a class="nav-item nav-sub" routerLink="/trabajos/catalogo-items" routerLinkActive="active" #l2b="routerLinkActive" [attr.aria-current]="l2b.isActive ? 'page' : null" (click)="onNavClick()">
+            <a class="nav-item nav-sub" routerLink="/trabajos/catalogo-items" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" #l2b="routerLinkActive" [attr.aria-current]="l2b.isActive ? 'page' : null" (click)="onNavClick()">
               <mat-icon>inventory_2</mat-icon><span>Catalogo de items</span>
             </a>
           }

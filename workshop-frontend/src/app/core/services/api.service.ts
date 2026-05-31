@@ -75,7 +75,11 @@ export class ApiService {
 
   // Job Items
   getJobItems(jobId: string) { return this.http.get<JobItem[]>(`${this.url}/jobs/${jobId}/items`); }
-  addJobItem(jobId: string, data: Partial<JobItem> & { parent_id?: string | null; sort_order?: number }) {
+  addJobItem(jobId: string, data: Partial<JobItem> & {
+    parent_id?: string | null;
+    sort_order?: number;
+    children?: { description: string; unit_price: number }[];
+  }) {
     return this.http.post<JobItem>(`${this.url}/jobs/${jobId}/items`, data);
   }
   updateJobItem(jobId: string, itemId: string, data: Partial<JobItem>) {
@@ -113,7 +117,11 @@ export class ApiService {
   }[]) {
     return this.http.post<CatalogBulkResult>(`${this.url}/item-catalog/bulk`, { items });
   }
-  updateCatalogItem(id: string, data: Partial<{ description: string; item_type: CatalogItem['item_type'] }>) {
+  updateCatalogItem(id: string, data: Partial<{
+    description: string;
+    item_type: CatalogItem['item_type'];
+    children: { description: string; sort_order?: number }[];
+  }>) {
     return this.http.patch<CatalogItem>(`${this.url}/item-catalog/${id}`, data);
   }
   replaceCatalogChildren(id: string, children: { description: string; sort_order?: number }[]) {

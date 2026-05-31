@@ -21,6 +21,7 @@ const migrations = [
   '007_item_hierarchy_and_pdf_visibility.sql',
   '008_item_catalog.sql',
   '009_item_catalog_children.sql',
+  '010_item_catalog_backfill.sql',
 ];
 
 async function run() {

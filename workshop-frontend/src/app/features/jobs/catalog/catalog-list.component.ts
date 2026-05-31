@@ -807,9 +807,13 @@ export class CatalogListComponent implements OnInit, AfterViewInit, OnDestroy {
   highlight(text: string): string {
     const q = this.filterQ.trim();
     if (!q) return this.escapeHtml(text);
-    const esc = this.escapeHtml(text);
     const re = new RegExp(`(${this.escapeRegex(q)})`, 'gi');
-    return esc.replace(re, '<mark>$1</mark>');
+    const parts = text.split(re);
+    return parts
+      .map((part, i) => i % 2 === 1
+        ? `<mark>${this.escapeHtml(part)}</mark>`
+        : this.escapeHtml(part))
+      .join('');
   }
 
   private escapeHtml(s: string): string {
@@ -917,28 +921,20 @@ export class CatalogListComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!this.drawerItem) return;
     this.drawerSaving = true;
     const id = this.drawerItem.id;
-    const meta = {
-      description: this.drawerItem.description.trim(),
-      item_type: this.drawerItem.item_type,
-    };
     const children = this.drawerChildren
       .map((c, i) => ({ description: c.description.trim(), sort_order: i }))
       .filter(c => c.description);
 
-    this.api.updateCatalogItem(id, meta).subscribe({
+    this.api.updateCatalogItem(id, {
+      description: this.drawerItem.description.trim(),
+      item_type: this.drawerItem.item_type,
+      children,
+    }).subscribe({
       next: () => {
-        this.api.replaceCatalogChildren(id, children).subscribe({
-          next: () => {
-            this.drawerSaving = false;
-            this.notify.success('Cambios guardados');
-            this.closeDrawer();
-            this.load();
-          },
-          error: (err) => {
-            this.drawerSaving = false;
-            this.notify.handleError(err);
-          },
-        });
+        this.drawerSaving = false;
+        this.notify.success('Cambios guardados');
+        this.closeDrawer();
+        this.load();
       },
       error: (err) => {
         this.drawerSaving = false;

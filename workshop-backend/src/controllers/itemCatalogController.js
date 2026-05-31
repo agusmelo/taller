@@ -6,6 +6,11 @@ function normalizeType(t) {
   return ITEM_TYPES.includes(t) ? t : null;
 }
 
+// Escape PG LIKE/ILIKE metacharacters so user input matches literally.
+function escapeLike(s) {
+  return s.replace(/[\\%_]/g, c => '\\' + c);
+}
+
 function sanitizeChildren(raw) {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -46,7 +51,7 @@ async function list(req, res, next) {
     const params = [];
     const conds = ['parent_id IS NULL'];
     if (q) {
-      params.push(`%${q}%`);
+      params.push(`%${escapeLike(q)}%`);
       conds.push(`description ILIKE $${params.length}`);
     }
     if (type) {
@@ -75,7 +80,7 @@ async function search(req, res, next) {
        WHERE parent_id IS NULL AND description ILIKE $1
        ORDER BY description ASC
        LIMIT $2`,
-      [`%${q}%`, limit]
+      [`%${escapeLike(q)}%`, limit]
     );
     res.json(await attachChildren(r.rows));
   } catch (err) { next(err); }
@@ -237,7 +242,6 @@ async function bulkCreate(req, res, next) {
         if (e.code === '23505') {
           skipped.push({ description, reason: 'duplicate' });
         } else {
-          client.release();
           throw e;
         }
       } finally {
@@ -249,6 +253,7 @@ async function bulkCreate(req, res, next) {
 }
 
 async function update(req, res, next) {
+  const client = await pool.connect();
   try {
     const description = req.body.description != null
       ? req.body.description.toString().trim()
@@ -262,7 +267,11 @@ async function update(req, res, next) {
     if (description === '') {
       return res.status(400).json({ error: 'description no puede ser vacia' });
     }
-    const r = await pool.query(
+    const hasChildrenField = req.body.children !== undefined;
+    const children = hasChildrenField ? sanitizeChildren(req.body.children) : null;
+
+    await client.query('BEGIN');
+    const upd = await client.query(
       `UPDATE item_catalog SET
          description = COALESCE($1, description),
          item_type   = COALESCE($2, item_type)
@@ -270,14 +279,33 @@ async function update(req, res, next) {
        RETURNING id, description, item_type, created_at, updated_at`,
       [description, item_type, req.params.id]
     );
-    if (!r.rows[0]) return res.status(404).json({ error: 'Item no encontrado' });
-    const [withChildren] = await attachChildren(r.rows);
+    if (!upd.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item no encontrado' });
+    }
+
+    if (hasChildrenField) {
+      await client.query(`DELETE FROM item_catalog WHERE parent_id = $1`, [req.params.id]);
+      for (let i = 0; i < children.length; i++) {
+        const c = children[i];
+        await client.query(
+          `INSERT INTO item_catalog (description, item_type, parent_id, sort_order)
+           VALUES ($1, 'mano_de_obra', $2, $3)`,
+          [c.description, req.params.id, c.sort_order ?? i]
+        );
+      }
+    }
+    await client.query('COMMIT');
+    const [withChildren] = await attachChildren(upd.rows);
     res.json(withChildren);
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     if (err.code === '23505') {
       return res.status(409).json({ error: 'Ya existe un item con esa descripcion' });
     }
     next(err);
+  } finally {
+    client.release();
   }
 }
 
@@ -287,13 +315,15 @@ async function replaceChildren(req, res, next) {
     const parentId = req.params.id;
     const children = sanitizeChildren(req.body?.children);
 
+    await client.query('BEGIN');
     const parent = await client.query(
-      `SELECT id FROM item_catalog WHERE id = $1 AND parent_id IS NULL`,
+      `SELECT id FROM item_catalog WHERE id = $1 AND parent_id IS NULL FOR UPDATE`,
       [parentId]
     );
-    if (!parent.rows[0]) return res.status(404).json({ error: 'Item no encontrado' });
-
-    await client.query('BEGIN');
+    if (!parent.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item no encontrado' });
+    }
     await client.query(`DELETE FROM item_catalog WHERE parent_id = $1`, [parentId]);
     const inserted = [];
     for (let i = 0; i < children.length; i++) {
@@ -310,6 +340,9 @@ async function replaceChildren(req, res, next) {
     res.json({ children: inserted });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
+    if (err.code === '23503') {
+      return res.status(404).json({ error: 'Item no encontrado' });
+    }
     next(err);
   } finally {
     client.release();
