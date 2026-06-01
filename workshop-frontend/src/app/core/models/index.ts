@@ -93,6 +93,7 @@ export interface JobItem {
   supplier: string | null;
   parent_id: string | null;
   sort_order: number;
+  catalog_item_id?: string | null;
   created_at: string;
   updated_at: string;
 }
