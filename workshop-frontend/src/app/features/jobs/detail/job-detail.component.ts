@@ -151,7 +151,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
           <div class="card-head">
             <h3 class="card-title-lg">Items</h3>
             @if (canEditItems()) {
-              <button mat-stroked-button (click)="showAddItem = !showAddItem">
+              <button mat-stroked-button (click)="toggleAddItem()">
                 <mat-icon>add</mat-icon> Agregar item
               </button>
             }
@@ -649,9 +649,17 @@ export class JobDetailComponent implements OnInit {
     });
   }
 
+  toggleAddItem() {
+    this.showAddItem = !this.showAddItem;
+    if (!this.showAddItem) {
+      this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
+    }
+  }
+
   onDescriptionInput(value: string) {
     clearTimeout(this.descTimeout);
     const q = (value || '').trim();
+    if (this.autocompleteTarget === 'new') this.newItem.catalog_item_id = null;
     if (q.length < 2) {
       this.descriptionSuggestions = [];
       return;

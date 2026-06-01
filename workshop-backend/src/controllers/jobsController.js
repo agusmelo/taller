@@ -298,7 +298,7 @@ async function addItem(req, res, next) {
     let finalQuantity = quantity != null ? quantity : 1;
     let finalSupplier = supplier || null;
     // Only top-level items carry a catalog reference; cleared for children below.
-    let finalCatalogItemId = catalog_item_id || null;
+    let finalCatalogItemId = catalog_item_id != null ? catalog_item_id : null;
 
     if (parent_id) {
       const parentRes = await client.query(
