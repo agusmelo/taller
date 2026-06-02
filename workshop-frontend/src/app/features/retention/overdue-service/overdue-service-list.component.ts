@@ -14,6 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { AuthService } from '../../../core/auth/auth.service';
 import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../core/models';
 
 @Component({
@@ -272,9 +273,12 @@ export class OverdueServiceListComponent implements OnInit {
   constructor(
     private api: ApiService,
     private notify: NotificationService,
+    private auth: AuthService,
   ) {}
 
   ngOnInit() {
+    // Analytics endpoint is admin-only; recepcionistas use item_type fallback thresholds instead
+    if (!this.auth.isAdmin()) return;
     this.loadingCatalog = true;
     this.api.getCatalogAnalytics().subscribe({
       next: (items) => {
