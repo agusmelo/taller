@@ -387,7 +387,7 @@ async function analytics(req, res, next) {
 
     const r = await pool.query(`
       WITH filtered_jobs AS (
-        SELECT id, job_date
+        SELECT id, job_date, client_id, vehicle_id
         FROM jobs
         WHERE ($1::uuid IS NULL OR client_id  = $1::uuid)
           AND ($2::uuid IS NULL OR vehicle_id = $2::uuid)
@@ -399,27 +399,43 @@ async function analytics(req, res, next) {
                ji.unit_price,
                ji.quantity,
                fj.job_date,
-               fj.id AS job_id
+               fj.id        AS job_id,
+               fj.client_id,
+               fj.vehicle_id
         FROM job_items ji
         JOIN filtered_jobs fj ON fj.id = ji.job_id
         WHERE ji.catalog_item_id IS NOT NULL
       ),
+      -- Deduplicate per (item, date, client, vehicle) so multiple entries of
+      -- the same catalog item within one job don't produce spurious intervals.
       deduped_uses AS (
-        SELECT DISTINCT catalog_item_id, job_date
+        SELECT DISTINCT catalog_item_id, job_date, client_id, vehicle_id
         FROM catalog_uses
       ),
+      -- Compute intervals within each client+vehicle history, never across clients.
       intervals AS (
         SELECT catalog_item_id,
+               client_id,
+               vehicle_id,
                job_date - LAG(job_date) OVER (
-                 PARTITION BY catalog_item_id ORDER BY job_date
+                 PARTITION BY catalog_item_id, client_id, vehicle_id ORDER BY job_date
                ) AS days
         FROM deduped_uses
       ),
-      avg_intervals AS (
+      -- One average per (item, client, vehicle) pair.
+      per_client_avg AS (
         SELECT catalog_item_id,
-               ROUND(AVG(days)::numeric, 1) AS avg_interval_days
+               AVG(days) AS client_avg
         FROM intervals
         WHERE days IS NOT NULL
+        GROUP BY catalog_item_id, client_id, vehicle_id
+      ),
+      -- Global avg-of-averages: "clients who use this item come back every X days".
+      -- When filtered by client+vehicle this collapses to that client's own average.
+      avg_intervals AS (
+        SELECT catalog_item_id,
+               ROUND(AVG(client_avg)::numeric, 1) AS avg_client_interval_days
+        FROM per_client_avg
         GROUP BY catalog_item_id
       )
       SELECT
@@ -432,12 +448,17 @@ async function analytics(req, res, next) {
         MIN(cu.unit_price)                                  AS min_price,
         MAX(cu.unit_price)                                  AS max_price,
         ROUND(SUM(cu.quantity * cu.unit_price)::numeric, 2) AS total_revenue,
-        ai.avg_interval_days
+        ai.avg_client_interval_days,
+        CASE
+          WHEN COUNT(DISTINCT cu.job_id) >= 3 THEN 'high'
+          WHEN COUNT(DISTINCT cu.job_id) =  2 THEN 'low'
+          ELSE NULL
+        END AS interval_confidence
       FROM item_catalog ic
       LEFT JOIN catalog_uses cu ON cu.catalog_item_id = ic.id
       LEFT JOIN avg_intervals ai ON ai.catalog_item_id = ic.id
       WHERE ic.parent_id IS NULL${typeFilter}
-      GROUP BY ic.id, ic.description, ic.item_type, ai.avg_interval_days
+      GROUP BY ic.id, ic.description, ic.item_type, ai.avg_client_interval_days
       HAVING COUNT(DISTINCT cu.job_id) >= ${minJobs}
       ORDER BY ${sortCol} ${order} NULLS LAST, ic.description ASC
     `, params);

@@ -130,7 +130,11 @@ export interface CatalogItemAnalytics {
   item_type: 'mano_de_obra' | 'repuesto' | 'otro';
   jobs_count: number;
   last_used_at: string | null;
-  avg_interval_days: number | null;
+  // Average of per-client-vehicle intervals. When filtered by client_id + vehicle_id
+  // this is that specific client's interval; without filters it's the shop-wide average.
+  avg_client_interval_days: number | null;
+  // Confidence of avg_client_interval_days: 'high' if jobs_count >= 3, 'low' if == 2, null if < 2.
+  interval_confidence: 'high' | 'low' | null;
   avg_price: number | null;
   min_price: number | null;
   max_price: number | null;
