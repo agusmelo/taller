@@ -119,7 +119,7 @@ Usar `interval_confidence` para ponderar la decisión:
 
 ### Umbrales default sugeridos por tipo
 
-Cuando `avg_interval_days` es `null` (ítem usado solo una vez, no hay historial de
+Cuando `avg_client_interval_days` es `null` (ítem usado solo una vez, no hay historial de
 intervalo), usar un fallback por `item_type`:
 
 | item_type       | Umbral sugerido |
@@ -164,7 +164,7 @@ PUT  /retention/alerts/:id/dismiss — descarta una alerta
 
 ## Edge cases a tener en cuenta
 
-**1. `avg_interval_days` null con `jobs_count = 1`**
+**1. `avg_client_interval_days` null con `jobs_count = 1`**
 El cliente usó el servicio una sola vez — no hay historial de intervalo. Usar umbral
 default. No descartar estos clientes; son los más importantes para retención.
 
@@ -186,6 +186,39 @@ excluirlos (filtrar `AND j.status != 'abierto'` en la query si se requiere).
 Si el cron corre diariamente, puede generar una alerta nueva cada día para el mismo
 cliente/vehículo/ítem. La tabla `retention_alerts` con el índice en `(client_id,
 dismissed_at)` permite verificar si ya existe una alerta activa antes de insertar.
+
+---
+
+## Decisiones de diseño tomadas
+
+Estas decisiones ya están implementadas. Se documentan para que el equipo no las re-discuta.
+
+**`catalog_item_id` es provenance, no identidad**
+El FK en `job_items` registra el origen del ítem, no que siga siendo idéntico al catálogo.
+Editar la descripción de un ítem de trabajo después de crearlo no borra el FK. Esto es intencional:
+la retención se basa en "eligió este servicio como punto de partida", no en que la descripción coincida exactamente.
+
+**`avg_client_interval_days` particiona por `(catalog_item_id, client_id, vehicle_id)`**
+El cálculo de intervalos nunca mezcla clientes. Cada cliente/vehículo tiene su propia secuencia de fechas.
+El promedio final es un "average of averages" (promedio de los intervalos por cliente), no un intervalo
+crudo entre cualquier uso consecutivo en el taller. Esto es lo correcto para retención.
+
+Sin filtros, el valor responde: "¿cada cuántos días en promedio vuelven los clientes que usan este ítem?"
+Con `client_id + vehicle_id`, responde: "¿cada cuántos días vuelve este cliente con este auto?"
+
+**`interval_confidence` es una señal, no un gate**
+Con `jobs_count = 2` hay un solo intervalo medido — puede ser atípico. La confianza `'low'` indica
+que el dato existe pero es poco robusto. El módulo puede elegir blendear con el umbral default:
+```
+T = confidence === 'high' ? avg_client_interval_days
+  : confidence === 'low'  ? (avg_client_interval_days + DEFAULT) / 2
+  : DEFAULT
+```
+
+**Ítems manuales quedan fuera del scope**
+Solo los ítems creados desde el autocompletado de catálogo tienen `catalog_item_id`. Ítems
+ingresados a mano no aparecen en el endpoint de analytics. El equipo de taller debe ser
+incentivado a usar el catálogo para que la cobertura de retención sea completa.
 
 ---
 

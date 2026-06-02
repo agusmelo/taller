@@ -37,3 +37,9 @@ docker exec -it workshop-db psql -U workshop -d workshop_db
 # Frontend en desarrollo
 cd workshop-frontend && ng serve
 ```
+
+## Documentacion tecnica
+
+| Documento | Descripcion |
+|-----------|-------------|
+| [`docs/retention-module.md`](docs/retention-module.md) | Diseño del modulo de retencion de clientes: infraestructura de datos disponible, endpoint de analytics, algoritmo de deteccion y decisiones de arquitectura |
