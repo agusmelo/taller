@@ -290,13 +290,15 @@ async function listItems(req, res, next) {
 async function addItem(req, res, next) {
   const client = await pool.connect();
   try {
-    const { description, quantity, unit_price, item_type, supplier, parent_id, sort_order, children } = req.body;
+    const { description, quantity, unit_price, item_type, supplier, parent_id, sort_order, children, catalog_item_id } = req.body;
     if (!description) return res.status(400).json({ error: 'description es requerido' });
 
     let finalParentId = null;
     let finalItemType = item_type || 'mano_de_obra';
     let finalQuantity = quantity != null ? quantity : 1;
     let finalSupplier = supplier || null;
+    // Only top-level items carry a catalog reference; cleared for children below.
+    let finalCatalogItemId = catalog_item_id != null ? catalog_item_id : null;
 
     if (parent_id) {
       const parentRes = await client.query(
@@ -310,6 +312,7 @@ async function addItem(req, res, next) {
       finalItemType = parent.item_type;
       finalQuantity = 1;
       finalSupplier = null;
+      finalCatalogItemId = null;
     }
 
     const cleanChildren = !finalParentId && Array.isArray(children)
@@ -337,11 +340,11 @@ async function addItem(req, res, next) {
 
     await client.query('BEGIN');
     const r = await client.query(
-      `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order, catalog_item_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
       [req.params.id, description, finalQuantity,
        cleanChildren.length > 0 ? 0 : (unit_price != null ? unit_price : 0),
-       finalItemType, finalSupplier, finalParentId, finalSortOrder]
+       finalItemType, finalSupplier, finalParentId, finalSortOrder, finalCatalogItemId]
     );
     const created = r.rows[0];
     for (let i = 0; i < cleanChildren.length; i++) {

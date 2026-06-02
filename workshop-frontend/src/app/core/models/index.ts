@@ -93,6 +93,7 @@ export interface JobItem {
   supplier: string | null;
   parent_id: string | null;
   sort_order: number;
+  catalog_item_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -121,6 +122,30 @@ export interface CatalogSuggestion {
   item_type: 'mano_de_obra' | 'repuesto' | 'otro';
   uses: number;
   children: CatalogChild[];
+}
+
+export interface CatalogItemAnalytics {
+  id: string;
+  description: string;
+  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
+  jobs_count: number;
+  last_used_at: string | null;
+  avg_interval_days: number | null;
+  avg_price: number | null;
+  min_price: number | null;
+  max_price: number | null;
+  total_revenue: number | null;
+}
+
+export interface CatalogAnalyticsParams {
+  client_id?: string;
+  vehicle_id?: string;
+  from?: string;
+  to?: string;
+  item_type?: 'mano_de_obra' | 'repuesto' | 'otro';
+  sort?: 'jobs_count' | 'avg_price' | 'total_revenue' | 'last_used_at' | 'description';
+  order?: 'asc' | 'desc';
+  min_jobs?: number;
 }
 
 export interface CatalogBulkResult {

@@ -151,7 +151,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
           <div class="card-head">
             <h3 class="card-title-lg">Items</h3>
             @if (canEditItems()) {
-              <button mat-stroked-button (click)="showAddItem = !showAddItem">
+              <button mat-stroked-button (click)="toggleAddItem()">
                 <mat-icon>add</mat-icon> Agregar item
               </button>
             }
@@ -569,7 +569,7 @@ export class JobDetailComponent implements OnInit {
   pdfLoading = false;
   savingItem = false;
   savingPayment = false;
-  newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [] };
+  newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
   newChild: { description: string; unit_price: number } = { description: '', unit_price: 0 };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '', payment_date: new Date() };
   clientCredit = 0;
@@ -649,9 +649,17 @@ export class JobDetailComponent implements OnInit {
     });
   }
 
+  toggleAddItem() {
+    this.showAddItem = !this.showAddItem;
+    if (!this.showAddItem) {
+      this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
+    }
+  }
+
   onDescriptionInput(value: string) {
     clearTimeout(this.descTimeout);
     const q = (value || '').trim();
+    if (this.autocompleteTarget === 'new') this.newItem.catalog_item_id = null;
     if (q.length < 2) {
       this.descriptionSuggestions = [];
       return;
@@ -672,6 +680,7 @@ export class JobDetailComponent implements OnInit {
     const match = this.descriptionSuggestions.find(s => s.description === value);
     if (this.autocompleteTarget === 'new') {
       this.newItem.description = value;
+      this.newItem.catalog_item_id = match?.id ?? null;
       if (match) {
         this.newItem.item_type = match.item_type;
         const incomingChildren = (match.children || []).map(c => ({
@@ -772,7 +781,7 @@ export class JobDetailComponent implements OnInit {
     this.savingItem = true;
     this.api.addJobItem(this.job!.id, this.newItem).subscribe({
       next: () => {
-        this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [] };
+        this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
         this.showAddItem = false;
         this.savingItem = false;
         this.notify.success('Item agregado');

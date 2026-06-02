@@ -359,7 +359,94 @@ async function remove(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function analytics(req, res, next) {
+  try {
+    const clientId  = req.query.client_id  || null;
+    const vehicleId = req.query.vehicle_id || null;
+    const from      = req.query.from       || null;
+    const to        = req.query.to         || null;
+    const itemType  = normalizeType(req.query.item_type);
+    const minJobs   = Math.max(0, parseInt(req.query.min_jobs) || 0);
+
+    const SORT_MAP = {
+      jobs_count:    'jobs_count',
+      avg_price:     'avg_price',
+      total_revenue: 'total_revenue',
+      last_used_at:  'last_used_at',
+      description:   'ic.description',
+    };
+    const sortCol = SORT_MAP[req.query.sort] || 'jobs_count';
+    const order   = req.query.order === 'asc' ? 'ASC' : 'DESC';
+
+    const params = [clientId, vehicleId, from, to];
+    let typeFilter = '';
+    if (itemType) {
+      params.push(itemType);
+      typeFilter = ` AND ic.item_type = $${params.length}`;
+    }
+
+    const r = await pool.query(`
+      WITH filtered_jobs AS (
+        SELECT id, job_date
+        FROM jobs
+        WHERE ($1::uuid IS NULL OR client_id  = $1::uuid)
+          AND ($2::uuid IS NULL OR vehicle_id = $2::uuid)
+          AND ($3::date IS NULL OR job_date  >= $3::date)
+          AND ($4::date IS NULL OR job_date  <= $4::date)
+      ),
+      catalog_uses AS (
+        SELECT ji.catalog_item_id,
+               ji.unit_price,
+               ji.quantity,
+               fj.job_date,
+               fj.id AS job_id
+        FROM job_items ji
+        JOIN filtered_jobs fj ON fj.id = ji.job_id
+        WHERE ji.catalog_item_id IS NOT NULL
+      ),
+      deduped_uses AS (
+        SELECT DISTINCT catalog_item_id, job_date
+        FROM catalog_uses
+      ),
+      intervals AS (
+        SELECT catalog_item_id,
+               job_date - LAG(job_date) OVER (
+                 PARTITION BY catalog_item_id ORDER BY job_date
+               ) AS days
+        FROM deduped_uses
+      ),
+      avg_intervals AS (
+        SELECT catalog_item_id,
+               ROUND(AVG(days)::numeric, 1) AS avg_interval_days
+        FROM intervals
+        WHERE days IS NOT NULL
+        GROUP BY catalog_item_id
+      )
+      SELECT
+        ic.id,
+        ic.description,
+        ic.item_type,
+        COUNT(DISTINCT cu.job_id)::int                      AS jobs_count,
+        MAX(cu.job_date)                                    AS last_used_at,
+        ROUND(AVG(cu.unit_price)::numeric, 2)               AS avg_price,
+        MIN(cu.unit_price)                                  AS min_price,
+        MAX(cu.unit_price)                                  AS max_price,
+        ROUND(SUM(cu.quantity * cu.unit_price)::numeric, 2) AS total_revenue,
+        ai.avg_interval_days
+      FROM item_catalog ic
+      LEFT JOIN catalog_uses cu ON cu.catalog_item_id = ic.id
+      LEFT JOIN avg_intervals ai ON ai.catalog_item_id = ic.id
+      WHERE ic.parent_id IS NULL${typeFilter}
+      GROUP BY ic.id, ic.description, ic.item_type, ai.avg_interval_days
+      HAVING COUNT(DISTINCT cu.job_id) >= ${minJobs}
+      ORDER BY ${sortCol} ${order} NULLS LAST, ic.description ASC
+    `, params);
+
+    res.json(r.rows);
+  } catch (err) { next(err); }
+}
+
 module.exports = {
-  list, search, getOne, suggestions,
+  list, search, getOne, suggestions, analytics,
   create, bulkCreate, update, replaceChildren, remove,
 };
