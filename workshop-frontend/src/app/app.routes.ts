@@ -71,6 +71,11 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/import/import.component').then(m => m.ImportComponent)
       },
+      {
+        path: 'retencion',
+        loadComponent: () => import('./features/retention/overdue-service/overdue-service-list.component')
+          .then(m => m.OverdueServiceListComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }

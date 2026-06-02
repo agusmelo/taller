@@ -17,6 +17,7 @@ const settings  = require('../controllers/settingsController');
 const paymentsPage = require('../controllers/paymentsPageController');
 const importCtrl   = require('../controllers/importController');
 const itemCatalog  = require('../controllers/itemCatalogController');
+const retention    = require('../controllers/retentionController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -124,6 +125,9 @@ router.get('/item-catalog/:id',              authenticate, v.uuidParam, itemCata
 router.patch('/item-catalog/:id',            authenticate, requireAdmin, v.uuidParam, itemCatalog.update);
 router.put('/item-catalog/:id/children',     authenticate, requireAdmin, v.uuidParam, itemCatalog.replaceChildren);
 router.delete('/item-catalog/:id',           authenticate, requireAdmin, v.uuidParam, itemCatalog.remove);
+
+// Retention
+router.get('/retention/overdue-service', authenticate, requireAdminOrRecep, retention.getOverdueService);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

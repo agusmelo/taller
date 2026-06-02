@@ -398,3 +398,17 @@ export interface MonthlyClosing {
   no_iva: MonthlyClosingTotals;
   jobs: MonthlyClosingJob[];
 }
+
+export interface OverdueServiceItem {
+  client_id:          string;
+  client_name:        string;
+  client_phone:       string | null;
+  client_email:       string | null;
+  vehicle_id:         string;
+  plate_number:       string;
+  make:               string;
+  model:              string;
+  year:               number | null;
+  last_service_date:  string | null;
+  days_since_service: number | null;
+}

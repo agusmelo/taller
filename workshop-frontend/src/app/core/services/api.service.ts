@@ -12,7 +12,8 @@ import {
   AgingReport, Debtor, PaymentsSummary, AppSettings,
   MonthlyClosing,
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
-  CatalogItemAnalytics, CatalogAnalyticsParams
+  CatalogItemAnalytics, CatalogAnalyticsParams,
+  OverdueServiceItem
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -139,6 +140,13 @@ export class ApiService {
       `${this.url}/item-catalog/analytics`,
       { params: params as Record<string, string> }
     );
+  }
+
+  // Retention
+  getOverdueService(catalogItemId: string, thresholdDays: number) {
+    return this.http.get<OverdueServiceItem[]>(`${this.url}/retention/overdue-service`, {
+      params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
+    });
   }
 
   // Payments
