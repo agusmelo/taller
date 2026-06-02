@@ -61,17 +61,22 @@ interface CatalogItemAnalytics {
   item_type: 'mano_de_obra' | 'repuesto' | 'otro';
 
   // uso
-  jobs_count: number;           // trabajos distintos que incluyeron este ítem
-  last_used_at: string | null;  // fecha ISO del último uso (null = nunca usado)
-  avg_interval_days: number | null; // promedio de días entre usos consecutivos
-                                    // null si jobs_count < 2
+  jobs_count: number;                          // trabajos distintos que incluyeron este ítem
+  last_used_at: string | null;                 // fecha ISO del último uso (null = nunca usado)
 
-  // precio
+  // intervalo entre usos — semántica importante:
+  //   sin filtros         → promedio de los intervalos por-cliente a nivel de taller
+  //                         ("los clientes que usan este ítem vuelven cada X días en promedio")
+  //   con client+vehicle  → intervalo histórico de ESE cliente/vehículo
+  //                         (métrica directa para retención)
+  avg_client_interval_days: number | null;     // null si jobs_count < 2
+  interval_confidence: 'high' | 'low' | null;  // high ≥ 3 usos, low = 2 usos, null < 2
+
+  // precio (todos null cuando jobs_count = 0)
   avg_price: number | null;
   min_price: number | null;
   max_price: number | null;
   total_revenue: number | null;
-  // todos null cuando jobs_count = 0
 }
 ```
 
@@ -85,8 +90,13 @@ Devuelve los ítems ordenados de "más tiempo sin usar" a "más reciente". El m�
 iterar la lista y marcar como candidatos aquellos donde:
 
 ```
-hoy - last_used_at  >  avg_interval_days  (o un umbral fijo si avg_interval_days es null)
+hoy - last_used_at  >  avg_client_interval_days  (o un umbral fijo si es null)
 ```
+
+Usar `interval_confidence` para ponderar la decisión:
+- `'high'` → confiar en el intervalo calculado
+- `'low'`  → usarlo como referencia pero preferir el umbral default si difiere mucho
+- `null`   → usar siempre el umbral default por tipo
 
 ---
 
@@ -99,7 +109,7 @@ hoy - last_used_at  >  avg_interval_days  (o un umbral fijo si avg_interval_days
    a. GET /item-catalog/analytics?client_id=X&vehicle_id=Y
    b. Para cada ítem con last_used_at != null:
       - Calcular días_vencido = hoy - last_used_at
-      - Umbral T = avg_interval_days ?? UMBRAL_DEFAULT_POR_TIPO
+      - Umbral T = avg_client_interval_days ?? UMBRAL_DEFAULT_POR_TIPO
       - Si días_vencido > T → candidato a notificar
 
 2. Generar lista de alertas ordenada por urgencia (días_vencido / T)
