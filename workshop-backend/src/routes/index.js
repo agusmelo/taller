@@ -114,6 +114,7 @@ router.post('/import/preview', authenticate, requireAdmin, importCtrl.preview);
 router.post('/import/execute', authenticate, requireAdmin, importCtrl.execute);
 
 // Item catalog (autocomplete source for job items)
+router.get('/item-catalog/analytics',        authenticate, requireAdmin, v.catalogAnalyticsRules, itemCatalog.analytics);
 router.get('/item-catalog/search',           authenticate, itemCatalog.search);
 router.get('/item-catalog/suggestions',      authenticate, requireAdmin, itemCatalog.suggestions);
 router.get('/item-catalog',                  authenticate, itemCatalog.list);

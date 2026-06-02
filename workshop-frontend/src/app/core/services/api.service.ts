@@ -11,7 +11,8 @@ import {
   RevenueTrendItem, JobWithBalance, RecentPayment,
   AgingReport, Debtor, PaymentsSummary, AppSettings,
   MonthlyClosing,
-  CatalogItem, CatalogSuggestion, CatalogBulkResult
+  CatalogItem, CatalogSuggestion, CatalogBulkResult,
+  CatalogItemAnalytics, CatalogAnalyticsParams
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -132,6 +133,12 @@ export class ApiService {
   }
   deleteCatalogItem(id: string) {
     return this.http.delete(`${this.url}/item-catalog/${id}`);
+  }
+  getCatalogAnalytics(params?: CatalogAnalyticsParams) {
+    return this.http.get<CatalogItemAnalytics[]>(
+      `${this.url}/item-catalog/analytics`,
+      { params: params as Record<string, string> }
+    );
   }
 
   // Payments

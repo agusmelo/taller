@@ -89,6 +89,19 @@ const updateJobRules = [
   handleValidation
 ];
 
+// Item Catalog Analytics
+const catalogAnalyticsRules = [
+  query('client_id').optional({ values: 'null' }).isUUID().withMessage('client_id debe ser un UUID valido'),
+  query('vehicle_id').optional({ values: 'null' }).isUUID().withMessage('vehicle_id debe ser un UUID valido'),
+  query('from').optional().isISO8601().withMessage('from debe ser una fecha ISO 8601 valida'),
+  query('to').optional().isISO8601().withMessage('to debe ser una fecha ISO 8601 valida'),
+  query('item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  query('sort').optional().isIn(['jobs_count', 'avg_price', 'total_revenue', 'last_used_at', 'description']).withMessage('sort invalido'),
+  query('order').optional().isIn(['asc', 'desc']).withMessage('order debe ser asc o desc'),
+  query('min_jobs').optional().isInt({ min: 0 }).withMessage('min_jobs debe ser entero >= 0'),
+  handleValidation
+];
+
 // Job Items
 const addItemRules = [
   param('id').isUUID().withMessage('ID de trabajo invalido'),
@@ -157,5 +170,6 @@ module.exports = {
   loginRules, createClientRules, updateClientRules,
   createVehicleRules, updateVehicleRules, transferOwnershipRules,
   createJobRules, updateJobRules, addItemRules, updateItemRules,
-  addPaymentRules, createUserRules, updateUserRules, uuidParam
+  addPaymentRules, createUserRules, updateUserRules, uuidParam,
+  catalogAnalyticsRules,
 };
