@@ -80,7 +80,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
             <p class="threshold-hint">
               @if (analyticsForSelected) {
                 <mat-icon class="hint-icon">insights</mat-icon>
-                Intervalo histórico del taller para este servicio: <strong>{{ analyticsForSelected.avg_interval_days | number:'1.0-0' }} días</strong>
+                Intervalo histórico del taller para este servicio: <strong>{{ analyticsForSelected.avg_client_interval_days | number:'1.0-0' }} días</strong>
               } @else {
                 <mat-icon class="hint-icon">info_outline</mat-icon>
                 Sin historial de intervalos — se usa valor por defecto según tipo de ítem
@@ -311,8 +311,8 @@ export class OverdueServiceListComponent implements OnInit {
     this.analyticsForSelected = analytics;
 
     const fallback = item.item_type === 'repuesto' ? 365 : 180;
-    this.thresholdDays = analytics?.avg_interval_days
-      ? Math.round(analytics.avg_interval_days)
+    this.thresholdDays = analytics?.avg_client_interval_days
+      ? Math.round(analytics.avg_client_interval_days)
       : fallback;
   }
 
