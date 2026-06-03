@@ -71,6 +71,16 @@ export const routes: Routes = [
         canActivate: [adminGuard],
         loadComponent: () => import('./features/import/import.component').then(m => m.ImportComponent)
       },
+      {
+        path: 'retencion',
+        loadComponent: () => import('./features/retention/overdue-service/overdue-service-list.component')
+          .then(m => m.OverdueServiceListComponent)
+      },
+      {
+        path: 'alertas',
+        loadComponent: () => import('./features/alerts/alerts-feed.component')
+          .then(m => m.AlertsFeedComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }

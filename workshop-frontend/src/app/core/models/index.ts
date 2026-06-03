@@ -398,3 +398,35 @@ export interface MonthlyClosing {
   no_iva: MonthlyClosingTotals;
   jobs: MonthlyClosingJob[];
 }
+
+export interface AlertItem {
+  alert_type:    'overdue_service' | 'payment_overdue' | 'lost_customer';
+  severity:      'critical' | 'high' | 'medium' | 'low';
+  client_id:     string;
+  client_name:   string;
+  client_phone:  string | null;
+  client_email:  string | null;
+  entity_id:     string;
+  entity_label:  string;
+  current_value: number | null;
+  threshold:     number;
+  unit:          'days' | 'currency';
+  context:       string;
+  action_route:  string;
+}
+
+export interface OverdueServiceItem {
+  client_id:                   string;
+  client_name:                 string;
+  client_phone:                string | null;
+  client_email:                string | null;
+  vehicle_id:                  string;
+  plate_number:                string;
+  make:                        string;
+  model:                       string;
+  year:                        number | null;
+  last_service_date:           string | null;
+  days_since_service:          number | null;
+  vehicle_avg_interval_days:   number | null;
+  vehicle_interval_confidence: 'high' | 'low' | null;
+}

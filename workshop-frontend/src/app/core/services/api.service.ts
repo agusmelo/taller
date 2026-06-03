@@ -12,7 +12,8 @@ import {
   AgingReport, Debtor, PaymentsSummary, AppSettings,
   MonthlyClosing,
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
-  CatalogItemAnalytics, CatalogAnalyticsParams
+  CatalogItemAnalytics, CatalogAnalyticsParams,
+  OverdueServiceItem, AlertItem
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -139,6 +140,30 @@ export class ApiService {
       `${this.url}/item-catalog/analytics`,
       { params: params as Record<string, string> }
     );
+  }
+
+  // Alerts feed
+  getOverdueServiceAlerts(catalogItemId: string, thresholdDays: number) {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/overdue-service`, {
+      params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
+    });
+  }
+  getPaymentOverdueAlerts(thresholdDays: number) {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/payment-overdue`, {
+      params: { threshold_days: thresholdDays.toString() }
+    });
+  }
+  getLostCustomerAlerts(thresholdDays: number) {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/lost-customers`, {
+      params: { threshold_days: thresholdDays.toString() }
+    });
+  }
+
+  // Retention (detailed per-vehicle view)
+  getOverdueService(catalogItemId: string, thresholdDays: number) {
+    return this.http.get<OverdueServiceItem[]>(`${this.url}/retention/overdue-service`, {
+      params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
+    });
   }
 
   // Payments
