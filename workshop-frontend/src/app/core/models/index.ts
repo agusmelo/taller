@@ -399,6 +399,22 @@ export interface MonthlyClosing {
   jobs: MonthlyClosingJob[];
 }
 
+export interface AlertItem {
+  alert_type:    'overdue_service' | 'payment_overdue' | 'lost_customer';
+  severity:      'critical' | 'high' | 'medium' | 'low';
+  client_id:     string;
+  client_name:   string;
+  client_phone:  string | null;
+  client_email:  string | null;
+  entity_id:     string;
+  entity_label:  string;
+  current_value: number | null;
+  threshold:     number;
+  unit:          'days' | 'currency';
+  context:       string;
+  action_route:  string;
+}
+
 export interface OverdueServiceItem {
   client_id:                   string;
   client_name:                 string;

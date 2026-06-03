@@ -18,6 +18,7 @@ const paymentsPage = require('../controllers/paymentsPageController');
 const importCtrl   = require('../controllers/importController');
 const itemCatalog  = require('../controllers/itemCatalogController');
 const retention    = require('../controllers/retentionController');
+const alerts       = require('../controllers/alertsController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -126,8 +127,13 @@ router.patch('/item-catalog/:id',            authenticate, requireAdmin, v.uuidP
 router.put('/item-catalog/:id/children',     authenticate, requireAdmin, v.uuidParam, itemCatalog.replaceChildren);
 router.delete('/item-catalog/:id',           authenticate, requireAdmin, v.uuidParam, itemCatalog.remove);
 
-// Retention
+// Retention (detailed per-vehicle search, kept for API compat)
 router.get('/retention/overdue-service', authenticate, requireAdminOrRecep, retention.getOverdueService);
+
+// Alerts feed (unified OCA endpoints)
+router.get('/alerts/overdue-service', authenticate, requireAdminOrRecep, alerts.getOverdueServiceAlerts);
+router.get('/alerts/payment-overdue', authenticate, requireAdmin,         alerts.getPaymentOverdueAlerts);
+router.get('/alerts/lost-customers',  authenticate, requireAdminOrRecep,  alerts.getLostCustomerAlerts);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

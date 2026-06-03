@@ -63,8 +63,8 @@ import { SearchResults } from '../core/models';
             </a>
           }
           @if (auth.isAdminOrRecep()) {
-            <a class="nav-item" routerLink="/retencion" routerLinkActive="active" #lRet="routerLinkActive" [attr.aria-current]="lRet.isActive ? 'page' : null" (click)="onNavClick()">
-              <mat-icon>loyalty</mat-icon><span>Retención</span>
+            <a class="nav-item" routerLink="/alertas" routerLinkActive="active" #lRet="routerLinkActive" [attr.aria-current]="lRet.isActive ? 'page' : null" (click)="onNavClick()">
+              <mat-icon>notifications_active</mat-icon><span>Alertas</span>
             </a>
           }
           <a class="nav-item" routerLink="/vehiculos" routerLinkActive="active" #l4="routerLinkActive" [attr.aria-current]="l4.isActive ? 'page' : null" (click)="onNavClick()">

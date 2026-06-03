@@ -76,6 +76,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/retention/overdue-service/overdue-service-list.component')
           .then(m => m.OverdueServiceListComponent)
       },
+      {
+        path: 'alertas',
+        loadComponent: () => import('./features/alerts/alerts-feed.component')
+          .then(m => m.AlertsFeedComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }

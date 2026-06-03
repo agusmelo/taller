@@ -13,7 +13,7 @@ import {
   MonthlyClosing,
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
   CatalogItemAnalytics, CatalogAnalyticsParams,
-  OverdueServiceItem
+  OverdueServiceItem, AlertItem
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -142,7 +142,24 @@ export class ApiService {
     );
   }
 
-  // Retention
+  // Alerts feed
+  getOverdueServiceAlerts(catalogItemId: string, thresholdDays: number) {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/overdue-service`, {
+      params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
+    });
+  }
+  getPaymentOverdueAlerts(thresholdDays: number) {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/payment-overdue`, {
+      params: { threshold_days: thresholdDays.toString() }
+    });
+  }
+  getLostCustomerAlerts(thresholdDays: number) {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/lost-customers`, {
+      params: { threshold_days: thresholdDays.toString() }
+    });
+  }
+
+  // Retention (detailed per-vehicle view)
   getOverdueService(catalogItemId: string, thresholdDays: number) {
     return this.http.get<OverdueServiceItem[]>(`${this.url}/retention/overdue-service`, {
       params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
