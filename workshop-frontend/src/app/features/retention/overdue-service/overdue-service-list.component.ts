@@ -29,21 +29,20 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
   template: `
     <main class="content">
       <div class="page-head">
-        <h1 class="page-title">Retención — Servicios Vencidos</h1>
-        <p class="page-sub">Vehículos que no han recibido un servicio del catálogo en el período configurado</p>
+        <h1 class="page-title">Retención</h1>
+        <p class="page-sub">Registros que superan el umbral de días desde el último ítem del catálogo</p>
       </div>
 
       <mat-card class="filter-card">
         <mat-card-content>
           <div class="filter-row">
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-service">
-              <mat-label>Servicio del catálogo</mat-label>
+              <mat-label>Ítem del catálogo</mat-label>
               <input
                 matInput
                 [(ngModel)]="catalogQuery"
                 (ngModelChange)="onCatalogInput($event)"
                 [matAutocomplete]="autocat"
-                placeholder="ej: cambio de aceite, frenos…"
                 [disabled]="loadingCatalog"
               >
               <mat-icon matPrefix>manage_search</mat-icon>
@@ -55,7 +54,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
                 @for (item of catalogSuggestions; track item.id) {
                   <mat-option [value]="item">
                     <span>{{ item.description }}</span>
-                    <small class="item-type-tag">{{ typeLabel(item.item_type) }}</small>
+                    <small class="item-type-tag">{{ item.item_type }}</small>
                   </mat-option>
                 }
               </mat-autocomplete>
@@ -63,7 +62,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-threshold">
               <mat-label>Umbral (días)</mat-label>
-              <input matInput type="number" [(ngModel)]="thresholdDays" min="1" placeholder="180">
+              <input matInput type="number" [(ngModel)]="thresholdDays" min="1" step="1" placeholder="180">
               <span matTextSuffix>días</span>
             </mat-form-field>
 
@@ -76,20 +75,29 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
             </button>
           </div>
 
-          @if (selectedItem) {
+          @if (selectedItem && analyticsForSelected?.avg_client_interval_days) {
             <p class="threshold-hint">
-              @if (analyticsForSelected) {
-                <mat-icon class="hint-icon">insights</mat-icon>
-                Intervalo histórico del taller para este servicio: <strong>{{ analyticsForSelected.avg_client_interval_days | number:'1.0-0' }} días</strong>
-              } @else {
-                <mat-icon class="hint-icon">info_outline</mat-icon>
-                Sin historial de intervalos — se usa valor por defecto según tipo de ítem
+              <mat-icon class="hint-icon">insights</mat-icon>
+              Intervalo promedio global:
+              <strong>{{ analyticsForSelected!.avg_client_interval_days | number:'1.0-0' }} días</strong>
+              <span
+                class="conf-badge"
+                [class]="'conf-' + (analyticsForSelected!.interval_confidence ?? 'none')"
+                [matTooltip]="confidenceTooltip(analyticsForSelected!.interval_confidence)"
+              >{{ confidenceLabel(analyticsForSelected!.interval_confidence) }}</span>
+              @if (analyticsForSelected!.interval_confidence === 'low') {
+                <span class="blend-note">· umbral ajustado por baja confianza</span>
               }
+            </p>
+          } @else if (selectedItem) {
+            <p class="threshold-hint">
+              <mat-icon class="hint-icon">info_outline</mat-icon>
+              Sin historial de intervalos — usando umbral por defecto
             </p>
           }
           <p class="coverage-hint">
             <mat-icon class="hint-icon">warning_amber</mat-icon>
-            Solo detecta trabajos registrados con ítems del catálogo. Los ítems ingresados manualmente no se incluyen.
+            Solo incluye registros vinculados a ítems del catálogo. Los ítems ingresados manualmente no se detectan.
           </p>
         </mat-card-content>
       </mat-card>
@@ -97,12 +105,12 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
       @if (loading) {
         <div class="loading-block">
           <mat-spinner diameter="40"></mat-spinner>
-          <span>Buscando vehículos…</span>
+          <span>Buscando…</span>
         </div>
       } @else if (searched && results.length === 0) {
         <div class="empty-state">
           <mat-icon>check_circle_outline</mat-icon>
-          <p>No hay vehículos vencidos para este criterio</p>
+          <p>No hay registros vencidos para este criterio</p>
         </div>
       } @else if (results.length > 0) {
         <mat-card class="table-card">
@@ -142,8 +150,29 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
                   </td>
                 </ng-container>
 
+                <ng-container matColumnDef="vehicle_interval">
+                  <th mat-header-cell *matHeaderCellDef class="col-right">
+                    Intervalo propio
+                    <mat-icon
+                      class="col-help"
+                      matTooltip="Días promedio entre servicios para este vehículo específico"
+                    >help_outline</mat-icon>
+                  </th>
+                  <td mat-cell *matCellDef="let r" class="col-right">
+                    @if (r.vehicle_avg_interval_days !== null) {
+                      {{ r.vehicle_avg_interval_days }}
+                      <span
+                        class="conf-badge conf-{{ r.vehicle_interval_confidence ?? 'none' }}"
+                        [matTooltip]="confidenceTooltip(r.vehicle_interval_confidence)"
+                      >{{ confidenceLabel(r.vehicle_interval_confidence) }}</span>
+                    } @else {
+                      <span class="muted">—</span>
+                    }
+                  </td>
+                </ng-container>
+
                 <ng-container matColumnDef="last_service_date">
-                  <th mat-header-cell *matHeaderCellDef>Último servicio</th>
+                  <th mat-header-cell *matHeaderCellDef>Último registro</th>
                   <td mat-cell *matCellDef="let r">
                     @if (r.last_service_date) {
                       {{ r.last_service_date | date:'dd/MM/yyyy' }}
@@ -157,7 +186,9 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
                   <th mat-header-cell *matHeaderCellDef class="col-right">Días transcurridos</th>
                   <td mat-cell *matCellDef="let r" class="col-right">
                     @if (r.days_since_service !== null) {
-                      <span [class]="urgencyClass(r.days_since_service)">{{ r.days_since_service }}</span>
+                      <span [class]="urgencyClass(r)" [matTooltip]="urgencyTooltip(r)">
+                        {{ r.days_since_service }}
+                      </span>
                     } @else {
                       <span class="badge b-never">—</span>
                     }
@@ -206,6 +237,19 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
     }
     .coverage-hint { color: var(--text-3); }
     .hint-icon { font-size: 16px; width: 16px; height: 16px; }
+    .blend-note { color: var(--text-3); font-style: italic; }
+
+    .conf-badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 600;
+      cursor: default;
+    }
+    .conf-high { background: #dcfce7; color: #16a34a; }
+    .conf-low  { background: #fef9c3; color: #ca8a04; }
+    .conf-none { background: #f3f4f6; color: var(--text-3); }
 
     .loading-block {
       display: flex;
@@ -237,6 +281,8 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
     .t-mono { font-family: 'JetBrains Mono', monospace; }
 
     .col-right { text-align: right !important; }
+    .col-help { font-size: 14px; width: 14px; height: 14px; vertical-align: middle; color: var(--text-3); cursor: help; }
+    .muted { color: var(--text-3); }
 
     .badge {
       display: inline-block;
@@ -245,7 +291,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
       font-size: 11px;
       font-weight: 600;
     }
-    .b-never { background: #f3f4f6; color: var(--text-3); }
+    .b-never   { background: #f3f4f6; color: var(--text-3); }
     .b-overdue { background: #fee2e2; color: #dc2626; }
     .b-warning { background: #fef3c7; color: #d97706; }
   `]
@@ -264,11 +310,18 @@ export class OverdueServiceListComponent implements OnInit {
 
   displayedColumns = [
     'client_name', 'client_phone', 'client_email',
-    'plate_number', 'make_model', 'last_service_date', 'days_since_service'
+    'plate_number', 'make_model',
+    'vehicle_interval', 'last_service_date', 'days_since_service',
   ];
 
   private analyticsMap = new Map<string, CatalogItemAnalytics>();
   private searchTimeout: any;
+
+  // Fallback thresholds by item_type when no historical data is available
+  private readonly FALLBACK_DAYS: Record<string, number> = {
+    repuesto: 365,
+  };
+  private readonly FALLBACK_DEFAULT = 180;
 
   constructor(
     private api: ApiService,
@@ -277,7 +330,7 @@ export class OverdueServiceListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    // Analytics endpoint is admin-only; recepcionistas use item_type fallback thresholds instead
+    // Analytics endpoint is admin-only; non-admin users fall through to item_type fallbacks
     if (!this.auth.isAdmin()) return;
     this.loadingCatalog = true;
     this.api.getCatalogAnalytics().subscribe({
@@ -310,10 +363,18 @@ export class OverdueServiceListComponent implements OnInit {
     const analytics = this.analyticsMap.get(item.id) ?? null;
     this.analyticsForSelected = analytics;
 
-    const fallback = item.item_type === 'repuesto' ? 365 : 180;
-    this.thresholdDays = analytics?.avg_client_interval_days
-      ? Math.round(analytics.avg_client_interval_days)
-      : fallback;
+    const fallback = this.FALLBACK_DAYS[item.item_type] ?? this.FALLBACK_DEFAULT;
+    const avg = analytics?.avg_client_interval_days ?? null;
+    const confidence = analytics?.interval_confidence ?? null;
+
+    if (!avg) {
+      this.thresholdDays = fallback;
+    } else if (confidence === 'low') {
+      // Blend with fallback when we only have 2 data points
+      this.thresholdDays = Math.round((avg + fallback) / 2);
+    } else {
+      this.thresholdDays = Math.round(avg);
+    }
   }
 
   displayCatalogItem(item: CatalogItem | string): string {
@@ -339,19 +400,33 @@ export class OverdueServiceListComponent implements OnInit {
     });
   }
 
-  typeLabel(type: string): string {
-    const map: Record<string, string> = {
-      mano_de_obra: 'Mano de obra',
-      repuesto: 'Repuesto',
-      otro: 'Otro',
-    };
-    return map[type] ?? type;
+  // Uses the vehicle's own historical interval as threshold when available,
+  // falling back to the user-selected global threshold
+  urgencyClass(row: OverdueServiceItem): string {
+    if (row.days_since_service === null) return '';
+    const threshold = row.vehicle_avg_interval_days ?? this.thresholdDays;
+    if (!threshold) return '';
+    if (row.days_since_service > threshold * 1.5) return 'badge b-overdue';
+    if (row.days_since_service > threshold * 1.2) return 'badge b-warning';
+    return '';
   }
 
-  urgencyClass(days: number): string {
-    if (!this.thresholdDays) return '';
-    if (days > this.thresholdDays * 1.5) return 'badge b-overdue';
-    if (days > this.thresholdDays * 1.2) return 'badge b-warning';
-    return '';
+  urgencyTooltip(row: OverdueServiceItem): string {
+    if (row.vehicle_avg_interval_days) {
+      return `Intervalo propio del vehículo: ${row.vehicle_avg_interval_days} días`;
+    }
+    return `Umbral global: ${this.thresholdDays} días`;
+  }
+
+  confidenceLabel(confidence: 'high' | 'low' | null | undefined): string {
+    if (confidence === 'high') return '★★★';
+    if (confidence === 'low')  return '★★';
+    return '★';
+  }
+
+  confidenceTooltip(confidence: 'high' | 'low' | null | undefined): string {
+    if (confidence === 'high') return 'Alta confianza (3+ registros)';
+    if (confidence === 'low')  return 'Baja confianza (2 registros)';
+    return 'Sin historial suficiente';
   }
 }
