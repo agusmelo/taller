@@ -400,7 +400,7 @@ export interface MonthlyClosing {
 }
 
 export interface AlertItem {
-  alert_type:    'overdue_service' | 'payment_overdue' | 'lost_customer';
+  alert_type:    'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
   severity:      'critical' | 'high' | 'medium' | 'low';
   client_id:     string;
   client_name:   string;

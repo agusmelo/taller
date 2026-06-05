@@ -190,4 +190,82 @@ async function getLostCustomerAlerts(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { getOverdueServiceAlerts, getPaymentOverdueAlerts, getLostCustomerAlerts };
+// Clients who broke their own visit pattern (3+ jobs, absent > 1.5× personal avg interval)
+async function getBrokenPatternAlerts(req, res, next) {
+  try {
+    const r = await pool.query(`
+      WITH recent_jobs AS (
+        SELECT
+          j.client_id,
+          j.job_date::date                                              AS job_date,
+          ROW_NUMBER() OVER (PARTITION BY j.client_id ORDER BY j.job_date) AS rn
+        FROM jobs j
+        WHERE j.deleted_at IS NULL
+          AND j.status IN ('terminado', 'pagado')
+          AND j.job_date >= CURRENT_DATE - INTERVAL '18 months'
+      ),
+      client_intervals AS (
+        SELECT a.client_id, (b.job_date - a.job_date)::int AS gap_days
+        FROM recent_jobs a
+        JOIN recent_jobs b ON b.client_id = a.client_id AND b.rn = a.rn + 1
+      ),
+      client_stats AS (
+        SELECT
+          client_id,
+          COUNT(*) + 1               AS job_count,
+          ROUND(AVG(gap_days))::int  AS avg_interval_days
+        FROM client_intervals
+        GROUP BY client_id
+        HAVING COUNT(*) >= 2          -- requires 3+ jobs
+           AND AVG(gap_days) > 0
+      ),
+      last_visit AS (
+        SELECT DISTINCT ON (client_id)
+          client_id,
+          job_date                              AS last_job_date,
+          (CURRENT_DATE - job_date)::int        AS days_since_last
+        FROM recent_jobs
+        ORDER BY client_id, job_date DESC
+      )
+      SELECT
+        c.id            AS client_id,
+        c.full_name     AS client_name,
+        c.phone         AS client_phone,
+        c.email         AS client_email,
+        lv.last_job_date,
+        lv.days_since_last,
+        cs.avg_interval_days,
+        cs.job_count
+      FROM client_stats cs
+      JOIN last_visit lv ON lv.client_id = cs.client_id
+      JOIN clients c     ON c.id = cs.client_id
+      WHERE c.deleted_at IS NULL
+        AND lv.days_since_last > cs.avg_interval_days * 1.5
+      ORDER BY (lv.days_since_last::float / cs.avg_interval_days) DESC
+      LIMIT 100
+    `);
+
+    res.json(r.rows.map(row => {
+      const days      = parseInt(row.days_since_last);
+      const avgInt    = parseInt(row.avg_interval_days);
+      const threshold = Math.round(avgInt * 1.5);
+      return {
+        alert_type:    'broken_pattern',
+        severity:      computeSeverity(days, threshold),
+        client_id:     row.client_id,
+        client_name:   row.client_name,
+        client_phone:  row.client_phone  || null,
+        client_email:  row.client_email  || null,
+        entity_id:     row.client_id,
+        entity_label:  row.client_name,
+        current_value: days,
+        threshold,
+        unit:          'days',
+        context:       `Promedio personal: ${avgInt}d · ${row.job_count} visitas (18m)`,
+        action_route:  `/clientes/${row.client_id}`,
+      };
+    }));
+  } catch (err) { next(err); }
+}
+
+module.exports = { getOverdueServiceAlerts, getPaymentOverdueAlerts, getLostCustomerAlerts, getBrokenPatternAlerts };

@@ -158,6 +158,9 @@ export class ApiService {
       params: { threshold_days: thresholdDays.toString() }
     });
   }
+  getBrokenPatternAlerts() {
+    return this.http.get<AlertItem[]>(`${this.url}/alerts/broken-pattern`);
+  }
 
   // Retention (detailed per-vehicle view)
   getOverdueService(catalogItemId: string, thresholdDays: number) {

@@ -134,6 +134,7 @@ router.get('/retention/overdue-service', authenticate, requireAdminOrRecep, rete
 router.get('/alerts/overdue-service', authenticate, requireAdminOrRecep, alerts.getOverdueServiceAlerts);
 router.get('/alerts/payment-overdue', authenticate, requireAdmin,         alerts.getPaymentOverdueAlerts);
 router.get('/alerts/lost-customers',  authenticate, requireAdminOrRecep,  alerts.getLostCustomerAlerts);
+router.get('/alerts/broken-pattern',  authenticate, requireAdminOrRecep,  alerts.getBrokenPatternAlerts);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

@@ -123,6 +123,27 @@ const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2,
               </mat-expansion-panel>
             }
 
+            <!-- Historial roto -->
+            <mat-expansion-panel [expanded]="cfg.broken_pattern.enabled">
+              <mat-expansion-panel-header>
+                <div class="panel-header">
+                  <mat-slide-toggle
+                    [(ngModel)]="cfg.broken_pattern.enabled"
+                    (click)="$event.stopPropagation()"
+                    color="primary">
+                  </mat-slide-toggle>
+                  <span class="panel-title">Historial roto</span>
+                  <span class="panel-desc">Clientes fieles que rompieron su propio patrón de visitas</span>
+                </div>
+              </mat-expansion-panel-header>
+              <div class="panel-body">
+                <p class="field-hint">
+                  <mat-icon>insights</mat-icon>
+                  Dispara cuando un cliente con 3+ visitas en 18 meses lleva más de 1.5× su intervalo promedio personal sin aparecer. El umbral es personal — no configurable.
+                </p>
+              </div>
+            </mat-expansion-panel>
+
             <!-- Cliente inactivo -->
             <mat-expansion-panel [expanded]="cfg.lost_customer.enabled">
               <mat-expansion-panel-header>
@@ -330,6 +351,7 @@ const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2,
     .type-overdue_service  { background: #ede9fe; color: #7c3aed; }
     .type-payment_overdue  { background: #fee2e2; color: #dc2626; }
     .type-lost_customer    { background: #e0f2fe; color: #0369a1; }
+    .type-broken_pattern   { background: #fff7ed; color: #c2410c; }
 
     /* Row tints */
     .row-critical { background: #fff5f5; }
@@ -364,6 +386,9 @@ export class AlertsFeedComponent implements OnInit {
     lost_customer: {
       enabled:       true,
       threshold_days: 180,
+    },
+    broken_pattern: {
+      enabled: true,
     },
   };
 
@@ -446,7 +471,8 @@ export class AlertsFeedComponent implements OnInit {
     }
     return this.cfg.overdue_service.enabled
         || this.cfg.payment_overdue.enabled
-        || this.cfg.lost_customer.enabled;
+        || this.cfg.lost_customer.enabled
+        || this.cfg.broken_pattern.enabled;
   }
 
   evaluate() {
@@ -473,6 +499,11 @@ export class AlertsFeedComponent implements OnInit {
       calls['lost_customer'] = this.api.getLostCustomerAlerts(
         this.cfg.lost_customer.threshold_days,
       ).pipe(catchError(() => of([])));
+    }
+
+    if (this.cfg.broken_pattern.enabled) {
+      calls['broken_pattern'] = this.api.getBrokenPatternAlerts()
+        .pipe(catchError(() => of([])));
     }
 
     if (Object.keys(calls).length === 0) {
@@ -510,6 +541,7 @@ export class AlertsFeedComponent implements OnInit {
       overdue_service: 'Servicio',
       payment_overdue: 'Pago',
       lost_customer:   'Inactivo',
+      broken_pattern:  'Patrón roto',
     };
     return map[type] ?? type;
   }
