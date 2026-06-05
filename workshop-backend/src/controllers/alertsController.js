@@ -192,7 +192,7 @@ async function evalBrokenPattern({ bp_multiplier, bp_min_days }) {
     JOIN last_visit lv ON lv.client_id = cs.client_id
     JOIN clients c     ON c.id = cs.client_id
     WHERE c.deleted_at IS NULL
-      AND lv.days_since_last > GREATEST(cs.avg_interval_days * $1, $2)
+      AND lv.days_since_last > GREATEST(cs.avg_interval_days * $1, COALESCE($2, 0))
     ORDER BY (lv.days_since_last::float / cs.avg_interval_days) DESC
     LIMIT 100
   `, [bp_multiplier, bp_min_days]);
@@ -200,7 +200,8 @@ async function evalBrokenPattern({ bp_multiplier, bp_min_days }) {
   return r.rows.map(row => {
     const days      = parseInt(row.days_since_last);
     const avgInt    = parseInt(row.avg_interval_days);
-    const threshold = Math.max(Math.round(avgInt * parseFloat(bp_multiplier)), parseInt(bp_min_days));
+    const minDays   = parseInt(bp_min_days) || 0;
+    const threshold = Math.max(Math.round(avgInt * parseFloat(bp_multiplier)), minDays);
     return {
       alert_type:    'broken_pattern',
       severity:      computeSeverity(days, threshold),
@@ -289,20 +290,22 @@ async function evaluateAndPersist(def) {
 
 // ─── Public endpoints ──────────────────────────────────────────────────────
 
-// GET /alerts/feed — execute every enabled definition fresh
+// GET /alerts/feed — fresh queries without touching runner metadata
 async function feed(req, res, next) {
   try {
     const defs = await pool.query(
-      `SELECT * FROM alert_definitions WHERE enabled = true ORDER BY created_at ASC`
+      `SELECT d.*, ci.description AS catalog_item_description
+       FROM alert_definitions d
+       LEFT JOIN item_catalog ci ON ci.id = d.catalog_item_id
+       WHERE d.enabled = true ORDER BY d.created_at ASC`
     );
     const blocks = await Promise.all(defs.rows.map(async def => {
-      const { items, error } = await evaluateAndPersist(def);
-      // Re-fetch to get fresh last_evaluated_at / last_result_count
-      const updated = await pool.query(
-        `SELECT * FROM alert_definitions WHERE id = $1`,
-        [def.id]
-      );
-      return { definition: updated.rows[0], items, error };
+      try {
+        const items = await evaluateDefinition(def);
+        return { definition: def, items, error: null };
+      } catch (err) {
+        return { definition: def, items: [], error: err.message };
+      }
     }));
     res.json(blocks);
   } catch (err) { next(err); }

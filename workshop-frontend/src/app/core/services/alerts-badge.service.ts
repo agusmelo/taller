@@ -1,9 +1,9 @@
-import { Injectable, signal, OnDestroy } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { ApiService } from './api.service';
 import { AuthService } from '../auth/auth.service';
 
 @Injectable({ providedIn: 'root' })
-export class AlertsBadgeService implements OnDestroy {
+export class AlertsBadgeService {
   count = signal(0);
   lastTick = signal<string | null>(null);
 
@@ -37,5 +37,4 @@ export class AlertsBadgeService implements OnDestroy {
     });
   }
 
-  ngOnDestroy() { this.stop(); }
 }
