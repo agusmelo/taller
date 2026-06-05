@@ -17,6 +17,7 @@ const settings  = require('../controllers/settingsController');
 const paymentsPage = require('../controllers/paymentsPageController');
 const importCtrl   = require('../controllers/importController');
 const itemCatalog  = require('../controllers/itemCatalogController');
+const itemAnalytics = require('../controllers/itemAnalyticsController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -93,6 +94,12 @@ router.get('/dashboard/top-clients',        authenticate, requireAdmin, dashboar
 router.get('/dashboard/payment-methods',    authenticate, requireAdmin, dashboard.paymentMethods);
 router.get('/dashboard/new-clients',        authenticate, requireAdmin, dashboard.newClients);
 router.get('/dashboard/monthly-closing',   authenticate, requireAdmin, dashboard.monthlyClosing);
+
+// Dashboard - Items analytics (admin only)
+router.get('/dashboard/items/ranking',           authenticate, requireAdmin, itemAnalytics.ranking);
+router.get('/dashboard/items/mix',               authenticate, requireAdmin, itemAnalytics.mix);
+router.get('/dashboard/items/price-dispersion',  authenticate, requireAdmin, itemAnalytics.priceDispersion);
+router.get('/dashboard/items/adhoc-candidates',  authenticate, requireAdmin, itemAnalytics.adhocCandidates);
 
 // Payments page (admin only)
 router.get('/payments-page/summary',       authenticate, requireAdmin, paymentsPage.paymentsSummary);

@@ -21,6 +21,7 @@ import {
 } from '../../core/models';
 import { StatusLabelPipe } from '../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
+import { ItemsAnalyticsTabComponent } from './items-analytics/items-analytics-tab.component';
 import Chart from 'chart.js/auto';
 
 @Component({
@@ -30,7 +31,7 @@ import Chart from 'chart.js/auto';
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule,
     MatDatepickerModule, MatNativeDateModule, MatTabsModule,
-    StatusLabelPipe, AppCurrencyPipe
+    StatusLabelPipe, AppCurrencyPipe, ItemsAnalyticsTabComponent
   ],
   template: `
     <main class="content">
@@ -43,6 +44,9 @@ import Chart from 'chart.js/auto';
           </button>
         </div>
       </div>
+
+      <mat-tab-group [(selectedIndex)]="mainTabIndex" mat-stretch-tabs="false" mat-align-tabs="start" (selectedIndexChange)="onMainTabChange($event)">
+        <mat-tab label="Financiero">
 
       <!-- Section A: KPI Cards -->
       <div class="kpi-row kpi-row-6" *ngIf="summary">
@@ -335,37 +339,6 @@ import Chart from 'chart.js/auto';
         </mat-card>
       }
 
-      <!-- Top 5 Clients -->
-      <mat-card class="mb-16">
-        <mat-card-content>
-          <h3 class="card-title-lg">Top 5 clientes por ingresos</h3>
-          @if (topClients.length > 0) {
-            <table mat-table [dataSource]="topClients">
-              <ng-container matColumnDef="full_name">
-                <th mat-header-cell *matHeaderCellDef>Cliente</th>
-                <td mat-cell *matCellDef="let c; let i = index">
-                  {{ c.full_name }}
-                  @if (i === 0) { <span class="badge b-vip" style="margin-left:6px;">VIP</span> }
-                </td>
-              </ng-container>
-              <ng-container matColumnDef="total_paid">
-                <th mat-header-cell *matHeaderCellDef class="text-right">Total pagado</th>
-                <td mat-cell *matCellDef="let c" class="td-num">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
-              </ng-container>
-              <ng-container matColumnDef="job_count">
-                <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
-                <td mat-cell *matCellDef="let c" class="td-num">{{ c.job_count }}</td>
-              </ng-container>
-              <tr mat-header-row *matHeaderRowDef="['full_name','total_paid','job_count']"></tr>
-              <tr mat-row *matRowDef="let row; columns: ['full_name','total_paid','job_count'];"
-                  class="clickable-row" (click)="goToClient(row.id)"></tr>
-            </table>
-          } @else {
-            <div class="empty-state"><mat-icon>people</mat-icon><p>Sin datos aun</p></div>
-          }
-        </mat-card-content>
-      </mat-card>
-
       <!-- Section D: Recent Jobs -->
       <mat-card class="mb-16">
         <mat-card-content>
@@ -397,6 +370,41 @@ import Chart from 'chart.js/auto';
             <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','plate_number','status','job_date'];"
                 class="clickable-row" (click)="goToJob(row.id)"></tr>
           </table>
+        </mat-card-content>
+      </mat-card>
+
+        </mat-tab>
+
+        <mat-tab label="Clientes">
+
+      <!-- Top 5 Clients -->
+      <mat-card class="mb-16">
+        <mat-card-content>
+          <h3 class="card-title-lg">Top 5 clientes por ingresos</h3>
+          @if (topClients.length > 0) {
+            <table mat-table [dataSource]="topClients">
+              <ng-container matColumnDef="full_name">
+                <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                <td mat-cell *matCellDef="let c; let i = index">
+                  {{ c.full_name }}
+                  @if (i === 0) { <span class="badge b-vip" style="margin-left:6px;">VIP</span> }
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="total_paid">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Total pagado</th>
+                <td mat-cell *matCellDef="let c" class="td-num">{{ privacyMode ? '***' : (c.total_paid | appCurrency) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="job_count">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Trabajos</th>
+                <td mat-cell *matCellDef="let c" class="td-num">{{ c.job_count }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="['full_name','total_paid','job_count']"></tr>
+              <tr mat-row *matRowDef="let row; columns: ['full_name','total_paid','job_count'];"
+                  class="clickable-row" (click)="goToClient(row.id)"></tr>
+            </table>
+          } @else {
+            <div class="empty-state"><mat-icon>people</mat-icon><p>Sin datos aun</p></div>
+          }
         </mat-card-content>
       </mat-card>
 
@@ -464,6 +472,13 @@ import Chart from 'chart.js/auto';
           </table>
         </mat-card-content>
       </mat-card>
+
+        </mat-tab>
+
+        <mat-tab label="Items">
+          <app-items-analytics-tab [active]="mainTabIndex === 2"></app-items-analytics-tab>
+        </mat-tab>
+      </mat-tab-group>
     </main>
   `,
   styles: [`
@@ -556,6 +571,9 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   // Insights
   topClients: TopClient[] = [];
   newClientsData: NewClientsData | null = null;
+
+  // Main tabs
+  mainTabIndex = 0;
 
   private chart: Chart | null = null;
 
@@ -682,4 +700,11 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   goToJob(id: string) { this.router.navigate(['/trabajos', id]); }
   goToClient(id: string) { this.router.navigate(['/clientes', id]); }
+
+  onMainTabChange(_idx: number) {
+    // Re-render revenue chart when switching back to Financiero (canvas remounts).
+    if (this.mainTabIndex === 0) {
+      setTimeout(() => this.renderChart(), 50);
+    }
+  }
 }

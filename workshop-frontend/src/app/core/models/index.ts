@@ -148,6 +148,91 @@ export interface CatalogAnalyticsParams {
   min_jobs?: number;
 }
 
+export type ItemType = 'mano_de_obra' | 'repuesto' | 'otro';
+
+export interface ItemAnalyticsFilters {
+  date_from?: string;
+  date_to?: string;
+  item_type?: string;       // comma-separated subset of ItemType
+  origin?: 'catalog' | 'adhoc' | 'all';
+  hierarchy?: 'parent' | 'child' | 'all';
+  basis?: 'invoiced' | 'collected';
+  client_id?: string;
+  vehicle_id?: string;
+  make?: string;
+}
+
+export interface ItemRankingRow {
+  group_key: string;
+  catalog_item_id: string | null;
+  label: string;
+  item_type: ItemType;
+  origin: 'catalog' | 'adhoc';
+  usage_count: number;
+  units: number;
+  revenue: number;
+  revenue_pct: number;
+  last_used: string | null;
+}
+
+export interface ItemRankingResponse {
+  page: number;
+  page_size: number;
+  total: number;
+  revenue_total: number;
+  rows: ItemRankingRow[];
+}
+
+export interface ItemMixByType {
+  item_type: ItemType;
+  usage_count: number;
+  revenue: number;
+}
+
+export interface ItemMixMonthly {
+  month: string;
+  item_type: ItemType;
+  revenue: number;
+}
+
+export interface ItemMixResponse {
+  by_type: ItemMixByType[];
+  monthly: ItemMixMonthly[];
+}
+
+export interface ItemPriceDispersionRow {
+  catalog_item_id: string;
+  label: string;
+  item_type: ItemType;
+  n_uses: number;
+  avg_price: number;
+  min_price: number;
+  max_price: number;
+  stddev_price: number;
+  cv: number;
+  last_used: string | null;
+  is_outlier: boolean;
+}
+
+export interface ItemPriceDispersionResponse {
+  items: ItemPriceDispersionRow[];
+}
+
+export interface AdhocCandidateRow {
+  normalized_description: string;
+  sample_description: string;
+  item_type: ItemType;
+  usage_count: number;
+  distinct_jobs: number;
+  avg_price: number;
+  revenue: number;
+  last_used: string | null;
+}
+
+export interface AdhocCandidatesResponse {
+  candidates: AdhocCandidateRow[];
+}
+
 export interface CatalogBulkResult {
   inserted: CatalogItem[];
   skipped: { description: string; reason: 'duplicate' | 'empty' }[];

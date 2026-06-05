@@ -12,7 +12,9 @@ import {
   AgingReport, Debtor, PaymentsSummary, AppSettings,
   MonthlyClosing,
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
-  CatalogItemAnalytics, CatalogAnalyticsParams
+  CatalogItemAnalytics, CatalogAnalyticsParams,
+  ItemAnalyticsFilters, ItemRankingResponse, ItemMixResponse,
+  ItemPriceDispersionResponse, AdhocCandidatesResponse
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -167,6 +169,47 @@ export class ApiService {
     const params: Record<string, string> = {};
     if (month) params['month'] = month;
     return this.http.get<MonthlyClosing>(`${this.url}/dashboard/monthly-closing`, { params });
+  }
+
+  // Dashboard - Items analytics
+  private itemFiltersToParams(
+    f: ItemAnalyticsFilters,
+    extra: Record<string, string | number> = {}
+  ): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries({ ...f, ...extra })) {
+      if (v === null || v === undefined || v === '') continue;
+      out[k] = String(v);
+    }
+    return out;
+  }
+  getItemRanking(filters: ItemAnalyticsFilters, opts: {
+    page?: number; page_size?: number;
+    sort?: 'usage_count' | 'units' | 'revenue' | 'last_used' | 'label';
+    order?: 'asc' | 'desc';
+  } = {}) {
+    return this.http.get<ItemRankingResponse>(
+      `${this.url}/dashboard/items/ranking`,
+      { params: this.itemFiltersToParams(filters, opts) }
+    );
+  }
+  getItemMix(filters: ItemAnalyticsFilters) {
+    return this.http.get<ItemMixResponse>(
+      `${this.url}/dashboard/items/mix`,
+      { params: this.itemFiltersToParams(filters) }
+    );
+  }
+  getItemPriceDispersion(filters: ItemAnalyticsFilters) {
+    return this.http.get<ItemPriceDispersionResponse>(
+      `${this.url}/dashboard/items/price-dispersion`,
+      { params: this.itemFiltersToParams(filters) }
+    );
+  }
+  getAdhocCandidates(filters: ItemAnalyticsFilters, limit = 25) {
+    return this.http.get<AdhocCandidatesResponse>(
+      `${this.url}/dashboard/items/adhoc-candidates`,
+      { params: this.itemFiltersToParams(filters, { limit }) }
+    );
   }
 
   // Payments page
