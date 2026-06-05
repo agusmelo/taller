@@ -399,8 +399,10 @@ export interface MonthlyClosing {
   jobs: MonthlyClosingJob[];
 }
 
+export type AlertType = 'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
+
 export interface AlertItem {
-  alert_type:    'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
+  alert_type:    AlertType;
   severity:      'critical' | 'high' | 'medium' | 'low';
   client_id:     string;
   client_name:   string;
@@ -413,6 +415,37 @@ export interface AlertItem {
   unit:          'days' | 'currency';
   context:       string;
   action_route:  string;
+  definition_id?: string;
+}
+
+export interface AlertDefinition {
+  id:                          string;
+  alert_type:                  AlertType;
+  name:                        string;
+  enabled:                     boolean;
+  catalog_item_id:             string | null;
+  catalog_item_description?:   string | null;
+  threshold_days:              number | null;
+  bp_multiplier:               number | null;
+  bp_min_days:                 number | null;
+  eval_interval_hours:         number;
+  last_evaluated_at:           string | null;
+  last_result_count:           number;
+  last_run_error:              string | null;
+  created_by:                  string | null;
+  created_at:                  string;
+  updated_at:                  string;
+}
+
+export interface AlertFeedBlock {
+  definition: AlertDefinition;
+  items:      AlertItem[];
+  error:      string | null;
+}
+
+export interface AlertBadge {
+  critical_high_count: number;
+  last_runner_tick:    string | null;
 }
 
 export interface OverdueServiceItem {

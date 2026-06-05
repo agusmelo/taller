@@ -10,11 +10,13 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatBadgeModule } from '@angular/material/badge';
 import { FormsModule } from '@angular/forms';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from '../core/auth/auth.service';
 import { ApiService } from '../core/services/api.service';
 import { WorkshopConfigService } from '../core/services/workshop-config.service';
+import { AlertsBadgeService } from '../core/services/alerts-badge.service';
 import { SearchResults } from '../core/models';
 
 @Component({
@@ -24,7 +26,7 @@ import { SearchResults } from '../core/models';
     CommonModule, RouterOutlet, RouterLink, RouterLinkActive,
     MatSidenavModule, MatToolbarModule, MatListModule, MatIconModule,
     MatButtonModule, MatMenuModule, MatFormFieldModule, MatInputModule,
-    MatAutocompleteModule, FormsModule
+    MatAutocompleteModule, MatBadgeModule, FormsModule
   ],
   template: `
     <mat-sidenav-container class="layout-container">
@@ -140,9 +142,12 @@ import { SearchResults } from '../core/models';
             <span>{{ todayChip }}</span>
           </div>
 
-          <button mat-icon-button class="icon-btn bell" aria-label="Notificaciones">
-            <mat-icon>notifications_none</mat-icon>
-          </button>
+          <a routerLink="/alertas" mat-icon-button class="icon-btn bell" aria-label="Alertas">
+            <mat-icon [matBadge]="alertsBadge.count() > 0 ? alertsBadge.count() : null"
+              matBadgeColor="warn" matBadgeSize="small">
+              {{ alertsBadge.count() > 0 ? 'notifications_active' : 'notifications_none' }}
+            </mat-icon>
+          </a>
 
           @if (auth.isAdminOrRecep()) {
             <button class="btn btn-primary cta" (click)="goNewJob()">
@@ -384,6 +389,7 @@ export class LayoutComponent implements OnDestroy {
     public auth: AuthService,
     private api: ApiService,
     public workshopConfig: WorkshopConfigService,
+    public alertsBadge: AlertsBadgeService,
     private router: Router,
     private breakpointObserver: BreakpointObserver
   ) {
@@ -392,10 +398,12 @@ export class LayoutComponent implements OnDestroy {
     });
     this.refreshDateChip();
     this.dateTimer = setInterval(() => this.refreshDateChip(), 60_000);
+    this.alertsBadge.start();
   }
 
   ngOnDestroy() {
     if (this.dateTimer) clearInterval(this.dateTimer);
+    this.alertsBadge.stop();
   }
 
   private refreshDateChip() {

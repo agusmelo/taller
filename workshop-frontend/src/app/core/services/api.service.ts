@@ -13,7 +13,8 @@ import {
   MonthlyClosing,
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
   CatalogItemAnalytics, CatalogAnalyticsParams,
-  OverdueServiceItem, AlertItem
+  OverdueServiceItem, AlertItem,
+  AlertDefinition, AlertFeedBlock, AlertBadge
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -142,24 +143,39 @@ export class ApiService {
     );
   }
 
-  // Alerts feed
-  getOverdueServiceAlerts(catalogItemId: string, thresholdDays: number) {
-    return this.http.get<AlertItem[]>(`${this.url}/alerts/overdue-service`, {
-      params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
+  // Alert definitions (CRUD, admin)
+  listAlertDefinitions() {
+    return this.http.get<AlertDefinition[]>(`${this.url}/alert-definitions`);
+  }
+  createAlertDefinition(data: Partial<AlertDefinition>) {
+    return this.http.post<AlertDefinition>(`${this.url}/alert-definitions`, data);
+  }
+  updateAlertDefinition(id: string, data: Partial<AlertDefinition>) {
+    return this.http.patch<AlertDefinition>(`${this.url}/alert-definitions/${id}`, data);
+  }
+  deleteAlertDefinition(id: string) {
+    return this.http.delete(`${this.url}/alert-definitions/${id}`);
+  }
+  evaluateAlertDefinition(id: string) {
+    return this.http.post<AlertFeedBlock>(`${this.url}/alert-definitions/${id}/evaluate`, {});
+  }
+
+  // Alerts feed (live + dismiss + badge)
+  getAlertsFeed() {
+    return this.http.get<AlertFeedBlock[]>(`${this.url}/alerts/feed`);
+  }
+  dismissAlert(definitionId: string, entityId: string, snoozeDays: number) {
+    return this.http.post(`${this.url}/alerts/dismiss`, {
+      definition_id: definitionId,
+      entity_id:     entityId,
+      snooze_days:   snoozeDays,
     });
   }
-  getPaymentOverdueAlerts(thresholdDays: number) {
-    return this.http.get<AlertItem[]>(`${this.url}/alerts/payment-overdue`, {
-      params: { threshold_days: thresholdDays.toString() }
-    });
+  getAlertsBadge() {
+    return this.http.get<AlertBadge>(`${this.url}/alerts/badge`);
   }
-  getLostCustomerAlerts(thresholdDays: number) {
-    return this.http.get<AlertItem[]>(`${this.url}/alerts/lost-customers`, {
-      params: { threshold_days: thresholdDays.toString() }
-    });
-  }
-  getBrokenPatternAlerts() {
-    return this.http.get<AlertItem[]>(`${this.url}/alerts/broken-pattern`);
+  evaluateAllAlerts() {
+    return this.http.post<{ ok: boolean; evaluated: number }>(`${this.url}/alerts/evaluate-all`, {});
   }
 
   // Retention (detailed per-vehicle view)
