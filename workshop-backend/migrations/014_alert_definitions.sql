@@ -1,7 +1,7 @@
 -- Persistent alert definitions (workshop-wide), each with its own runner cadence.
 -- Dismissals snooze a (definition, entity) pair until snooze_until.
 
-CREATE TABLE alert_definitions (
+CREATE TABLE IF NOT EXISTS alert_definitions (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   alert_type           TEXT NOT NULL
     CHECK (alert_type IN ('overdue_service','payment_overdue','lost_customer','broken_pattern')),
@@ -28,21 +28,21 @@ CREATE TABLE alert_definitions (
 -- Uniqueness:
 --   * overdue_service → one per (type, catalog_item_id)
 --   * other types     → one per type (catalog_item_id always NULL)
-CREATE UNIQUE INDEX uq_alert_def_with_item
+CREATE UNIQUE INDEX IF NOT EXISTS uq_alert_def_with_item
   ON alert_definitions (alert_type, catalog_item_id)
   WHERE catalog_item_id IS NOT NULL;
 
-CREATE UNIQUE INDEX uq_alert_def_no_item
+CREATE UNIQUE INDEX IF NOT EXISTS uq_alert_def_no_item
   ON alert_definitions (alert_type)
   WHERE catalog_item_id IS NULL;
 
 -- Index to find definitions that are due for re-evaluation
-CREATE INDEX idx_alert_def_eval_due
+CREATE INDEX IF NOT EXISTS idx_alert_def_eval_due
   ON alert_definitions (last_evaluated_at)
   WHERE enabled = true;
 
 
-CREATE TABLE alert_dismissals (
+CREATE TABLE IF NOT EXISTS alert_dismissals (
   id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   alert_definition_id  UUID NOT NULL REFERENCES alert_definitions(id) ON DELETE CASCADE,
   entity_id            UUID NOT NULL,
@@ -52,5 +52,5 @@ CREATE TABLE alert_dismissals (
   UNIQUE (alert_definition_id, entity_id)
 );
 
-CREATE INDEX idx_alert_dismissals_active
+CREATE INDEX IF NOT EXISTS idx_alert_dismissals_active
   ON alert_dismissals (alert_definition_id, snooze_until);
