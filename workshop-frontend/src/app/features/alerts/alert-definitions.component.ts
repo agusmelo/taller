@@ -37,23 +37,30 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
             <mat-icon>arrow_back</mat-icon>
             Volver al feed
           </a>
-          <h1 class="page-title">Definiciones de alertas</h1>
-          <p class="page-sub">Las definiciones del taller — todos los usuarios ven el mismo feed</p>
+          <h1>Definiciones de alertas</h1>
+          <p class="page-sub">Las definiciones son del taller — todos los usuarios ven el mismo feed</p>
         </div>
-        <button mat-flat-button color="primary" (click)="openCreate()">
-          <mat-icon>add</mat-icon>
-          Nueva definición
-        </button>
+        <div class="page-head-actions">
+          <button class="btn btn-primary" (click)="openCreate()">
+            <mat-icon class="btn-ico">add</mat-icon>
+            Nueva definición
+          </button>
+        </div>
       </div>
 
       @if (loading && definitions.length === 0) {
-        <div class="state-center"><mat-spinner diameter="32"></mat-spinner></div>
+        <div class="empty-state"><mat-spinner diameter="32"></mat-spinner></div>
       }
 
       @if (!loading && definitions.length === 0) {
-        <div class="state-center">
+        <div class="empty-state">
           <mat-icon>notifications_off</mat-icon>
-          <p>Aún no hay definiciones. Creá la primera.</p>
+          <p>Aún no hay definiciones</p>
+          <p class="empty-hint">Creá la primera para empezar a recibir alertas en el feed.</p>
+          <button class="btn btn-primary mt-16" (click)="openCreate()">
+            <mat-icon class="btn-ico">add</mat-icon>
+            Crear definición
+          </button>
         </div>
       }
 
@@ -65,7 +72,7 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
               <th mat-header-cell *matHeaderCellDef>Nombre</th>
               <td mat-cell *matCellDef="let d">
                 <div class="d-name">{{ d.name }}</div>
-                <span class="type-badge type-{{ d.alert_type }}">{{ typeLabel(d.alert_type) }}</span>
+                <span class="badge type-{{ d.alert_type }}">{{ typeLabel(d.alert_type) }}</span>
               </td>
             </ng-container>
 
@@ -130,14 +137,8 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
     </main>
   `,
   styles: [`
-    .content { padding: 24px; max-width: 1100px; }
-    .page-head {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      gap: 16px;
-    }
+    .content { max-width: 1140px; }
+
     .back-link {
       display: inline-flex;
       align-items: center;
@@ -145,47 +146,53 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
       font-size: 12px;
       color: var(--text-3);
       text-decoration: none;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      transition: color .14s;
     }
     .back-link:hover { color: var(--text-1); }
     .back-link mat-icon { font-size: 14px; width: 14px; height: 14px; }
-    .page-title { font-size: 20px; font-weight: 700; color: var(--text-1); margin: 0 0 4px; }
-    .page-sub   { font-size: 12px; color: var(--text-3); margin: 0; }
 
-    .state-center {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 12px;
-      padding: 60px 0; color: var(--text-3);
+    .page-sub {
+      font-size: 12px;
+      color: var(--text-3);
+      margin: 4px 0 0;
     }
-    .state-center mat-icon { font-size: 48px; width: 48px; height: 48px; }
-    .state-center p { font-size: 14px; margin: 0; }
 
-    .table-card { overflow: hidden; }
-    ::ng-deep .table-card .mat-mdc-card-content { padding: 0 !important; }
+    .btn-ico { font-size: 16px; width: 16px; height: 16px; }
+
     table { width: 100%; }
 
-    .d-name { font-weight: 600; font-size: 13px; }
-    .params { font-size: 12px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; }
-    .muted  { color: var(--text-3); }
+    .d-name {
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: -.005em;
+      margin-bottom: 4px;
+    }
+    .params {
+      font-size: 12px;
+      color: var(--text-2);
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .muted { color: var(--text-3); }
     .col-right { text-align: right !important; }
 
-    .type-badge {
-      display: inline-block;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 600;
-      margin-top: 2px;
-    }
-    .type-overdue_service { background: #ede9fe; color: #7c3aed; }
-    .type-payment_overdue { background: #fee2e2; color: #dc2626; }
-    .type-lost_customer   { background: #e0f2fe; color: #0369a1; }
-    .type-broken_pattern  { background: #fff7ed; color: #c2410c; }
+    /* Color the global .badge with type tokens */
+    .badge.type-overdue_service { background: var(--purple-lt); color: var(--purple); }
+    .badge.type-payment_overdue { background: var(--red-lt);    color: var(--red); }
+    .badge.type-lost_customer   { background: var(--blue-lt);   color: var(--blue); }
+    .badge.type-broken_pattern  { background: var(--amber-lt);  color: var(--amber); }
 
     .count-pill {
-      background: #fee2e2; color: #dc2626;
-      padding: 2px 8px; border-radius: 10px;
-      font-size: 11px; font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      background: var(--red-lt);
+      color: var(--red);
+      border: 1px solid var(--red-bd);
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
     }
   `]
 })
