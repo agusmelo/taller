@@ -127,8 +127,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 })
 export class FormDialogComponent {
   @Input() title = '';
-  @Input() subtitle: string | null = null;
-  @Input() error:    string | null = null;
+  @Input() subtitle: string | null | undefined = null;
+  @Input() error:    string | null | undefined = null;
   @Input() saving = false;
   @Input() canSave = true;
   @Input() saveLabel    = 'Guardar';
