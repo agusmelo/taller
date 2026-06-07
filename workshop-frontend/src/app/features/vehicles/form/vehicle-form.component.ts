@@ -9,29 +9,39 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatIconModule } from '@angular/material/icon';
 import { ApiService } from '../../../core/services/api.service';
 import { Client, Vehicle } from '../../../core/models';
+import { FormDialogComponent } from '../../../shared/components/form-dialog/form-dialog.component';
+import { extractApiError } from '../../../shared/utils/api-error';
 
 @Component({
   selector: 'app-vehicle-form',
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatDialogModule, MatFormFieldModule,
-    MatInputModule, MatButtonModule, MatAutocompleteModule, MatIconModule
+    MatInputModule, MatButtonModule, MatAutocompleteModule, MatIconModule,
+    FormDialogComponent,
   ],
   template: `
-    <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Vehiculo</h2>
-    <mat-dialog-content>
-      @if (error) { <div class="banner banner-error">{{ error }}</div> }
+    <app-form-dialog
+      [title]="isEdit ? 'Editar vehículo' : 'Nuevo vehículo'"
+      [subtitle]="isEdit ? (form.plate_number + ' · ' + form.make + ' ' + form.model) : 'Patente, dueño y datos del vehículo'"
+      [error]="error"
+      [saving]="saving"
+      [canSave]="canSave()"
+      (save)="save()"
+      (cancel)="dialogRef.close(false)">
 
       @if (!isEdit) {
         <div class="form-grid">
           <mat-form-field appearance="outline">
-            <mat-label>Patente</mat-label>
-            <input matInput [(ngModel)]="form.plate_number" required style="text-transform:uppercase;">
+            <mat-label>Patente <span class="req">*</span></mat-label>
+            <input matInput [(ngModel)]="form.plate_number" required
+              class="plate-input" autofocus>
+            <mat-hint>Ej: ABC1234</mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline">
-            <mat-label>Dueno (buscar por nombre, RUT o telefono)</mat-label>
+            <mat-label>Dueño <span class="req">*</span></mat-label>
             <input matInput [(ngModel)]="clientSearch" (input)="onClientSearch()"
-                   [matAutocomplete]="clientAuto" placeholder="Ej: Juan, 12345678, 099...">
+                   [matAutocomplete]="clientAuto" placeholder="Buscar por nombre, RUT o teléfono">
             <mat-icon matSuffix>search</mat-icon>
             <mat-autocomplete #clientAuto="matAutocomplete"
                               (optionSelected)="selectClient($event)"
@@ -40,7 +50,7 @@ import { Client, Vehicle } from '../../../core/models';
                 <mat-option [value]="c">
                   <strong>{{ c.full_name }}</strong>
                   {{ c.rut ? '(' + c.rut + ')' : '' }}
-                  @if (c.phone) { <small style="color:var(--text-3);"> - {{ c.phone }}</small> }
+                  @if (c.phone) { <small class="ac-meta"> — {{ c.phone }}</small> }
                 </mat-option>
               }
               @if (clientSearch.length >= 2 && clientResults.length === 0 && !searching) {
@@ -63,18 +73,18 @@ import { Client, Vehicle } from '../../../core/models';
 
       <div class="form-grid">
         <mat-form-field appearance="outline">
-          <mat-label>Marca</mat-label>
+          <mat-label>Marca <span class="req">*</span></mat-label>
           <input matInput [(ngModel)]="form.make" required>
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>Modelo</mat-label>
+          <mat-label>Modelo <span class="req">*</span></mat-label>
           <input matInput [(ngModel)]="form.model" required>
         </mat-form-field>
       </div>
-      <div class="form-grid" style="grid-template-columns:1fr 1fr 1fr;">
+      <div class="form-grid grid-3">
         <mat-form-field appearance="outline">
-          <mat-label>Ano</mat-label>
-          <input matInput [(ngModel)]="form.year" type="number">
+          <mat-label>Año</mat-label>
+          <input matInput [(ngModel)]="form.year" type="number" inputmode="numeric">
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Color</mat-label>
@@ -82,27 +92,27 @@ import { Client, Vehicle } from '../../../core/models';
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Kilometraje</mat-label>
-          <input matInput [(ngModel)]="form.mileage" type="number">
+          <input matInput [(ngModel)]="form.mileage" type="number" inputmode="numeric">
+          <span matTextSuffix>km</span>
         </mat-form-field>
       </div>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-raised-button color="primary" (click)="save()"
-              [disabled]="saving || (!isEdit && !form.client_id)">
-        {{ saving ? 'Guardando...' : 'Guardar' }}
-      </button>
-    </mat-dialog-actions>
+    </app-form-dialog>
   `,
   styles: [`
     .full-width { width: 100%; }
+    .plate-input { text-transform: uppercase; letter-spacing: .02em; font-weight: 600; }
+    .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .ac-meta { color: var(--text-3); }
+    @media (max-width: 600px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
   `]
 })
 export class VehicleFormComponent {
   isEdit: boolean;
   saving = false;
   searching = false;
-  error = '';
+  error: string | null = null;
   clientSearch = '';
   clientResults: Client[] = [];
   selectedClient: Client | null = null;
@@ -112,13 +122,20 @@ export class VehicleFormComponent {
 
   constructor(
     private api: ApiService,
-    private dialogRef: MatDialogRef<VehicleFormComponent>,
+    public  dialogRef: MatDialogRef<VehicleFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { vehicle?: Vehicle } | null
   ) {
     this.isEdit = !!data?.vehicle;
     if (data?.vehicle) {
       this.form = { ...data.vehicle };
     }
+  }
+
+  canSave(): boolean {
+    if (this.saving) return false;
+    if (!this.form.plate_number || !this.form.make || !this.form.model) return false;
+    if (!this.isEdit && !this.form.client_id) return false;
+    return true;
   }
 
   displayClient = (c: Client | string): string => {
@@ -153,13 +170,16 @@ export class VehicleFormComponent {
 
   save() {
     this.saving = true;
-    this.error = '';
+    this.error = null;
     const obs = this.isEdit
       ? this.api.updateVehicle(this.data!.vehicle!.id, this.form)
       : this.api.createVehicle(this.form);
     obs.subscribe({
       next: () => this.dialogRef.close(true),
-      error: (err) => { this.saving = false; this.error = err.error?.detalles?.map((d: any) => d.mensaje).join(', ') || err.error?.error || 'Error al guardar'; }
+      error: (err) => {
+        this.saving = false;
+        this.error = extractApiError(err);
+      }
     });
   }
 }
