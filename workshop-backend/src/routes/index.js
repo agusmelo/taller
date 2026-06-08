@@ -19,6 +19,7 @@ const importCtrl   = require('../controllers/importController');
 const itemCatalog  = require('../controllers/itemCatalogController');
 const retention    = require('../controllers/retentionController');
 const alerts       = require('../controllers/alertsController');
+const alertDefs    = require('../controllers/alertDefinitionsController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -130,10 +131,19 @@ router.delete('/item-catalog/:id',           authenticate, requireAdmin, v.uuidP
 // Retention (detailed per-vehicle search, kept for API compat)
 router.get('/retention/overdue-service', authenticate, requireAdminOrRecep, retention.getOverdueService);
 
-// Alerts feed (unified OCA endpoints)
-router.get('/alerts/overdue-service', authenticate, requireAdminOrRecep, alerts.getOverdueServiceAlerts);
-router.get('/alerts/payment-overdue', authenticate, requireAdmin,         alerts.getPaymentOverdueAlerts);
-router.get('/alerts/lost-customers',  authenticate, requireAdminOrRecep,  alerts.getLostCustomerAlerts);
+// Alert definitions CRUD (admin only)
+router.get('/alert-definitions',               authenticate, requireAdmin, alertDefs.list);
+router.post('/alert-definitions',              authenticate, requireAdmin, alertDefs.create);
+router.get('/alert-definitions/:id',           authenticate, requireAdmin, alertDefs.getOne);
+router.patch('/alert-definitions/:id',         authenticate, requireAdmin, alertDefs.update);
+router.delete('/alert-definitions/:id',        authenticate, requireAdmin, alertDefs.remove);
+router.post('/alert-definitions/:id/evaluate', authenticate, requireAdminOrRecep, alertDefs.evaluate);
+
+// Alerts feed
+router.get('/alerts/feed',          authenticate, requireAdminOrRecep, alerts.feed);
+router.post('/alerts/dismiss',      authenticate, requireAdminOrRecep, alerts.dismiss);
+router.get('/alerts/badge',         authenticate, requireAdminOrRecep, alerts.badge);
+router.post('/alerts/evaluate-all', authenticate, requireAdminOrRecep, alerts.evaluateAll);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

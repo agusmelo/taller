@@ -81,6 +81,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/alerts/alerts-feed.component')
           .then(m => m.AlertsFeedComponent)
       },
+      {
+        path: 'alertas/definiciones',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/alerts/alert-definitions.component')
+          .then(m => m.AlertDefinitionsComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }

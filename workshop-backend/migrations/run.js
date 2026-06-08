@@ -22,6 +22,10 @@ const migrations = [
   '008_item_catalog.sql',
   '009_item_catalog_children.sql',
   '010_item_catalog_backfill.sql',
+  '011_catalog_item_ref.sql',
+  '012_catalog_analytics_index.sql',
+  '013_jobs_job_date_index.sql',
+  '014_alert_definitions.sql',
 ];
 
 async function run() {
