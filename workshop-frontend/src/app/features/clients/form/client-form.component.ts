@@ -32,7 +32,7 @@ import { extractApiError } from '../../../shared/utils/api-error';
 
       <div class="form-grid">
         <mat-form-field appearance="outline">
-          <mat-label>Nombre completo <span class="req">*</span></mat-label>
+          <mat-label>Nombre completo</mat-label>
           <input matInput [(ngModel)]="form.full_name" required
             (ngModelChange)="onNameChange()" autofocus>
         </mat-form-field>

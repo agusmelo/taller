@@ -33,13 +33,13 @@ import { extractApiError } from '../../../shared/utils/api-error';
       @if (!isEdit) {
         <div class="form-grid">
           <mat-form-field appearance="outline">
-            <mat-label>Patente <span class="req">*</span></mat-label>
+            <mat-label>Patente</mat-label>
             <input matInput [(ngModel)]="form.plate_number" required
               class="plate-input" autofocus>
             <mat-hint>Ej: ABC1234</mat-hint>
           </mat-form-field>
           <mat-form-field appearance="outline">
-            <mat-label>Dueño <span class="req">*</span></mat-label>
+            <mat-label>Dueño</mat-label>
             <input matInput [(ngModel)]="clientSearch" (input)="onClientSearch()"
                    [matAutocomplete]="clientAuto" placeholder="Buscar por nombre, RUT o teléfono">
             <mat-icon matSuffix>search</mat-icon>
@@ -73,11 +73,11 @@ import { extractApiError } from '../../../shared/utils/api-error';
 
       <div class="form-grid">
         <mat-form-field appearance="outline">
-          <mat-label>Marca <span class="req">*</span></mat-label>
+          <mat-label>Marca</mat-label>
           <input matInput [(ngModel)]="form.make" required>
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>Modelo <span class="req">*</span></mat-label>
+          <mat-label>Modelo</mat-label>
           <input matInput [(ngModel)]="form.model" required>
         </mat-form-field>
       </div>

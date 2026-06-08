@@ -36,18 +36,18 @@ import { extractApiError } from '../../shared/utils/api-error';
       (cancel)="dialogRef.close(false)">
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Username <span class="req">*</span></mat-label>
+        <mat-label>Username</mat-label>
         <input matInput [(ngModel)]="form.username" required [disabled]="isEdit" autofocus>
         <mat-hint>Mínimo 3 caracteres · no se puede cambiar después</mat-hint>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Nombre completo <span class="req">*</span></mat-label>
+        <mat-label>Nombre completo</mat-label>
         <input matInput [(ngModel)]="form.full_name" required>
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Rol <span class="req">*</span></mat-label>
+        <mat-label>Rol</mat-label>
         <mat-select [(ngModel)]="form.role" required>
           <mat-option value="admin">Administrador</mat-option>
           <mat-option value="recepcionista">Recepcionista</mat-option>
@@ -56,10 +56,7 @@ import { extractApiError } from '../../shared/utils/api-error';
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>
-          {{ isEdit ? 'Nueva contraseña' : 'Contraseña' }}
-          @if (!isEdit) { <span class="req">*</span> }
-        </mat-label>
+        <mat-label>{{ isEdit ? 'Nueva contraseña' : 'Contraseña' }}</mat-label>
         <input matInput [(ngModel)]="form.password" type="password" [required]="!isEdit">
         <mat-hint>
           @if (isEdit) {

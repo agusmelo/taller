@@ -40,7 +40,7 @@ import { FormDialogComponent } from '../../shared/components/form-dialog/form-di
       </div>
 
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Monto <span class="req">*</span></mat-label>
+        <mat-label>Monto</mat-label>
         <input matInput type="number" [(ngModel)]="amount" min="0.01" [max]="data.job.balance"
           inputmode="decimal" autofocus>
         <span matTextPrefix>$&nbsp;</span>

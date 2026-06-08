@@ -306,11 +306,12 @@ html, body {
   }
 }
 
-// Required field marker — sits next to a mat-label or any label text
-.req {
-  color: var(--red);
+// Required field marker — style Material's auto-injected asterisk
+// (rendered when an input has `required`). One source of truth, no
+// duplicated <span class="req">*</span> next to <mat-label>.
+.mat-mdc-form-field-required-marker {
+  color: var(--red) !important;
   font-weight: 700;
-  margin-left: 2px;
 }
 
 // Inline keyboard hint shown next to the primary action in dialogs

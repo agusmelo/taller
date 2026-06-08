@@ -41,13 +41,13 @@ import { extractApiError } from '../../../shared/utils/api-error';
 
         <form (ngSubmit)="onLogin()" class="login-form" [class.is-loading]="loading">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Usuario <span class="req">*</span></mat-label>
+            <mat-label>Usuario</mat-label>
             <input matInput [(ngModel)]="username" name="username" required autofocus
                    [disabled]="loading">
             <mat-icon matPrefix>person</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Contraseña <span class="req">*</span></mat-label>
+            <mat-label>Contraseña</mat-label>
             <input matInput [type]="hidePassword ? 'password' : 'text'"
                    [(ngModel)]="password" name="password" required
                    [disabled]="loading">

@@ -310,13 +310,13 @@ interface DialogData { def: AlertDefinition | null; }
 
       <div class="def-form-body">
         <mat-form-field appearance="outline" class="full">
-          <mat-label>Nombre <span class="req">*</span></mat-label>
+          <mat-label>Nombre</mat-label>
           <input matInput [(ngModel)]="form.name" maxlength="120" required autofocus>
           <mat-hint>Hasta 120 caracteres</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
-          <mat-label>Tipo de alerta <span class="req">*</span></mat-label>
+          <mat-label>Tipo de alerta</mat-label>
           <mat-select [(ngModel)]="form.alert_type" [disabled]="!!data.def"
             (selectionChange)="onTypeChange()">
             <mat-option value="overdue_service">Servicio vencido (por ítem del catálogo)</mat-option>
@@ -331,7 +331,7 @@ interface DialogData { def: AlertDefinition | null; }
 
         @if (form.alert_type === 'overdue_service') {
           <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
-            <mat-label>Ítem del catálogo <span class="req">*</span></mat-label>
+            <mat-label>Ítem del catálogo</mat-label>
             <input matInput
               [(ngModel)]="catalogQuery"
               (ngModelChange)="onCatalogInput($event)"
@@ -358,7 +358,7 @@ interface DialogData { def: AlertDefinition | null; }
           || form.alert_type === 'payment_overdue'
           || form.alert_type === 'lost_customer') {
           <mat-form-field appearance="outline">
-            <mat-label>Umbral <span class="req">*</span></mat-label>
+            <mat-label>Umbral</mat-label>
             <input matInput type="number" min="1" max="3650"
               [(ngModel)]="form.threshold_days" required inputmode="numeric">
             <span matTextSuffix>días</span>
