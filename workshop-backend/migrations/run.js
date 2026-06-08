@@ -26,6 +26,8 @@ const migrations = [
   '012_catalog_analytics_index.sql',
   '013_jobs_job_date_index.sql',
   '014_alert_definitions.sql',
+  '015_alert_workshop_and_cascade.sql',
+  '016_seed_alert_definitions.sql',
 ];
 
 async function run() {

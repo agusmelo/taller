@@ -350,13 +350,41 @@ async function replaceChildren(req, res, next) {
 }
 
 async function remove(req, res, next) {
+  const client = await pool.connect();
   try {
-    const r = await pool.query(
-      `DELETE FROM item_catalog WHERE id = $1 AND parent_id IS NULL`, [req.params.id]
+    await client.query('BEGIN');
+
+    // Orfanar y desactivar definiciones de alerta que apuntan a este ítem,
+    // antes de borrarlo. El FK con ON DELETE SET NULL preserva la fila igual,
+    // pero el UPDATE explícito garantiza que la definición quede enabled=false
+    // (el runner no la evalúa) y registra el cambio en updated_at.
+    await client.query(
+      `UPDATE alert_definitions
+         SET enabled         = false,
+             catalog_item_id = NULL,
+             updated_at      = NOW()
+       WHERE catalog_item_id = $1`,
+      [req.params.id]
     );
-    if (r.rowCount === 0) return res.status(404).json({ error: 'Item no encontrado' });
+
+    const r = await client.query(
+      `DELETE FROM item_catalog WHERE id = $1 AND parent_id IS NULL`,
+      [req.params.id]
+    );
+
+    if (r.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item no encontrado' });
+    }
+
+    await client.query('COMMIT');
     res.status(204).send();
-  } catch (err) { next(err); }
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    client.release();
+  }
 }
 
 async function analytics(req, res, next) {
