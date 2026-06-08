@@ -159,6 +159,10 @@ import { extractApiError } from '../../../shared/utils/api-error';
       font-size: 18px;
       width: 18px;
       height: 18px;
+      line-height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
       transition: transform .15s;
     }
     .login-btn:hover:not(:disabled) .login-btn-ico {
