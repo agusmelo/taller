@@ -20,6 +20,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
+import { FormDialogComponent } from '../../shared/components/form-dialog/form-dialog.component';
+import { extractApiError } from '../../shared/utils/api-error';
 
 @Component({
   selector: 'app-alert-definitions',
@@ -37,23 +39,30 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
             <mat-icon>arrow_back</mat-icon>
             Volver al feed
           </a>
-          <h1 class="page-title">Definiciones de alertas</h1>
-          <p class="page-sub">Las definiciones del taller — todos los usuarios ven el mismo feed</p>
+          <h1>Definiciones de alertas</h1>
+          <p class="page-sub">Las definiciones son del taller — todos los usuarios ven el mismo feed</p>
         </div>
-        <button mat-flat-button color="primary" (click)="openCreate()">
-          <mat-icon>add</mat-icon>
-          Nueva definición
-        </button>
+        <div class="page-head-actions">
+          <button class="btn btn-primary" (click)="openCreate()">
+            <mat-icon class="btn-ico">add</mat-icon>
+            Nueva definición
+          </button>
+        </div>
       </div>
 
       @if (loading && definitions.length === 0) {
-        <div class="state-center"><mat-spinner diameter="32"></mat-spinner></div>
+        <div class="empty-state"><mat-spinner diameter="32"></mat-spinner></div>
       }
 
       @if (!loading && definitions.length === 0) {
-        <div class="state-center">
+        <div class="empty-state">
           <mat-icon>notifications_off</mat-icon>
-          <p>Aún no hay definiciones. Creá la primera.</p>
+          <p>Aún no hay definiciones</p>
+          <p class="empty-hint">Creá la primera para empezar a recibir alertas en el feed.</p>
+          <button class="btn btn-primary mt-16" (click)="openCreate()">
+            <mat-icon class="btn-ico">add</mat-icon>
+            Crear definición
+          </button>
         </div>
       }
 
@@ -65,7 +74,7 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
               <th mat-header-cell *matHeaderCellDef>Nombre</th>
               <td mat-cell *matCellDef="let d">
                 <div class="d-name">{{ d.name }}</div>
-                <span class="type-badge type-{{ d.alert_type }}">{{ typeLabel(d.alert_type) }}</span>
+                <span class="badge type-{{ d.alert_type }}">{{ typeLabel(d.alert_type) }}</span>
               </td>
             </ng-container>
 
@@ -130,14 +139,8 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
     </main>
   `,
   styles: [`
-    .content { padding: 24px; max-width: 1100px; }
-    .page-head {
-      display: flex;
-      align-items: flex-end;
-      justify-content: space-between;
-      margin-bottom: 16px;
-      gap: 16px;
-    }
+    .content { max-width: 1140px; }
+
     .back-link {
       display: inline-flex;
       align-items: center;
@@ -145,47 +148,53 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
       font-size: 12px;
       color: var(--text-3);
       text-decoration: none;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      transition: color .14s;
     }
     .back-link:hover { color: var(--text-1); }
     .back-link mat-icon { font-size: 14px; width: 14px; height: 14px; }
-    .page-title { font-size: 20px; font-weight: 700; color: var(--text-1); margin: 0 0 4px; }
-    .page-sub   { font-size: 12px; color: var(--text-3); margin: 0; }
 
-    .state-center {
-      display: flex; flex-direction: column;
-      align-items: center; gap: 12px;
-      padding: 60px 0; color: var(--text-3);
+    .page-sub {
+      font-size: 12px;
+      color: var(--text-3);
+      margin: 4px 0 0;
     }
-    .state-center mat-icon { font-size: 48px; width: 48px; height: 48px; }
-    .state-center p { font-size: 14px; margin: 0; }
 
-    .table-card { overflow: hidden; }
-    ::ng-deep .table-card .mat-mdc-card-content { padding: 0 !important; }
+    .btn-ico { font-size: 16px; width: 16px; height: 16px; }
+
     table { width: 100%; }
 
-    .d-name { font-weight: 600; font-size: 13px; }
-    .params { font-size: 12px; color: var(--text-2); font-family: 'JetBrains Mono', monospace; }
-    .muted  { color: var(--text-3); }
+    .d-name {
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: -.005em;
+      margin-bottom: 4px;
+    }
+    .params {
+      font-size: 12px;
+      color: var(--text-2);
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .muted { color: var(--text-3); }
     .col-right { text-align: right !important; }
 
-    .type-badge {
-      display: inline-block;
-      padding: 1px 6px;
-      border-radius: 4px;
-      font-size: 10px;
-      font-weight: 600;
-      margin-top: 2px;
-    }
-    .type-overdue_service { background: #ede9fe; color: #7c3aed; }
-    .type-payment_overdue { background: #fee2e2; color: #dc2626; }
-    .type-lost_customer   { background: #e0f2fe; color: #0369a1; }
-    .type-broken_pattern  { background: #fff7ed; color: #c2410c; }
+    /* Color the global .badge with type tokens */
+    .badge.type-overdue_service { background: var(--purple-lt); color: var(--purple); }
+    .badge.type-payment_overdue { background: var(--red-lt);    color: var(--red); }
+    .badge.type-lost_customer   { background: var(--blue-lt);   color: var(--blue); }
+    .badge.type-broken_pattern  { background: var(--amber-lt);  color: var(--amber); }
 
     .count-pill {
-      background: #fee2e2; color: #dc2626;
-      padding: 2px 8px; border-radius: 10px;
-      font-size: 11px; font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      background: var(--red-lt);
+      color: var(--red);
+      border: 1px solid var(--red-bd);
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
     }
   `]
 })
@@ -286,124 +295,143 @@ interface DialogData { def: AlertDefinition | null; }
     CommonModule, FormsModule, MatDialogModule,
     MatFormFieldModule, MatInputModule, MatSelectModule,
     MatButtonModule, MatIconModule, MatAutocompleteModule,
-    MatSlideToggleModule,
+    MatSlideToggleModule, FormDialogComponent,
   ],
   template: `
-    <h2 mat-dialog-title>{{ data.def ? 'Editar' : 'Nueva' }} definición</h2>
-    <mat-dialog-content class="form-body">
+    <app-form-dialog
+      [title]="data.def ? 'Editar definición' : 'Nueva definición'"
+      [subtitle]="subtitleFor(form.alert_type)"
+      [error]="errorMsg"
+      [saving]="saving"
+      [canSave]="isValid()"
+      [saveLabel]="data.def ? 'Guardar' : 'Crear'"
+      (save)="save()"
+      (cancel)="cancel()">
 
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>Nombre</mat-label>
-        <input matInput [(ngModel)]="form.name" maxlength="120" required>
-      </mat-form-field>
+      <div class="def-form-body">
+        <mat-form-field appearance="outline" class="full">
+          <mat-label>Nombre</mat-label>
+          <input matInput [(ngModel)]="form.name" maxlength="120" required autofocus>
+          <mat-hint>Hasta 120 caracteres</mat-hint>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
-        <mat-label>Tipo de alerta</mat-label>
-        <mat-select [(ngModel)]="form.alert_type" [disabled]="!!data.def"
-          (selectionChange)="onTypeChange()">
-          <mat-option value="overdue_service">Servicio vencido (por ítem del catálogo)</mat-option>
-          <mat-option value="payment_overdue">Pago pendiente</mat-option>
-          <mat-option value="lost_customer">Cliente inactivo</mat-option>
-          <mat-option value="broken_pattern">Patrón roto</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      @if (form.alert_type === 'overdue_service') {
         <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
-          <mat-label>Ítem del catálogo</mat-label>
-          <input matInput
-            [(ngModel)]="catalogQuery"
-            (ngModelChange)="onCatalogInput($event)"
-            [matAutocomplete]="autocat"
-            [disabled]="!!data.def">
-          <mat-icon matPrefix>manage_search</mat-icon>
-          <mat-autocomplete #autocat="matAutocomplete"
-            [displayWith]="displayItem"
-            (optionSelected)="onCatalogSelected($event)">
-            @for (item of catalogSuggestions; track item.id) {
-              <mat-option [value]="item">
-                {{ item.description }}
-                <small class="type-tag">{{ item.item_type }}</small>
-              </mat-option>
-            }
-          </mat-autocomplete>
-          @if (data.def?.catalog_item_description) {
-            <mat-hint>Ya vinculado a: {{ data.def?.catalog_item_description }}</mat-hint>
+          <mat-label>Tipo de alerta</mat-label>
+          <mat-select [(ngModel)]="form.alert_type" [disabled]="!!data.def"
+            (selectionChange)="onTypeChange()">
+            <mat-option value="overdue_service">Servicio vencido (por ítem del catálogo)</mat-option>
+            <mat-option value="payment_overdue">Pago pendiente</mat-option>
+            <mat-option value="lost_customer">Cliente inactivo</mat-option>
+            <mat-option value="broken_pattern">Patrón roto</mat-option>
+          </mat-select>
+          @if (!!data.def) {
+            <mat-hint>El tipo no se puede cambiar después de creada</mat-hint>
           }
         </mat-form-field>
-      }
 
-      @if (form.alert_type === 'overdue_service'
-        || form.alert_type === 'payment_overdue'
-        || form.alert_type === 'lost_customer') {
+        @if (form.alert_type === 'overdue_service') {
+          <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
+            <mat-label>Ítem del catálogo</mat-label>
+            <input matInput
+              [(ngModel)]="catalogQuery"
+              (ngModelChange)="onCatalogInput($event)"
+              [matAutocomplete]="autocat"
+              [disabled]="!!data.def">
+            <mat-icon matPrefix>manage_search</mat-icon>
+            <mat-autocomplete #autocat="matAutocomplete"
+              [displayWith]="displayItem"
+              (optionSelected)="onCatalogSelected($event)">
+              @for (item of catalogSuggestions; track item.id) {
+                <mat-option [value]="item">
+                  {{ item.description }}
+                  <small class="type-tag">{{ item.item_type }}</small>
+                </mat-option>
+              }
+            </mat-autocomplete>
+            @if (data.def?.catalog_item_description) {
+              <mat-hint>Vinculado a: {{ data.def?.catalog_item_description }}</mat-hint>
+            }
+          </mat-form-field>
+        }
+
+        @if (form.alert_type === 'overdue_service'
+          || form.alert_type === 'payment_overdue'
+          || form.alert_type === 'lost_customer') {
+          <mat-form-field appearance="outline">
+            <mat-label>Umbral</mat-label>
+            <input matInput type="number" min="1" max="3650"
+              [(ngModel)]="form.threshold_days" required inputmode="numeric">
+            <span matTextSuffix>días</span>
+            <mat-hint>{{ thresholdHint() }}</mat-hint>
+          </mat-form-field>
+        }
+
+        @if (form.alert_type === 'broken_pattern') {
+          <div class="bp-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Multiplicador</mat-label>
+              <input matInput type="number" min="1.0" max="5.0" step="0.1"
+                [(ngModel)]="form.bp_multiplier" inputmode="decimal">
+              <span matTextSuffix>×</span>
+              <mat-hint>vs intervalo personal</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Mínimo</mat-label>
+              <input matInput type="number" min="0" max="3650"
+                [(ngModel)]="form.bp_min_days" inputmode="numeric">
+              <span matTextSuffix>días</span>
+              <mat-hint>piso absoluto</mat-hint>
+            </mat-form-field>
+          </div>
+        }
+
         <mat-form-field appearance="outline">
-          <mat-label>Umbral (días)</mat-label>
-          <input matInput type="number" min="1" max="3650"
-            [(ngModel)]="form.threshold_days" required>
-          <span matTextSuffix>d</span>
+          <mat-label>Re-evaluar cada</mat-label>
+          <mat-select [(ngModel)]="form.eval_interval_hours">
+            <mat-option [value]="1">1 hora</mat-option>
+            <mat-option [value]="4">4 horas</mat-option>
+            <mat-option [value]="12">12 horas</mat-option>
+            <mat-option [value]="24">1 día</mat-option>
+            <mat-option [value]="168">1 semana</mat-option>
+          </mat-select>
         </mat-form-field>
-      }
 
-      @if (form.alert_type === 'broken_pattern') {
-        <div class="bp-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Multiplicador</mat-label>
-            <input matInput type="number" min="1.0" max="5.0" step="0.1"
-              [(ngModel)]="form.bp_multiplier">
-            <mat-hint>vs intervalo personal</mat-hint>
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Mínimo (días)</mat-label>
-            <input matInput type="number" min="0" max="3650"
-              [(ngModel)]="form.bp_min_days">
-            <mat-hint>piso absoluto</mat-hint>
-          </mat-form-field>
+        <div class="toggle-row">
+          <mat-slide-toggle [(ngModel)]="form.enabled" color="primary">
+            <span class="toggle-label">
+              <strong>Activa</strong>
+              <small>Si está pausada, la definición no aparece en el feed</small>
+            </span>
+          </mat-slide-toggle>
         </div>
-      }
-
-      <mat-form-field appearance="outline">
-        <mat-label>Re-evaluar cada</mat-label>
-        <mat-select [(ngModel)]="form.eval_interval_hours">
-          <mat-option [value]="1">1 hora</mat-option>
-          <mat-option [value]="4">4 horas</mat-option>
-          <mat-option [value]="12">12 horas</mat-option>
-          <mat-option [value]="24">1 día</mat-option>
-          <mat-option [value]="168">1 semana</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-slide-toggle [(ngModel)]="form.enabled" color="primary">
-        Activa
-      </mat-slide-toggle>
-
-      @if (errorMsg) {
-        <p class="err-msg">{{ errorMsg }}</p>
-      }
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="cancel()">Cancelar</button>
-      <button mat-flat-button color="primary" (click)="save()"
-        [disabled]="!isValid() || saving">
-        {{ data.def ? 'Guardar' : 'Crear' }}
-      </button>
-    </mat-dialog-actions>
+      </div>
+    </app-form-dialog>
   `,
   styles: [`
-    .form-body {
+    .def-form-body {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      padding-top: 8px !important;
     }
     .full { width: 100%; }
     .bp-row { display: flex; gap: 12px; }
     .bp-row mat-form-field { flex: 1; }
-    .err-msg {
-      color: #dc2626; font-size: 12px; margin: 4px 0 0;
-    }
     .type-tag { color: var(--text-3); font-size: 11px; margin-left: 8px; }
     .disabled-look { opacity: 0.85; }
+    .toggle-row {
+      margin-top: 4px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+    }
+    .toggle-label {
+      display: inline-flex;
+      flex-direction: column;
+      margin-left: 8px;
+    }
+    .toggle-label strong { font-size: 13px; color: var(--text-1); }
+    .toggle-label small  { font-size: 11px; color: var(--text-3); }
   `]
 })
 export class AlertDefFormDialog {
@@ -419,9 +447,26 @@ export class AlertDefFormDialog {
   };
   catalogQuery = '';
   catalogSuggestions: CatalogItem[] = [];
-  errorMsg = '';
+  errorMsg: string | null = null;
   saving   = false;
   private searchTimeout: any;
+
+  subtitleFor(type: AlertType): string {
+    return ({
+      overdue_service: 'Detecta vehículos con servicios pendientes',
+      payment_overdue: 'Detecta trabajos con saldo pendiente',
+      lost_customer:   'Detecta clientes que no vuelven',
+      broken_pattern:  'Detecta clientes que rompen su frecuencia habitual',
+    } as Record<string, string>)[type] ?? '';
+  }
+
+  thresholdHint(): string {
+    return ({
+      overdue_service: 'Días desde el último servicio para alertar',
+      payment_overdue: 'Días desde el cierre del trabajo sin cobro',
+      lost_customer:   'Días sin ningún trabajo para considerar inactivo',
+    } as Record<string, string>)[this.form.alert_type] ?? '';
+  }
 
   constructor(
     public dialogRef: MatDialogRef<AlertDefFormDialog>,
@@ -496,7 +541,7 @@ export class AlertDefFormDialog {
   }
 
   save() {
-    this.errorMsg = '';
+    this.errorMsg = null;
     this.saving   = true;
 
     const payload: any = {
@@ -514,7 +559,7 @@ export class AlertDefFormDialog {
       }
       this.api.updateAlertDefinition(this.data.def.id, payload).subscribe({
         next: () => { this.saving = false; this.dialogRef.close(true); },
-        error: err => { this.saving = false; this.errorMsg = err?.error?.error || 'Error al guardar'; }
+        error: err => { this.saving = false; this.errorMsg = extractApiError(err); }
       });
     } else {
       payload.alert_type = this.form.alert_type;
@@ -529,7 +574,7 @@ export class AlertDefFormDialog {
       }
       this.api.createAlertDefinition(payload).subscribe({
         next: () => { this.saving = false; this.dialogRef.close(true); },
-        error: err => { this.saving = false; this.errorMsg = err?.error?.error || 'Error al crear'; }
+        error: err => { this.saving = false; this.errorMsg = extractApiError(err, 'Error al crear'); }
       });
     }
   }

@@ -10,6 +10,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { AuthService } from '../../../core/auth/auth.service';
 import { WorkshopConfigService } from '../../../core/services/workshop-config.service';
+import { extractApiError } from '../../../shared/utils/api-error';
 
 @Component({
   selector: 'app-login',
@@ -26,44 +27,52 @@ import { WorkshopConfigService } from '../../../core/services/workshop-config.se
             <mat-icon>build</mat-icon>
           </div>
           <div class="brand-text">
-            <div class="brand-name">{{ workshopConfig.config()?.name || 'Taller Mecanico' }}</div>
-            <div class="brand-sub">Iniciar sesion</div>
+            <div class="brand-name">{{ workshopConfig.config()?.name || 'Taller Mecánico' }}</div>
+            <div class="brand-sub">Iniciar sesión</div>
           </div>
         </div>
 
         @if (error) {
-          <div class="banner banner-error">{{ error }}</div>
+          <div class="banner banner-error login-error" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ error }}</span>
+          </div>
         }
 
-        <form (ngSubmit)="onLogin()" class="login-form">
+        <form (ngSubmit)="onLogin()" class="login-form" [class.is-loading]="loading">
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Usuario</mat-label>
-            <input matInput [(ngModel)]="username" name="username" required autofocus>
+            <input matInput [(ngModel)]="username" name="username" required autofocus
+                   [disabled]="loading">
             <mat-icon matPrefix>person</mat-icon>
           </mat-form-field>
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Contrasena</mat-label>
+            <mat-label>Contraseña</mat-label>
             <input matInput [type]="hidePassword ? 'password' : 'text'"
-                   [(ngModel)]="password" name="password" required>
+                   [(ngModel)]="password" name="password" required
+                   [disabled]="loading">
             <mat-icon matPrefix>lock</mat-icon>
             <button mat-icon-button matSuffix type="button"
-                    (click)="hidePassword = !hidePassword">
+                    (click)="hidePassword = !hidePassword"
+                    [attr.aria-label]="hidePassword ? 'Mostrar contraseña' : 'Ocultar contraseña'">
               <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
             </button>
           </mat-form-field>
           <button mat-raised-button color="primary" class="full-width login-btn"
-                  type="submit" [disabled]="loading">
+                  type="submit" [disabled]="loading || !username || !password">
             @if (loading) {
-              <mat-spinner diameter="20"></mat-spinner>
+              <mat-spinner diameter="18" class="login-spin"></mat-spinner>
+              <span>Entrando…</span>
             } @else {
-              Entrar
+              <span>Entrar</span>
+              <mat-icon class="login-btn-ico">arrow_forward</mat-icon>
             }
           </button>
         </form>
 
         <div class="login-foot">
           <span>v1.0</span>
-          <a class="forgot-link" href="javascript:void(0)">¿Olvidaste tu contrasena?</a>
+          <a class="forgot-link" href="javascript:void(0)">¿Olvidaste tu contraseña?</a>
         </div>
       </mat-card>
     </div>
@@ -116,17 +125,51 @@ import { WorkshopConfigService } from '../../../core/services/workshop-config.se
       font-size: 12px;
       color: var(--text-3);
     }
+
+    .login-error {
+      margin-bottom: 12px;
+    }
+    .login-error mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
     .login-form {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      transition: opacity .15s;
+    }
+    .login-form.is-loading {
+      opacity: .8;
     }
     .full-width { width: 100%; }
     .login-btn {
       height: 44px;
       font-size: 14px;
       margin-top: 8px;
+      display: inline-flex !important;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
+    .login-btn-ico {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform .15s;
+    }
+    .login-btn:hover:not(:disabled) .login-btn-ico {
+      transform: translateX(2px);
+    }
+    .login-spin ::ng-deep circle { stroke: #fff; }
+
     .login-foot {
       display: flex;
       justify-content: space-between;
@@ -166,7 +209,7 @@ export class LoginComponent {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err.error?.error || 'Error al iniciar sesion';
+        this.error = extractApiError(err, 'Error al iniciar sesión');
       }
     });
   }

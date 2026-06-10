@@ -15,59 +15,70 @@ import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { User } from '../../core/models';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog/confirm-dialog.component';
+import { FormDialogComponent } from '../../shared/components/form-dialog/form-dialog.component';
+import { extractApiError } from '../../shared/utils/api-error';
 
 @Component({
   selector: 'app-user-form-dialog',
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatDialogModule, MatFormFieldModule,
-    MatInputModule, MatButtonModule, MatSelectModule
+    MatInputModule, MatButtonModule, MatSelectModule, FormDialogComponent,
   ],
   template: `
-    <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Usuario</h2>
-    <mat-dialog-content>
-      @if (error) { <div class="banner banner-error">{{ error }}</div> }
+    <app-form-dialog
+      [title]="isEdit ? 'Editar usuario' : 'Nuevo usuario'"
+      [subtitle]="isEdit ? form.username : 'Crear cuenta de acceso al sistema'"
+      [error]="error"
+      [saving]="saving"
+      [canSave]="canSave()"
+      (save)="save()"
+      (cancel)="dialogRef.close(false)">
+
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Username</mat-label>
-        <input matInput [(ngModel)]="form.username" required [disabled]="isEdit">
-        <mat-hint>Minimo 3 caracteres</mat-hint>
+        <input matInput [(ngModel)]="form.username" required [disabled]="isEdit" autofocus>
+        <mat-hint>Mínimo 3 caracteres · no se puede cambiar después</mat-hint>
       </mat-form-field>
+
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Nombre completo</mat-label>
         <input matInput [(ngModel)]="form.full_name" required>
       </mat-form-field>
+
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Rol</mat-label>
         <mat-select [(ngModel)]="form.role" required>
           <mat-option value="admin">Administrador</mat-option>
           <mat-option value="recepcionista">Recepcionista</mat-option>
-          <mat-option value="mecanico">Mecanico</mat-option>
+          <mat-option value="mecanico">Mecánico</mat-option>
         </mat-select>
       </mat-form-field>
+
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>{{ isEdit ? 'Nueva contrasena (dejar vacio para no cambiar)' : 'Contrasena' }}</mat-label>
+        <mat-label>{{ isEdit ? 'Nueva contraseña' : 'Contraseña' }}</mat-label>
         <input matInput [(ngModel)]="form.password" type="password" [required]="!isEdit">
-        <mat-hint>Minimo 6 caracteres</mat-hint>
+        <mat-hint>
+          @if (isEdit) {
+            Dejar vacío para mantener la actual
+          } @else {
+            Mínimo 6 caracteres
+          }
+        </mat-hint>
       </mat-form-field>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-raised-button color="primary" (click)="save()" [disabled]="saving || !form.full_name || (!isEdit && !form.password)">
-        {{ saving ? 'Guardando...' : 'Guardar' }}
-      </button>
-    </mat-dialog-actions>
+    </app-form-dialog>
   `,
   styles: [`.full-width { width: 100%; margin-bottom: 4px; }`]
 })
 export class UserFormDialogComponent {
   isEdit: boolean;
   saving = false;
-  error = '';
+  error: string | null = null;
   form: any = { username: '', full_name: '', role: 'recepcionista', password: '' };
 
   constructor(
     private api: ApiService,
-    private dialogRef: MatDialogRef<UserFormDialogComponent>,
+    public  dialogRef: MatDialogRef<UserFormDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { user?: User } | null
   ) {
     this.isEdit = !!data?.user;
@@ -76,9 +87,13 @@ export class UserFormDialogComponent {
     }
   }
 
+  canSave(): boolean {
+    return !!this.form.full_name && (this.isEdit || !!this.form.password);
+  }
+
   save() {
     this.saving = true;
-    this.error = '';
+    this.error = null;
     const payload = { ...this.form };
     if (this.isEdit && !payload.password) delete payload.password;
 
@@ -89,8 +104,7 @@ export class UserFormDialogComponent {
       next: () => this.dialogRef.close(true),
       error: (err) => {
         this.saving = false;
-        const detalles = err.error?.detalles;
-        this.error = detalles ? detalles.map((d: any) => d.mensaje).join(', ') : (err.error?.error || 'Error al guardar');
+        this.error = extractApiError(err);
       }
     });
   }
