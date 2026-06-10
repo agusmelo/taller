@@ -407,12 +407,15 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
 
   dismiss(alert: AlertItem, snoozeDays: number) {
     if (!alert.definition_id) return;
-    this.api.dismissAlert(alert.definition_id, alert.entity_id, snoozeDays).subscribe({
+    const entityType = alert.entity_type ?? 'vehicle';
+    this.api.dismissAlert(alert.definition_id, alert.entity_id, snoozeDays, entityType).subscribe({
       next: () => {
         // Optimistic: remove from local state
         const block = this.blocks.find(b => b.definition.id === alert.definition_id);
         if (block) {
-          block.items = block.items.filter(i => i.entity_id !== alert.entity_id);
+          block.items = block.items.filter(
+            i => !(i.entity_id === alert.entity_id && (i.entity_type ?? 'vehicle') === entityType)
+          );
         }
         this.notify.success(`Pospuesto ${snoozeDays} día${snoozeDays === 1 ? '' : 's'}`);
       },

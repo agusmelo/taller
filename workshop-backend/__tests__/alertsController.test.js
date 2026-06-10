@@ -35,7 +35,7 @@ const BASE_VEHICLE_ROW = {
   make: 'Toyota', model: 'Corolla',
 };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => pool.query.mockReset());
 
 // ─────────────────────────────────────────────────────────────────────────────
 // evaluateDefinition — overdue_service
@@ -109,7 +109,7 @@ describe('evaluateDefinition — overdue_service', () => {
   test('filters out entity_ids that are currently snoozed', async () => {
     pool.query
       .mockResolvedValueOnce({ rows: [{ ...BASE_VEHICLE_ROW, last_service_date: '2025-01-01', days_since_service: '200' }] })
-      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1' }] }); // vid1 snoozed
+      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle' }] }); // vid1 snoozed
     const items = await evaluateDefinition(DEF);
     expect(items).toHaveLength(0);
   });
@@ -122,7 +122,7 @@ describe('evaluateDefinition — overdue_service', () => {
           { ...BASE_VEHICLE_ROW, vehicle_id: 'vid2', plate_number: 'BBB 2', last_service_date: '2025-01-01', days_since_service: '200' },
         ],
       })
-      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1' }] }); // only vid1 dismissed
+      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle' }] }); // only vid1 dismissed
     const items = await evaluateDefinition(DEF);
     expect(items).toHaveLength(1);
     expect(items[0].entity_id).toBe('vid2');
@@ -230,8 +230,11 @@ describe('evaluateAndPersist', () => {
 
     const updateArgs = pool.query.mock.calls[2];
     expect(updateArgs[0]).toContain('UPDATE alert_definitions');
+    expect(updateArgs[0]).toContain('last_results');
     expect(updateArgs[1][0]).toBe(1); // 1 critical item counted
-    expect(updateArgs[1][1]).toBe('def1');
+    // Params: [criticalHigh, JSON.stringify(rawItems), defId]
+    expect(updateArgs[1][2]).toBe('def1');
+    expect(JSON.parse(updateArgs[1][1])).toHaveLength(1);
   });
 
   test('counts only critical + high items in metadata', async () => {
@@ -277,34 +280,71 @@ describe('feed endpoint', () => {
   const DEF = {
     id: 'def1', alert_type: 'overdue_service', catalog_item_id: 'item1',
     threshold_days: 100, enabled: true, created_at: new Date(),
+    last_results: [], last_run_error: null,
   };
 
-  test('returns array of blocks, one per definition', async () => {
+  // Sprint 1 / HU-04: el feed ya no evalúa en tiempo real, lee de
+  // alert_definitions.last_results (cacheado por el runner).
+
+  test('reads items from def.last_results and filters dismissals', async () => {
     const { req, res, next } = ctx();
+    const cached = [{
+      alert_type: 'overdue_service', entity_type: 'vehicle',
+      entity_id: 'vid1', severity: 'critical',
+    }];
     pool.query
-      .mockResolvedValueOnce({ rows: [DEF] }) // SELECT definitions
-      .mockResolvedValueOnce({ rows: [] })     // evalOverdueService → no results
-      .mockResolvedValueOnce({ rows: [] });    // dismissals
+      .mockResolvedValueOnce({ rows: [{ ...DEF, last_results: cached }] })
+      .mockResolvedValueOnce({ rows: [] }); // dismissals query (items > 0)
+
+    await feed(req, res, next);
+
+    const blocks = res.json.mock.calls[0][0];
+    expect(blocks).toHaveLength(1);
+    expect(blocks[0].items).toHaveLength(1);
+    expect(blocks[0].items[0].definition_id).toBe('def1');
+    expect(blocks[0].error).toBeNull();
+  });
+
+  test('returns empty items when cache is empty (no dismissals query)', async () => {
+    const { req, res, next } = ctx();
+    pool.query.mockResolvedValueOnce({ rows: [DEF] });
 
     await feed(req, res, next);
 
     expect(res.json).toHaveBeenCalledWith([
       expect.objectContaining({ definition: DEF, items: [], error: null }),
     ]);
-    expect(next).not.toHaveBeenCalled();
+    // Solo se hizo la query de SELECT definitions; sin items no se consulta dismissals.
+    expect(pool.query).toHaveBeenCalledTimes(1);
   });
 
-  test('block carries error without crashing other blocks', async () => {
+  test('block surfaces last_run_error from the runner', async () => {
     const { req, res, next } = ctx();
-    pool.query
-      .mockResolvedValueOnce({ rows: [DEF] })      // SELECT definitions
-      .mockRejectedValueOnce(new Error('timeout')); // evaluator fails
+    const defWithError = { ...DEF, last_run_error: 'DB timeout en último tick' };
+    pool.query.mockResolvedValueOnce({ rows: [defWithError] });
 
     await feed(req, res, next);
 
     const [block] = res.json.mock.calls[0][0];
-    expect(block.error).toBe('timeout');
+    expect(block.error).toBe('DB timeout en último tick');
     expect(block.items).toHaveLength(0);
+  });
+
+  test('hides items whose (entity_id, entity_type) is dismissed', async () => {
+    const { req, res, next } = ctx();
+    const cached = [
+      { entity_type: 'vehicle', entity_id: 'vid1' },
+      { entity_type: 'vehicle', entity_id: 'vid2' },
+    ];
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ ...DEF, last_results: cached }] })
+      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle' }] });
+
+    await feed(req, res, next);
+
+    const [block] = res.json.mock.calls[0][0];
+    expect(block.items).toHaveLength(1);
+    expect(block.items[0].entity_id).toBe('vid2');
   });
 
   test('returns empty array when no definitions exist', async () => {

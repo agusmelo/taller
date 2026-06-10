@@ -53,7 +53,7 @@ const DEF_ROW = {
   updated_at: new Date().toISOString(),
 };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => pool.query.mockReset());
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/alerts/feed
@@ -354,8 +354,7 @@ describe('POST /api/alert-definitions/:id/evaluate', () => {
   test('200 for recepcionista — allowed by requireAdminOrRecep', async () => {
     pool.query
       .mockResolvedValueOnce({ rows: [DEF_ROW] }) // SELECT existing
-      .mockResolvedValueOnce({ rows: [] })          // eval query
-      .mockResolvedValueOnce({ rows: [] })          // dismissals
+      .mockResolvedValueOnce({ rows: [] })          // eval query (sin rows → skip dismissals)
       .mockResolvedValueOnce({ rows: [] })          // UPDATE (evaluateAndPersist)
       .mockResolvedValueOnce({ rows: [DEF_ROW] });  // SELECT after persist
 

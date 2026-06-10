@@ -44,6 +44,7 @@ function makeAlert(
     client_name:   'Juan García',
     client_phone:  '099123456',
     client_email:  'juan@test.com',
+    entity_type:   type === 'overdue_service' ? 'vehicle' : type === 'payment_overdue' ? 'job' : 'client',
     entity_id:     entityId,
     entity_label:  'ABC 1234',
     current_value: 200,
@@ -160,7 +161,7 @@ describe('AlertsFeedComponent', () => {
     const alert = makeAlert('vid1', 'critical', 'def1');
     component.blocks = [makeBlock('def1', [alert])];
     component.dismiss(alert, 30);
-    expect(apiMock.dismissAlert).toHaveBeenCalledWith('def1', 'vid1', 30);
+    expect(apiMock.dismissAlert).toHaveBeenCalledWith('def1', 'vid1', 30, 'vehicle');
   });
 
   test('dismiss() removes item from block optimistically on success', fakeAsync(() => {
