@@ -459,4 +459,300 @@ async function generatePdf(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { generatePdf, buildHtml, buildFooter };
+// ---------------------------------------------------------------------------
+// Receipt PDF — accumulated payments for a job
+// ---------------------------------------------------------------------------
+function getPaymentMethodLabel(method) {
+  const labels = {
+    efectivo: 'EFECTIVO',
+    transferencia: 'TRANSFERENCIA',
+    credito: 'CRÉDITO',
+    cheque: 'CHEQUE',
+  };
+  return labels[method] || String(method || '').toUpperCase();
+}
+
+function buildReceiptNumber(jobId) {
+  return 'R-' + String(jobId).replace(/-/g, '').slice(0, 6).toUpperCase();
+}
+
+function buildReceiptHtml(job, payments, financials, receiptNumber) {
+  const workshopName    = process.env.WORKSHOP_NAME    || 'Taller Mecánico';
+  const workshopAddress = process.env.WORKSHOP_ADDRESS || '';
+  const workshopPhone   = process.env.WORKSHOP_PHONE   || '';
+
+  let logoHtml = `<div class="brand-name">${esc(workshopName)}</div>`;
+  const logoPath = path.join(__dirname, '../../assets/logo.png');
+  if (fs.existsSync(logoPath)) {
+    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+    logoHtml = `<img class="brand-logo" src="data:image/png;base64,${logoBase64}" alt="${esc(workshopName)}">`;
+  }
+
+  const contact = [workshopAddress, workshopPhone].filter(Boolean).map(esc).join(' · ');
+  const vehicleName = `${esc(job.make)} ${esc(job.model)}${job.year ? ` (${esc(job.year)})` : ''}`.trim();
+  const totalPagado = payments.reduce((s, p) => s + Number(p.amount), 0);
+  const balance = Math.max(Number(financials.balance) || 0, 0);
+  const isCleared = balance === 0;
+
+  const paymentRows = payments.map(p => `
+    <tr class="pay-row">
+      <td class="pay-date">${formatDate(p.payment_date || p.paid_at)}</td>
+      <td class="pay-method">${esc(getPaymentMethodLabel(p.method))}</td>
+      <td class="pay-ref">${p.reference ? esc(p.reference) : '—'}</td>
+      <td class="pay-amount">${formatCurrency(p.amount)}</td>
+    </tr>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<style>
+  ${FONT_CSS}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: ${PAGE_BG}; }
+  body {
+    font-family: ${SANS};
+    color: ${INK};
+    font-size: 11.5px;
+    line-height: 1.4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sheet { padding: 34px 40px 8px; }
+
+  /* Header */
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; }
+  .brand-name {
+    font-family: ${DISPLAY}; font-weight: 700; font-size: 30px;
+    letter-spacing: .5px; color: ${RED}; text-transform: uppercase; line-height: 1;
+  }
+  .brand-logo { max-height: 64px; max-width: 280px; }
+  .hdr-contact { margin-top: 8px; font-size: 10px; color: ${MUTED}; letter-spacing: .2px; }
+  .hdr-meta { text-align: right; white-space: nowrap; padding-top: 4px; }
+  .hdr-meta-label { font-size: 10.5px; color: ${MUTED}; letter-spacing: .4px; }
+  .hdr-meta-num { font-family: ${DISPLAY}; font-weight: 700; font-size: 14px; color: ${INK}; margin-left: 10px; letter-spacing: .5px; }
+  .hdr-rule { height: 4px; background: ${RED}; margin: 14px 0 22px; }
+
+  /* Parties — same look as the job PDF */
+  .parties { display: flex; gap: 48px; margin-bottom: 22px; }
+  .party { flex: 1; }
+  .party-title {
+    font-family: ${DISPLAY}; font-weight: 700; font-size: 10.5px; color: ${RED};
+    text-transform: uppercase; letter-spacing: 2.5px; padding-left: 10px;
+    border-left: 3px solid ${RED}; margin-bottom: 11px; line-height: 1.1;
+  }
+  .info-row { display: flex; align-items: baseline; padding: 2.5px 0; }
+  .info-label { width: 92px; flex: none; color: ${MUTED}; font-size: 11px; }
+  .info-value { font-weight: 500; }
+  .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; line-height: 1; }
+
+  /* Service reference strip */
+  .svc-rule { height: 1px; background: ${LINE}; margin-bottom: 14px; }
+  .svc-ref {
+    display: flex; align-items: center; gap: 16px;
+    background: #f8f7f5; border-left: 3px solid ${RED};
+    padding: 10px 14px; margin-bottom: 18px;
+  }
+  .svc-ref-label { font-family: ${DISPLAY}; font-weight: 700; font-size: 9px; color: ${RED}; letter-spacing: 2px; }
+  .svc-ref-num   { font-family: ${DISPLAY}; font-weight: 700; font-size: 13px; color: ${INK}; }
+  .svc-ref-date  { font-size: 10px; color: ${MUTED}; margin-left: auto; }
+
+  /* Payments table */
+  .pays { width: 100%; border-collapse: collapse; }
+  .pays thead th {
+    background: #b3b3b3; color: #fff; font-weight: 700; font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 1.5px; padding: 9px 12px; text-align: left;
+  }
+  .pays thead th.pay-amount { text-align: right; }
+  .pay-date { width: 90px; color: #777; font-size: 10.5px; }
+  .pay-method { width: 150px; font-weight: 600; letter-spacing: 1px; font-size: 10.5px; }
+  .pay-ref { color: #888; font-size: 10.5px; }
+  .pay-amount { width: 130px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pays tbody td { padding: 9px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+  .pay-row { break-inside: avoid; }
+
+  /* Closing block */
+  .closing { break-inside: avoid; margin-top: 22px; }
+  .summary { display: flex; justify-content: flex-end; }
+  .totals { width: 300px; }
+  .tot-row { display: flex; justify-content: space-between; padding: 5px 14px; font-size: 10.5px; color: #777; border-bottom: 1px solid #f5f5f5; }
+  .tot-row span:last-child { font-variant-numeric: tabular-nums; }
+  .tot-grand {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #b3b3b3; color: #fff; padding: 11px 14px; margin-top: 4px;
+  }
+  .tot-grand span:first-child { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: 1px; }
+  .tot-grand span:last-child  { font-family: ${DISPLAY}; font-weight: 700; font-size: 19px; color: ${RED}; background: #fff; padding: 0 10px; }
+  .tot-grand.solid span:last-child { background: transparent; padding: 0; color: ${RED}; }
+  .tot-balance {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #e4e4e4; padding: 9px 14px; color: #555; font-size: 10.5px;
+  }
+  .tot-balance span:last-child { font-weight: 700; }
+  .tot-balance.is-owed span:last-child  { color: ${RED}; }
+  .tot-balance.is-clear span:last-child { color: ${RED}; }
+
+  .signs { display: flex; gap: 36px; margin-top: 36px; }
+  .sign { flex: 1; }
+  .sign-pad { height: 40px; }
+  .sign-line { height: 1px; background: #d0d0d0; }
+  .sign-label { font-size: 9px; color: #aaa; letter-spacing: 1.2px; text-transform: uppercase; margin-top: 6px; }
+
+  .legal {
+    margin-top: 22px; background: #f8f7f5; border: 1px solid ${LINE};
+    border-left: 3px solid #d0d0d0; padding: 9px 14px; font-size: 9px;
+    color: #888; line-height: 1.55;
+  }
+  .legal strong { color: #555; }
+</style>
+</head>
+<body>
+  <div class="sheet">
+    <header class="hdr">
+      <div class="hdr-brand">
+        ${logoHtml}
+        ${contact ? `<div class="hdr-contact">${contact}</div>` : ''}
+      </div>
+      <div class="hdr-meta">
+        <span class="hdr-meta-label">Recibo de pago</span>
+        <span class="hdr-meta-num">N.° ${esc(receiptNumber)}</span>
+      </div>
+    </header>
+    <div class="hdr-rule"></div>
+
+    <section class="parties">
+      <div class="party">
+        <div class="party-title">Cliente</div>
+        <div class="info-row"><span class="info-label">Nombre</span><span class="info-value">${esc(job.client_name)}</span></div>
+        ${job.client_rut   ? `<div class="info-row"><span class="info-label">RUT</span><span class="info-value">${esc(job.client_rut)}</span></div>` : ''}
+        ${job.client_phone ? `<div class="info-row"><span class="info-label">Teléfono</span><span class="info-value">${esc(job.client_phone)}</span></div>` : ''}
+        <div class="info-row"><span class="info-label">Fecha emisión</span><span class="info-value">${formatDate(new Date())}</span></div>
+      </div>
+      <div class="party">
+        <div class="party-title">Vehículo</div>
+        <div class="info-row"><span class="info-label">Matrícula</span><span class="info-value info-plate">${esc(job.plate_number)}</span></div>
+        <div class="info-row"><span class="info-label">Modelo</span><span class="info-value">${vehicleName}</span></div>
+        ${job.color ? `<div class="info-row"><span class="info-label">Color</span><span class="info-value">${esc(job.color)}</span></div>` : ''}
+        ${job.mileage_at_service ? `<div class="info-row"><span class="info-label">Kilometraje</span><span class="info-value">${Number(job.mileage_at_service).toLocaleString('es-UY')} km</span></div>` : ''}
+      </div>
+    </section>
+
+    <div class="svc-rule"></div>
+    <div class="svc-ref">
+      <span class="svc-ref-label">REF. SERVICIO</span>
+      <span class="svc-ref-num">N.° ${esc(job.job_number)}</span>
+      <span class="svc-ref-date">${formatDate(job.job_date || job.created_at)}</span>
+    </div>
+
+    <table class="pays">
+      <thead>
+        <tr>
+          <th class="pay-date">Fecha</th>
+          <th class="pay-method">Método</th>
+          <th class="pay-ref">Referencia</th>
+          <th class="pay-amount">Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${paymentRows}
+      </tbody>
+    </table>
+
+    <div class="closing">
+      <div class="summary">
+        <div class="totals">
+          <div class="tot-row"><span>Total del servicio</span><span>${formatCurrency(financials.total)}</span></div>
+          <div class="tot-row"><span>Cantidad de pagos</span><span>${payments.length} pago${payments.length === 1 ? '' : 's'}</span></div>
+          <div class="tot-grand solid">
+            <span>Total pagado</span>
+            <span>${formatCurrency(totalPagado)}</span>
+          </div>
+          <div class="tot-balance ${isCleared ? 'is-clear' : 'is-owed'}">
+            <span>Saldo pendiente</span>
+            <span>${isCleared ? `${formatCurrency(0)} · Saldado` : `${formatCurrency(balance)} · Pendiente`}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="signs">
+        <div class="sign">
+          <div class="sign-pad"></div>
+          <div class="sign-line"></div>
+          <div class="sign-label">Firma del responsable</div>
+        </div>
+        <div class="sign">
+          <div class="sign-pad"></div>
+          <div class="sign-line"></div>
+          <div class="sign-label">Conformidad del cliente</div>
+        </div>
+      </div>
+
+      <div class="legal">
+        <strong>AVISO:</strong> Este documento es un comprobante interno de pago y no reemplaza a una factura fiscal. Para consultas, comuníquese con nosotros indicando el número de recibo.
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+async function generateReceiptPdf(req, res, next) {
+  try {
+    const jobRes = await pool.query(`
+      SELECT j.*, c.full_name AS client_name, c.rut AS client_rut,
+             c.phone AS client_phone, c.email AS client_email, c.address AS client_address,
+             v.plate_number, v.make, v.model, v.year, v.color
+      FROM jobs j
+      JOIN clients c ON c.id = j.client_id
+      JOIN vehicles v ON v.id = j.vehicle_id
+      WHERE j.id = $1 AND j.deleted_at IS NULL`, [req.params.id]
+    );
+    if (!jobRes.rows[0]) return res.status(404).json({ error: 'Trabajo no encontrado' });
+
+    const job = jobRes.rows[0];
+    const itemsRes = await pool.query(
+      `SELECT * FROM job_items WHERE job_id = $1
+       ORDER BY (parent_id IS NULL) DESC, sort_order, created_at`,
+      [req.params.id]
+    );
+    const paysRes = await pool.query(
+      `SELECT * FROM payments WHERE job_id = $1 ORDER BY paid_at ASC`,
+      [req.params.id]
+    );
+
+    if (paysRes.rows.length === 0) {
+      return res.status(400).json({ error: 'El trabajo no tiene pagos registrados' });
+    }
+
+    const financials = calcFinancials(job, itemsRes.rows, paysRes.rows);
+    const receiptNumber = buildReceiptNumber(job.id);
+    const html = buildReceiptHtml(job, paysRes.rows, financials, receiptNumber);
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0mm', right: '0mm', bottom: '30mm', left: '0mm' },
+      displayHeaderFooter: true,
+      headerTemplate: '<div></div>',
+      footerTemplate: buildFooter()
+    });
+    await browser.close();
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `inline; filename="recibo-${receiptNumber}.pdf"`,
+      'Content-Length': pdfBuffer.length
+    });
+    res.send(pdfBuffer);
+  } catch (err) { next(err); }
+}
+
+module.exports = { generatePdf, generateReceiptPdf, buildHtml, buildFooter, buildReceiptHtml, buildReceiptNumber };

@@ -75,6 +75,7 @@ export class ApiService {
   lockJob(id: string) { return this.http.put<Job>(`${this.url}/jobs/${id}/lock`, {}); }
   unlockJob(id: string) { return this.http.put<Job>(`${this.url}/jobs/${id}/unlock`, {}); }
   getJobPdfUrl(id: string) { return `${this.url}/jobs/${id}/pdf`; }
+  getJobReceiptPdfUrl(id: string) { return `${this.url}/jobs/${id}/receipt-pdf`; }
 
   // Job Items
   getJobItems(jobId: string) { return this.http.get<JobItem[]>(`${this.url}/jobs/${jobId}/items`); }

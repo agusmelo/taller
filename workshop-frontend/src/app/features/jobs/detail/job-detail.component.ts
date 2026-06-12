@@ -331,11 +331,22 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
         <mat-card-content>
           <div class="card-head">
             <h3 class="card-title-lg">Pagos</h3>
-            @if (auth.isAdminOrRecep() && canAddPayments()) {
-              <button mat-stroked-button (click)="showAddPayment = !showAddPayment">
-                <mat-icon>payment</mat-icon> Registrar pago
-              </button>
-            }
+            <div style="display:flex;gap:8px;">
+              @if (auth.isAdminOrRecep()) {
+                <button mat-stroked-button
+                        (click)="printReceiptPdf()"
+                        [disabled]="!(job.payments?.length) || receiptPdfLoading"
+                        [matTooltip]="!(job.payments?.length) ? 'Registra al menos un pago para generar el recibo' : ''">
+                  <mat-icon>receipt_long</mat-icon>
+                  {{ receiptPdfLoading ? 'Generando...' : 'Generar recibo PDF' }}
+                </button>
+              }
+              @if (auth.isAdminOrRecep() && canAddPayments()) {
+                <button mat-stroked-button (click)="showAddPayment = !showAddPayment">
+                  <mat-icon>payment</mat-icon> Registrar pago
+                </button>
+              }
+            </div>
           </div>
 
           @if (showAddPayment && canAddPayments()) {
@@ -567,6 +578,7 @@ export class JobDetailComponent implements OnInit {
   internalNotes = '';
   loading = true;
   pdfLoading = false;
+  receiptPdfLoading = false;
   savingItem = false;
   savingPayment = false;
   newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
@@ -906,5 +918,23 @@ export class JobDetailComponent implements OnInit {
         this.pdfLoading = false;
       })
       .catch(() => { this.notify.error('Error al generar PDF'); this.pdfLoading = false; });
+  }
+
+  printReceiptPdf() {
+    if (!this.job?.payments?.length) return;
+    const token = localStorage.getItem('workshop_token');
+    const url = this.api.getJobReceiptPdfUrl(this.job.id);
+    this.receiptPdfLoading = true;
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(async r => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.blob();
+      })
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        this.receiptPdfLoading = false;
+      })
+      .catch(() => { this.notify.error('Error al generar el recibo'); this.receiptPdfLoading = false; });
   }
 }
