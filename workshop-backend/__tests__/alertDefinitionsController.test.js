@@ -259,6 +259,39 @@ describe('update', () => {
 
     expect(res.status).toHaveBeenCalledWith(422);
   });
+
+  // Sprint 0 / fix code-review #1: re-habilitar una def overdue_service
+  // huérfana (catalog_item_id=NULL) haría que el evaluador dispare una
+  // alerta crítica por cada vehículo. El update debe rechazarlo.
+  test('422 al intentar habilitar overdue_service huérfana (catalog_item_id NULL)', async () => {
+    const orphan = { ...DEF_ROW, catalog_item_id: null, enabled: false };
+    const { req, res, next } = ctx({ enabled: true }, { id: UUID1 });
+    pool.query.mockResolvedValueOnce({ rows: [orphan] }); // SELECT existing
+
+    await update(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(422);
+    expect(res.json.mock.calls[0][0].error).toMatch(/catalog_item_id/);
+    // No debe haberse intentado el UPDATE.
+    expect(pool.query).toHaveBeenCalledTimes(1);
+  });
+
+  // Sprint 0 / fix code-review #2: el índice único parcial WHERE enabled=true
+  // hace que reactivar una def deshabilitada cuando ya existe otra activa
+  // del mismo tipo viole 23505. update debe mapear a 409 (como create).
+  test('409 cuando UPDATE viola unique index (23505) — espejo de create', async () => {
+    const { req, res, next } = ctx({ enabled: true }, { id: UUID1 });
+    const dbErr = new Error('duplicate key value violates unique constraint');
+    dbErr.code = '23505';
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ ...DEF_ROW, alert_type: 'lost_customer', catalog_item_id: null, enabled: false }] })
+      .mockRejectedValueOnce(dbErr);
+
+    await update(req, res, next);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json.mock.calls[0][0].error).toMatch(/Ya existe/);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

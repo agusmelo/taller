@@ -14,6 +14,14 @@ function computeSeverity(currentValue, threshold) {
 // ─── Internal evaluators (no req/res) ──────────────────────────────────────
 
 async function evalOverdueService({ catalog_item_id, threshold_days }) {
+  // Guardia: una def overdue_service sin ítem del catálogo (escenario HU-01,
+  // huérfana tras borrar el item) no debe evaluar — la query con $1=NULL
+  // matchea "ningún job" para todos los vehículos y devolvería una alerta
+  // crítica por cada vehículo del taller. El controller de definitions
+  // también rechaza dejarla enabled=true, pero la defensa en profundidad acá
+  // protege contra cualquier futuro camino que se saltee la validación.
+  if (!catalog_item_id) return [];
+
   const r = await pool.query(`
     SELECT
       c.id AS client_id, c.full_name AS client_name,
@@ -192,7 +200,7 @@ async function evalBrokenPattern({ bp_multiplier, bp_min_days }) {
     JOIN last_visit lv ON lv.client_id = cs.client_id
     JOIN clients c     ON c.id = cs.client_id
     WHERE c.deleted_at IS NULL
-      AND lv.days_since_last > GREATEST(cs.avg_interval_days * $1, COALESCE($2, 0))
+      AND lv.days_since_last > GREATEST((cs.avg_interval_days * $1::numeric)::int, COALESCE($2::int, 0))
     ORDER BY (lv.days_since_last::float / cs.avg_interval_days) DESC
     LIMIT 100
   `, [bp_multiplier, bp_min_days]);

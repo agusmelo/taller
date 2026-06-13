@@ -177,6 +177,19 @@ async function update(req, res, next) {
     const { errors, data } = validateBody(body, { isUpdate: true });
     if (errors.length > 0) return res.status(422).json({ error: 'Datos inválidos', detalles: errors });
 
+    // HU-01 guard: una def overdue_service huérfana (catalog_item_id=NULL tras
+    // borrar el ítem) no puede re-habilitarse sin reasignar el ítem. Si lo
+    // permitiéramos, el evaluador correría con NULL y dispararía una alerta
+    // crítica por cada vehículo del taller (ver evalOverdueService).
+    const willBeEnabled = data.enabled !== undefined ? data.enabled : existing.rows[0].enabled;
+    if (existing.rows[0].alert_type === 'overdue_service'
+        && willBeEnabled
+        && existing.rows[0].catalog_item_id === null) {
+      return res.status(422).json({
+        error: 'No se puede habilitar una definición overdue_service sin catalog_item_id. Creá una nueva apuntando a un ítem del catálogo.',
+      });
+    }
+
     const fields = [];
     const values = [];
     let idx = 1;
@@ -190,11 +203,26 @@ async function update(req, res, next) {
     fields.push(`updated_at = NOW()`);
     values.push(req.params.id);
 
-    const r = await pool.query(
-      `UPDATE alert_definitions SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
-      values
-    );
-    res.json(r.rows[0]);
+    try {
+      const r = await pool.query(
+        `UPDATE alert_definitions SET ${fields.join(', ')} WHERE id = $${idx} RETURNING *`,
+        values
+      );
+      res.json(r.rows[0]);
+    } catch (dbErr) {
+      // Los índices únicos parciales (uq_alert_def_with_item, uq_alert_def_no_item)
+      // son WHERE enabled = true. Reactivar una def deshabilitada cuando ya
+      // existe otra activa del mismo (alert_type, catalog_item_id) viola la
+      // restricción. Espejo del manejo en create() — 409 en lugar de 500.
+      if (dbErr.code === '23505') {
+        return res.status(409).json({
+          error: existing.rows[0].alert_type === 'overdue_service'
+            ? 'Ya existe una definición habilitada para ese ítem del catálogo'
+            : 'Ya existe una definición habilitada para ese tipo de alerta'
+        });
+      }
+      throw dbErr;
+    }
   } catch (err) { next(err); }
 }
 
