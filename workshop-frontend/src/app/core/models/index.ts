@@ -402,6 +402,8 @@ export interface MonthlyClosing {
 export type AlertType = 'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
 export type AlertEntityType = 'vehicle' | 'client' | 'job';
 
+export type AlertDismissalStatus = 'snoozed' | 'contacted' | 'resolved';
+
 export interface AlertItem {
   alert_type:    AlertType;
   severity:      'critical' | 'high' | 'medium' | 'low';
@@ -418,6 +420,17 @@ export interface AlertItem {
   context:       string;
   action_route:  string;
   definition_id?: string;
+  // Sprint 2 / HU-13: anotación cuando la alerta tiene una dismissal activa
+  // con status='contacted' — el ítem se muestra con pill "Contactado".
+  dismissal_status?: AlertDismissalStatus;
+  dismissal_until?:  string;
+  contacted_at?:     string | null;
+}
+
+export interface AlertWaTemplate {
+  alert_type:  string;
+  template:    string;
+  updated_at:  string;
 }
 
 export interface AlertDefinition {

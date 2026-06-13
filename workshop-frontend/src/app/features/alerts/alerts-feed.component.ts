@@ -12,7 +12,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { ApiService } from '../../core/services/api.service';
 import { NotificationService } from '../../core/services/notification.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { AlertItem, AlertFeedBlock, AlertType } from '../../core/models';
+import { AlertItem, AlertFeedBlock, AlertType, AlertWaTemplate } from '../../core/models';
 
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
@@ -22,6 +22,13 @@ const SNOOZE_DEFAULTS: Record<AlertType, number> = {
   lost_customer:   90,
   broken_pattern:  30,
 };
+
+// HU-12: items por defecto visibles por bloque antes de "Ver más".
+const ITEMS_VISIBLE_DEFAULT = 5;
+
+// HU-13: snooze por defecto cuando se marca como contactado. La alerta
+// vuelve a aparecer luego de este período si no se actuó.
+const CONTACTED_SNOOZE_DAYS = 7;
 
 type TypeFilter = 'all' | AlertType;
 
@@ -53,6 +60,10 @@ type TypeFilter = 'all' | AlertType;
             <a routerLink="/alertas/definiciones" class="btn">
               <mat-icon class="btn-ico">tune</mat-icon>
               Definiciones
+            </a>
+            <a routerLink="/alertas/plantillas-wa" class="btn">
+              <mat-icon class="btn-ico">chat</mat-icon>
+              Plantillas WA
             </a>
           }
           <button class="btn" (click)="evaluateAll()" [disabled]="loading">
@@ -206,14 +217,21 @@ type TypeFilter = 'all' | AlertType;
             </div>
           }
 
-          @for (alert of filteredItems(block); track alert.entity_id) {
-            <div class="alert-row border-{{ alert.severity }}">
+          @for (alert of visibleItemsFor(block); track alert.entity_id) {
+            <div class="alert-row border-{{ alert.severity }}"
+              [class.contacted]="alert.dismissal_status === 'contacted'">
               <span class="sev-dot sev-{{ alert.severity }}"
                 [matTooltip]="sevLabel(alert.severity)"></span>
               <div class="alert-main">
                 <span class="client-name">{{ alert.client_name }}</span>
                 <span class="alert-ctx">{{ alert.context }}</span>
               </div>
+              @if (alert.dismissal_status === 'contacted') {
+                <span class="contacted-pill" matTooltip="Contactado{{ alert.contacted_at ? ' ' + relativeTime(alert.contacted_at) : '' }}">
+                  <mat-icon>chat_bubble</mat-icon>
+                  Contactado
+                </span>
+              }
               <div class="alert-value mono">
                 @if (alert.current_value !== null) {
                   <span class="val-current val-{{ alert.severity }}">{{ alert.current_value }}d</span>
@@ -225,16 +243,22 @@ type TypeFilter = 'all' | AlertType;
               </div>
               <div class="alert-actions">
                 @if (alert.client_phone) {
-                  <a [href]="waLink(alert)" target="_blank" rel="noopener"
-                    class="action-btn wa-btn" matTooltip="WhatsApp">
+                  <button class="action-btn wa-btn" (click)="openWa(alert)"
+                    matTooltip="Contactar por WhatsApp">
                     <mat-icon>chat</mat-icon>
-                  </a>
+                  </button>
+                  @if (alert.dismissal_status !== 'contacted') {
+                    <button class="action-btn contacted-btn" (click)="markContacted(alert)"
+                      matTooltip="Marcar como contactado (no abre WA)">
+                      <mat-icon>done</mat-icon>
+                    </button>
+                  }
                 }
                 <a [routerLink]="alert.action_route" class="action-btn view-btn" matTooltip="Ver detalle">
                   <mat-icon>open_in_new</mat-icon>
                 </a>
                 <button class="action-btn dismiss-btn" [matMenuTriggerFor]="snoozeMenu"
-                  matTooltip="Posponer">
+                  matTooltip="Posponer sin contactar">
                   <mat-icon>schedule</mat-icon>
                 </button>
                 <mat-menu #snoozeMenu="matMenu">
@@ -244,6 +268,12 @@ type TypeFilter = 'all' | AlertType;
                 </mat-menu>
               </div>
             </div>
+          }
+
+          @if (hasHiddenItems(block)) {
+            <button class="show-more-btn" (click)="toggleExpanded(block.definition.id)">
+              {{ isExpanded(block.definition.id) ? 'Ocultar' : 'Ver ' + (filteredItems(block).length - ITEMS_VISIBLE) + ' más' }}
+            </button>
           }
         </mat-card>
       }
@@ -444,15 +474,54 @@ type TypeFilter = 'all' | AlertType;
     .wa-btn:hover        { background: var(--green-lt);  color: var(--green); }
     .view-btn:hover      { background: var(--purple-lt); color: var(--purple); }
     .dismiss-btn:hover   { background: var(--amber-lt);  color: var(--amber); }
+    .contacted-btn:hover { background: var(--blue-lt, #dbeafe);  color: var(--blue, #2563eb); }
+
+    /* Contacted pill (HU-13) */
+    .contacted-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px;
+      font-size: 11px; font-weight: 600;
+      color: var(--blue, #2563eb);
+      background: var(--blue-lt, #dbeafe);
+      border-radius: 999px;
+      flex-shrink: 0;
+    }
+    .contacted-pill mat-icon { font-size: 12px; width: 12px; height: 12px; }
+    .alert-row.contacted { opacity: .75; }
+    .alert-row.contacted .client-name { font-weight: 500; }
+
+    /* "Ver más" toggle (HU-12) */
+    .show-more-btn {
+      width: 100%;
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      border-top: 1px dashed var(--border2);
+      color: var(--text-2);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      transition: background .12s, color .12s;
+    }
+    .show-more-btn:hover { background: var(--bg); color: var(--text-1); }
   `]
 })
 export class AlertsFeedComponent implements OnInit, OnDestroy {
+  readonly ITEMS_VISIBLE = ITEMS_VISIBLE_DEFAULT;
+
   blocks: AlertFeedBlock[] = [];
   loading      = false;
   refreshingId: string | null = null;
 
   typeFilter:     TypeFilter = 'all';
   severityFilter: string | null = null;
+
+  // HU-11: plantillas WA por tipo. Si no hay plantilla guardada para un tipo,
+  // se usa el texto hardcodeado en waMessage().
+  private waTemplates = new Map<string, string>();
+
+  // HU-12: bloques expandidos (id de definición). Por defecto todos colapsados
+  // a ITEMS_VISIBLE_DEFAULT items.
+  private expandedBlocks = new Set<string>();
 
   private destroyed = false;
 
@@ -464,6 +533,20 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadFeed();
+    this.loadWaTemplates();
+  }
+
+  private loadWaTemplates() {
+    this.api.listAlertWaTemplates().subscribe({
+      next: tpls => {
+        if (this.destroyed) return;
+        this.waTemplates.clear();
+        for (const t of tpls) this.waTemplates.set(t.alert_type, t.template);
+      },
+      // Si falla la carga de plantillas, usamos los textos por defecto sin
+      // molestar al usuario.
+      error: () => {},
+    });
   }
 
   ngOnDestroy() {
@@ -512,20 +595,74 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
   }
 
   dismiss(alert: AlertItem, snoozeDays: number) {
+    this.applyDismissal(alert, snoozeDays, 'snoozed');
+  }
+
+  // HU-13: marca como contactado sin abrir WhatsApp. La alerta permanece
+  // visible con pill "Contactado" durante CONTACTED_SNOOZE_DAYS.
+  markContacted(alert: AlertItem) {
+    this.applyDismissal(alert, CONTACTED_SNOOZE_DAYS, 'contacted');
+  }
+
+  // HU-10: abre WhatsApp y a la vez registra el contacto. El ítem
+  // queda visible con pill "Contactado" durante CONTACTED_SNOOZE_DAYS.
+  openWa(alert: AlertItem) {
+    if (!alert.client_phone) return;
+    const url = this.waLink(alert);
+    window.open(url, '_blank', 'noopener');
+    this.applyDismissal(alert, CONTACTED_SNOOZE_DAYS, 'contacted', /*silent*/ true);
+  }
+
+  private applyDismissal(
+    alert: AlertItem,
+    snoozeDays: number,
+    status: 'snoozed' | 'contacted',
+    silent = false,
+  ) {
     if (!alert.definition_id) return;
     const entityType = alert.entity_type ?? 'vehicle';
-    this.api.dismissAlert(alert.definition_id, alert.entity_id, snoozeDays, entityType).subscribe({
+    this.api.dismissAlert(alert.definition_id, alert.entity_id, snoozeDays, entityType, status).subscribe({
       next: () => {
         const block = this.blocks.find(b => b.definition.id === alert.definition_id);
-        if (block) {
+        if (!block) return;
+        if (status === 'snoozed') {
           block.items = block.items.filter(
             i => !(i.entity_id === alert.entity_id && (i.entity_type ?? 'vehicle') === entityType)
           );
+          if (!silent) this.notify.success(`Pospuesto ${snoozeDays} día${snoozeDays === 1 ? '' : 's'}`);
+        } else {
+          // status === 'contacted': el ítem se queda visible con pill.
+          const dismissalUntil = new Date(Date.now() + snoozeDays * 86400000).toISOString();
+          block.items = block.items.map(i =>
+            i.entity_id === alert.entity_id && (i.entity_type ?? 'vehicle') === entityType
+              ? { ...i, dismissal_status: 'contacted' as const, dismissal_until: dismissalUntil, contacted_at: new Date().toISOString() }
+              : i
+          );
+          if (!silent) this.notify.success('Marcado como contactado');
         }
-        this.notify.success(`Pospuesto ${snoozeDays} día${snoozeDays === 1 ? '' : 's'}`);
       },
       error: err => this.notify.handleError(err)
     });
+  }
+
+  // ── HU-12: visibilidad por bloque ──
+  visibleItemsFor(block: AlertFeedBlock): AlertItem[] {
+    const items = this.filteredItems(block);
+    if (this.isExpanded(block.definition.id)) return items;
+    return items.slice(0, this.ITEMS_VISIBLE);
+  }
+  hasHiddenItems(block: AlertFeedBlock): boolean {
+    return this.filteredItems(block).length > this.ITEMS_VISIBLE;
+  }
+  isExpanded(definitionId: string): boolean {
+    return this.expandedBlocks.has(definitionId);
+  }
+  toggleExpanded(definitionId: string): void {
+    if (this.expandedBlocks.has(definitionId)) {
+      this.expandedBlocks.delete(definitionId);
+    } else {
+      this.expandedBlocks.add(definitionId);
+    }
   }
 
   // ── Filters ──
@@ -544,11 +681,30 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
   }
 
   get visibleBlocks(): AlertFeedBlock[] {
-    return this.blocks.filter(b => {
+    const filtered = this.blocks.filter(b => {
       if (this.typeFilter !== 'all' && b.definition.alert_type !== this.typeFilter) return false;
       if (this.severityFilter && this.filteredItems(b).length === 0 && b.items.length > 0) return false;
       return true;
     });
+    // HU-12: orden por severidad máxima del bloque (asc por rank = más crítico
+    // primero), luego por última evaluación más reciente.
+    return [...filtered].sort((a, b) => {
+      const sa = this.maxSeverityRank(a);
+      const sb = this.maxSeverityRank(b);
+      if (sa !== sb) return sa - sb;
+      const ta = a.definition.last_evaluated_at ? new Date(a.definition.last_evaluated_at).getTime() : 0;
+      const tb = b.definition.last_evaluated_at ? new Date(b.definition.last_evaluated_at).getTime() : 0;
+      return tb - ta;
+    });
+  }
+
+  private maxSeverityRank(block: AlertFeedBlock): number {
+    let best = 4;
+    for (const it of block.items) {
+      const r = SEVERITY_RANK[it.severity] ?? 3;
+      if (r < best) best = r;
+    }
+    return best;
   }
 
   get availableTypes(): AlertType[] {
@@ -570,6 +726,11 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
     return `https://wa.me/${phone}?text=${encodeURIComponent(this.waMessage(alert))}`;
   }
   private waMessage(alert: AlertItem): string {
+    // HU-11: si hay plantilla guardada para el tipo, se usa con interpolación.
+    const tpl = this.waTemplates.get(alert.alert_type);
+    if (tpl) return this.interpolateTemplate(tpl, alert);
+
+    // Fallback hardcodeado.
     const name = alert.client_name.split(' ')[0];
     const days = alert.current_value ?? 0;
     switch (alert.alert_type) {
@@ -584,6 +745,16 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
       default:
         return `Hola ${name}, te contactamos del taller.`;
     }
+  }
+
+  private interpolateTemplate(tpl: string, alert: AlertItem): string {
+    const name = alert.client_name.split(' ')[0];
+    const days = alert.current_value ?? 0;
+    return tpl
+      .replace(/\{client_name\}/g,  name)
+      .replace(/\{entity_label\}/g, alert.entity_label)
+      .replace(/\{days\}/g,         String(days))
+      .replace(/\{service_name\}/g, alert.entity_label);
   }
 
   // ── Display helpers ──

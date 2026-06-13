@@ -14,7 +14,7 @@ import {
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
   CatalogItemAnalytics, CatalogAnalyticsParams,
   OverdueServiceItem, AlertItem,
-  AlertDefinition, AlertFeedBlock, AlertBadge
+  AlertDefinition, AlertFeedBlock, AlertBadge, AlertWaTemplate
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -164,12 +164,19 @@ export class ApiService {
   getAlertsFeed() {
     return this.http.get<AlertFeedBlock[]>(`${this.url}/alerts/feed`);
   }
-  dismissAlert(definitionId: string, entityId: string, snoozeDays: number, entityType: string = 'vehicle') {
-    return this.http.post(`${this.url}/alerts/dismiss`, {
+  dismissAlert(
+    definitionId: string,
+    entityId: string,
+    snoozeDays: number,
+    entityType: string = 'vehicle',
+    status: 'snoozed' | 'contacted' | 'resolved' = 'snoozed',
+  ) {
+    return this.http.post<{ ok: boolean; status: string }>(`${this.url}/alerts/dismiss`, {
       definition_id: definitionId,
       entity_id:     entityId,
       entity_type:   entityType,
       snooze_days:   snoozeDays,
+      status,
     });
   }
   getAlertsBadge() {
@@ -177,6 +184,20 @@ export class ApiService {
   }
   evaluateAllAlerts() {
     return this.http.post<{ ok: boolean; evaluated: number }>(`${this.url}/alerts/evaluate-all`, {});
+  }
+
+  // Alerts WA templates (HU-11)
+  listAlertWaTemplates() {
+    return this.http.get<AlertWaTemplate[]>(`${this.url}/alerts/wa-templates`);
+  }
+  upsertAlertWaTemplate(alertType: string, template: string) {
+    return this.http.put<AlertWaTemplate>(
+      `${this.url}/alerts/wa-templates/${alertType}`,
+      { template }
+    );
+  }
+  deleteAlertWaTemplate(alertType: string) {
+    return this.http.delete<{ ok: boolean }>(`${this.url}/alerts/wa-templates/${alertType}`);
   }
 
   // Retention (detailed per-vehicle view)

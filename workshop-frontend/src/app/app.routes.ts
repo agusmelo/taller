@@ -87,6 +87,12 @@ export const routes: Routes = [
         loadComponent: () => import('./features/alerts/alert-definitions.component')
           .then(m => m.AlertDefinitionsComponent)
       },
+      {
+        path: 'alertas/plantillas-wa',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/alerts/wa-templates.component')
+          .then(m => m.WaTemplatesComponent)
+      },
     ]
   },
   { path: '**', redirectTo: 'trabajos' }
