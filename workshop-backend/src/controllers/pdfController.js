@@ -93,6 +93,85 @@ function lineTotal(rootItem) {
   return parseFloat(rootItem.quantity) * parseFloat(rootItem.unit_price);
 }
 
+// Logo as an <img> if assets/logo.png exists, otherwise the workshop name.
+// Shared by every document so the branding stays in one place.
+function loadLogoHtml(workshopName) {
+  const logoPath = path.join(__dirname, '../../assets/logo.png');
+  if (fs.existsSync(logoPath)) {
+    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
+    return `<img class="brand-logo" src="data:image/png;base64,${logoBase64}" alt="${esc(workshopName)}">`;
+  }
+  return `<div class="brand-name">${esc(workshopName)}</div>`;
+}
+
+// Fonts, reset, page frame, header and parties block — common to every PDF.
+// Document-specific styles (items table, payments table, totals) are appended
+// per template so each can override freely.
+const BASE_CSS = `
+  ${FONT_CSS}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: ${PAGE_BG}; }
+  body {
+    font-family: ${SANS};
+    color: ${INK};
+    font-size: 11.5px;
+    line-height: 1.4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sheet { padding: 34px 40px 8px; }
+
+  /* Header */
+  .hdr { display: flex; justify-content: space-between; align-items: flex-start; }
+  .brand-name {
+    font-family: ${DISPLAY}; font-weight: 700; font-size: 30px;
+    letter-spacing: .5px; color: ${RED}; text-transform: uppercase; line-height: 1;
+  }
+  .brand-logo { max-height: 64px; max-width: 280px; }
+  .hdr-contact { margin-top: 8px; font-size: 10px; color: ${MUTED}; letter-spacing: .2px; }
+  .hdr-meta { text-align: right; white-space: nowrap; padding-top: 4px; }
+  .hdr-meta-label { font-size: 10.5px; color: ${MUTED}; letter-spacing: .4px; }
+  .hdr-meta-num { font-family: ${DISPLAY}; font-weight: 700; font-size: 14px; color: ${INK}; margin-left: 10px; letter-spacing: .5px; }
+  .hdr-rule { height: 4px; background: ${RED}; margin: 14px 0 22px; }
+
+  /* Parties */
+  .parties { display: flex; gap: 48px; margin-bottom: 24px; }
+  .party { flex: 1; }
+  .party-title {
+    font-family: ${DISPLAY}; font-weight: 700; font-size: 10.5px; color: ${RED};
+    text-transform: uppercase; letter-spacing: 2.5px; padding-left: 10px;
+    border-left: 3px solid ${RED}; margin-bottom: 11px; line-height: 1.1;
+  }
+  .info-row { display: flex; align-items: baseline; padding: 2.5px 0; }
+  .info-label { width: 92px; flex: none; color: ${MUTED}; font-size: 11px; }
+  .info-value { font-weight: 500; }
+  .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; line-height: 1; }
+`;
+
+// Render an HTML string to an A4 PDF buffer. One Puppeteer setup for every
+// document; the browser is always closed even if rendering throws.
+async function renderPdf(html, footerTemplate) {
+  const browser = await puppeteer.launch({
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+  });
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    return await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      margin: { top: '0mm', right: '0mm', bottom: '30mm', left: '0mm' },
+      displayHeaderFooter: true,
+      headerTemplate: '<div></div>',
+      footerTemplate
+    });
+  } finally {
+    await browser.close();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Section builders
 // ---------------------------------------------------------------------------
@@ -261,56 +340,14 @@ function buildHtml(job, items, financials) {
   const workshopAddress = process.env.WORKSHOP_ADDRESS || '';
   const workshopPhone   = process.env.WORKSHOP_PHONE   || '';
 
-  let logoHtml = `<div class="brand-name">${esc(workshopName)}</div>`;
-  const logoPath = path.join(__dirname, '../../assets/logo.png');
-  if (fs.existsSync(logoPath)) {
-    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
-    logoHtml = `<img class="brand-logo" src="data:image/png;base64,${logoBase64}" alt="${esc(workshopName)}">`;
-  }
+  const logoHtml = loadLogoHtml(workshopName);
 
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="utf-8">
 <style>
-  ${FONT_CSS}
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { background: ${PAGE_BG}; }
-  body {
-    font-family: ${SANS};
-    color: ${INK};
-    font-size: 11.5px;
-    line-height: 1.4;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .sheet { padding: 34px 40px 8px; }
-
-  /* Header */
-  .hdr { display: flex; justify-content: space-between; align-items: flex-start; }
-  .brand-name {
-    font-family: ${DISPLAY}; font-weight: 700; font-size: 30px;
-    letter-spacing: .5px; color: ${RED}; text-transform: uppercase; line-height: 1;
-  }
-  .brand-logo { max-height: 64px; max-width: 280px; }
-  .hdr-contact { margin-top: 8px; font-size: 10px; color: ${MUTED}; letter-spacing: .2px; }
-  .hdr-meta { text-align: right; white-space: nowrap; padding-top: 4px; }
-  .hdr-meta-label { font-size: 10.5px; color: ${MUTED}; letter-spacing: .4px; }
-  .hdr-meta-num { font-family: ${DISPLAY}; font-weight: 700; font-size: 14px; color: ${INK}; margin-left: 10px; letter-spacing: .5px; }
-  .hdr-rule { height: 4px; background: ${RED}; margin: 14px 0 22px; }
-
-  /* Parties */
-  .parties { display: flex; gap: 48px; margin-bottom: 24px; }
-  .party { flex: 1; }
-  .party-title {
-    font-family: ${DISPLAY}; font-weight: 700; font-size: 10.5px; color: ${RED};
-    text-transform: uppercase; letter-spacing: 2.5px; padding-left: 10px;
-    border-left: 3px solid ${RED}; margin-bottom: 11px; line-height: 1.1;
-  }
-  .info-row { display: flex; align-items: baseline; padding: 2.5px 0; }
-  .info-label { width: 92px; flex: none; color: ${MUTED}; font-size: 11px; }
-  .info-value { font-weight: 500; }
-  .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; line-height: 1; }
+  ${BASE_CSS}
 
   /* Items table */
   .items { width: 100%; border-collapse: collapse; }
@@ -431,24 +468,7 @@ async function generatePdf(req, res, next) {
 
     const financials = calcFinancials(job, itemsRes.rows, paysRes.rows);
     const html = buildHtml(job, itemsRes.rows, financials);
-
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
-
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '0mm', right: '0mm', bottom: '30mm', left: '0mm' },
-      displayHeaderFooter: true,
-      headerTemplate: '<div></div>',
-      footerTemplate: buildFooter()
-    });
-    await browser.close();
+    const pdfBuffer = await renderPdf(html, buildFooter());
 
     res.set({
       'Content-Type': 'application/pdf',
@@ -481,12 +501,7 @@ function buildReceiptHtml(job, payments, financials, receiptNumber) {
   const workshopAddress = process.env.WORKSHOP_ADDRESS || '';
   const workshopPhone   = process.env.WORKSHOP_PHONE   || '';
 
-  let logoHtml = `<div class="brand-name">${esc(workshopName)}</div>`;
-  const logoPath = path.join(__dirname, '../../assets/logo.png');
-  if (fs.existsSync(logoPath)) {
-    const logoBase64 = fs.readFileSync(logoPath).toString('base64');
-    logoHtml = `<img class="brand-logo" src="data:image/png;base64,${logoBase64}" alt="${esc(workshopName)}">`;
-  }
+  const logoHtml = loadLogoHtml(workshopName);
 
   const contact = [workshopAddress, workshopPhone].filter(Boolean).map(esc).join(' · ');
   const vehicleName = `${esc(job.make)} ${esc(job.model)}${job.year ? ` (${esc(job.year)})` : ''}`.trim();
@@ -507,44 +522,7 @@ function buildReceiptHtml(job, payments, financials, receiptNumber) {
 <head>
 <meta charset="utf-8">
 <style>
-  ${FONT_CSS}
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { background: ${PAGE_BG}; }
-  body {
-    font-family: ${SANS};
-    color: ${INK};
-    font-size: 11.5px;
-    line-height: 1.4;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-  .sheet { padding: 34px 40px 8px; }
-
-  /* Header */
-  .hdr { display: flex; justify-content: space-between; align-items: flex-start; }
-  .brand-name {
-    font-family: ${DISPLAY}; font-weight: 700; font-size: 30px;
-    letter-spacing: .5px; color: ${RED}; text-transform: uppercase; line-height: 1;
-  }
-  .brand-logo { max-height: 64px; max-width: 280px; }
-  .hdr-contact { margin-top: 8px; font-size: 10px; color: ${MUTED}; letter-spacing: .2px; }
-  .hdr-meta { text-align: right; white-space: nowrap; padding-top: 4px; }
-  .hdr-meta-label { font-size: 10.5px; color: ${MUTED}; letter-spacing: .4px; }
-  .hdr-meta-num { font-family: ${DISPLAY}; font-weight: 700; font-size: 14px; color: ${INK}; margin-left: 10px; letter-spacing: .5px; }
-  .hdr-rule { height: 4px; background: ${RED}; margin: 14px 0 22px; }
-
-  /* Parties — same look as the job PDF */
-  .parties { display: flex; gap: 48px; margin-bottom: 22px; }
-  .party { flex: 1; }
-  .party-title {
-    font-family: ${DISPLAY}; font-weight: 700; font-size: 10.5px; color: ${RED};
-    text-transform: uppercase; letter-spacing: 2.5px; padding-left: 10px;
-    border-left: 3px solid ${RED}; margin-bottom: 11px; line-height: 1.1;
-  }
-  .info-row { display: flex; align-items: baseline; padding: 2.5px 0; }
-  .info-label { width: 92px; flex: none; color: ${MUTED}; font-size: 11px; }
-  .info-value { font-weight: 500; }
-  .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; line-height: 1; }
+  ${BASE_CSS}
 
   /* Service reference strip */
   .svc-rule { height: 1px; background: ${LINE}; margin-bottom: 14px; }
@@ -715,8 +693,10 @@ async function generateReceiptPdf(req, res, next) {
        ORDER BY (parent_id IS NULL) DESC, sort_order, created_at`,
       [req.params.id]
     );
+    // Order by the user-facing payment_date (the column shown on the receipt),
+    // matching the on-screen list; paid_at breaks ties deterministically.
     const paysRes = await pool.query(
-      `SELECT * FROM payments WHERE job_id = $1 ORDER BY paid_at ASC`,
+      `SELECT * FROM payments WHERE job_id = $1 ORDER BY payment_date ASC, paid_at ASC`,
       [req.params.id]
     );
 
@@ -727,24 +707,7 @@ async function generateReceiptPdf(req, res, next) {
     const financials = calcFinancials(job, itemsRes.rows, paysRes.rows);
     const receiptNumber = buildReceiptNumber(job.id);
     const html = buildReceiptHtml(job, paysRes.rows, financials, receiptNumber);
-
-    const browser = await puppeteer.launch({
-      headless: true,
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-    });
-
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '0mm', right: '0mm', bottom: '30mm', left: '0mm' },
-      displayHeaderFooter: true,
-      headerTemplate: '<div></div>',
-      footerTemplate: buildFooter()
-    });
-    await browser.close();
+    const pdfBuffer = await renderPdf(html, buildFooter());
 
     res.set({
       'Content-Type': 'application/pdf',

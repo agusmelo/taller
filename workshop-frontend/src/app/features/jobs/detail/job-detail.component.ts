@@ -907,24 +907,19 @@ export class JobDetailComponent implements OnInit {
   }
 
   printPdf() {
-    const token = localStorage.getItem('workshop_token');
-    const url = this.api.getJobPdfUrl(this.job!.id);
-    this.pdfLoading = true;
-    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.blob())
-      .then(blob => {
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        this.pdfLoading = false;
-      })
-      .catch(() => { this.notify.error('Error al generar PDF'); this.pdfLoading = false; });
+    this.openPdf(this.api.getJobPdfUrl(this.job!.id), 'Error al generar PDF', v => (this.pdfLoading = v));
   }
 
   printReceiptPdf() {
     if (!this.job?.payments?.length) return;
+    this.openPdf(this.api.getJobReceiptPdfUrl(this.job.id), 'Error al generar el recibo', v => (this.receiptPdfLoading = v));
+  }
+
+  // Fetch a PDF with auth, open it in a new tab, and release the blob URL once
+  // the tab has had time to load it.
+  private openPdf(url: string, errorMsg: string, setLoading: (v: boolean) => void) {
     const token = localStorage.getItem('workshop_token');
-    const url = this.api.getJobReceiptPdfUrl(this.job.id);
-    this.receiptPdfLoading = true;
+    setLoading(true);
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
       .then(async r => {
         if (!r.ok) throw new Error(await r.text());
@@ -933,8 +928,9 @@ export class JobDetailComponent implements OnInit {
       .then(blob => {
         const blobUrl = URL.createObjectURL(blob);
         window.open(blobUrl, '_blank');
-        this.receiptPdfLoading = false;
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        setLoading(false);
       })
-      .catch(() => { this.notify.error('Error al generar el recibo'); this.receiptPdfLoading = false; });
+      .catch(() => { this.notify.error(errorMsg); setLoading(false); });
   }
 }
