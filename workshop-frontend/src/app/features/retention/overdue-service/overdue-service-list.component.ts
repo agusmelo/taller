@@ -61,7 +61,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
             </mat-form-field>
 
             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="field-threshold">
-              <mat-label>Umbral (días)</mat-label>
+              <mat-label>Umbral</mat-label>
               <input matInput type="number" [(ngModel)]="thresholdDays" min="1" step="1" placeholder="180">
               <span matTextSuffix>días</span>
             </mat-form-field>
