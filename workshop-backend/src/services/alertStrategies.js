@@ -106,28 +106,57 @@ const paymentOverdue = {
   entityType: 'job',
 
   async evaluate(def) {
+    // Replica calcFinancials() en SQL: para cada item con hijos, el aporte al
+    // subtotal es la SUMA DE unit_price DE LOS HIJOS (no quantity*unit_price
+    // del padre). Para items sin hijos, es quantity*unit_price. Luego aplica
+    // descuento y opcionalmente IVA. La query anterior ignoraba tax/discount
+    // y la lógica de padres-con-hijos: con IVA habilitado un pago entre
+    // subtotal y total no disparaba la alerta.
     const r = await pool.query(`
-      SELECT j.id, j.job_number, j.job_date,
-             c.id AS client_id, c.full_name AS client_name,
-             c.phone AS client_phone, c.email AS client_email,
-             v.plate_number,
-             COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance,
-             CURRENT_DATE - j.job_date::date AS days_pending
-      FROM jobs j
-      JOIN clients  c ON c.id = j.client_id
-      JOIN vehicles v ON v.id = j.vehicle_id
-      LEFT JOIN job_items ji ON ji.job_id = j.id
-      LEFT JOIN (
+      WITH job_subtotals AS (
+        SELECT j.id AS job_id,
+               COALESCE(SUM(
+                 CASE
+                   WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = it.id)
+                     THEN (SELECT SUM(ch.unit_price) FROM job_items ch WHERE ch.parent_id = it.id)
+                   ELSE it.quantity * it.unit_price
+                 END
+               ), 0) AS subtotal
+        FROM jobs j
+        LEFT JOIN job_items it ON it.job_id = j.id AND it.parent_id IS NULL
+        WHERE j.deleted_at IS NULL
+          AND j.status = 'terminado'
+        GROUP BY j.id
+      ),
+      job_payments AS (
         SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id
-      ) p ON p.job_id = j.id
-      WHERE j.status = 'terminado'
-        AND j.deleted_at IS NULL
-        AND c.deleted_at IS NULL
-      GROUP BY j.id, j.job_number, j.job_date,
-               c.id, c.full_name, c.phone, c.email,
-               v.plate_number, p.paid
-      HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
-         AND CURRENT_DATE - j.job_date::date > $1
+      ),
+      candidates AS (
+        SELECT j.id, j.job_number, j.job_date,
+               c.id AS client_id, c.full_name AS client_name,
+               c.phone AS client_phone, c.email AS client_email,
+               v.plate_number,
+               -- (subtotal - discount) * (1 + tax_rate si tax_enabled)
+               ((js.subtotal
+                  - CASE WHEN j.discount_type = 'percentage'
+                         THEN js.subtotal * (j.discount_amount / 100.0)
+                         ELSE j.discount_amount
+                    END)
+                * (1 + CASE WHEN j.tax_enabled THEN j.tax_rate ELSE 0 END)
+               ) - COALESCE(jp.paid, 0) AS balance,
+               CURRENT_DATE - j.job_date::date AS days_pending
+        FROM jobs j
+        JOIN clients  c ON c.id = j.client_id
+        JOIN vehicles v ON v.id = j.vehicle_id
+        JOIN job_subtotals js ON js.job_id = j.id
+        LEFT JOIN job_payments jp ON jp.job_id = j.id
+        WHERE j.status = 'terminado'
+          AND j.deleted_at IS NULL
+          AND c.deleted_at IS NULL
+      )
+      SELECT * FROM candidates
+      WHERE balance > 0.005     -- tolerancia para redondeo (mismo umbral que calcFinancials usa con cents)
+        AND days_pending > $1
       ORDER BY days_pending DESC
       LIMIT 100
     `, [def.threshold_days]);

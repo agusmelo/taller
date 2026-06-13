@@ -218,6 +218,61 @@ describe('evaluateDefinition — broken_pattern', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// evaluateDefinition — payment_overdue
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('evaluateDefinition — payment_overdue', () => {
+  const DEF = { id: 'def1', alert_type: 'payment_overdue', threshold_days: 30 };
+
+  // El evaluator devuelve filas con balance / days_pending ya computados por
+  // la query (que replica calcFinancials: subtotal de items con lógica
+  // padre/hijo, descuento y opcionalmente IVA, menos pagos).
+  function po(balance, days_pending, extra = {}) {
+    return {
+      id: 'job1',
+      job_number: 'T-001',
+      job_date: '2025-01-01',
+      client_id: 'cid1', client_name: 'Juan García',
+      client_phone: '099111111', client_email: 'juan@test.com',
+      plate_number: 'ABC 1234',
+      balance: balance.toString(),
+      days_pending: days_pending.toString(),
+      ...extra,
+    };
+  }
+
+  function mockPO(rows) {
+    pool.query
+      .mockResolvedValueOnce({ rows })
+      .mockResolvedValueOnce({ rows: [] }); // no dismissals
+  }
+
+  test('mapea row con balance > 0 a AlertItem (entity_type=job)', async () => {
+    mockPO([po(122.00, 60)]);
+    const [item] = await evaluateDefinition(DEF);
+    expect(item.alert_type).toBe('payment_overdue');
+    expect(item.entity_type).toBe('job');
+    expect(item.entity_id).toBe('job1');
+    expect(item.entity_label).toBe('T-001');
+    expect(item.action_route).toBe('/trabajos/job1');
+    expect(item.current_value).toBe(60);
+    expect(item.context).toContain('Deuda: $122.00');
+  });
+
+  // Regression: la query vieja ignoraba tax y descuento. Un job con
+  // items=$100, IVA 22% y pago=$100 tiene balance real de $22 pero la
+  // query vieja calculaba 0 y no disparaba alerta. Ahora la SQL incluye
+  // tax/descuento; este test verifica que el JS mapea correctamente
+  // el balance que devuelve la SQL.
+  test('balance pequeño (post-tax) se mapea correctamente al contexto', async () => {
+    mockPO([po(22.00, 45)]);
+    const [item] = await evaluateDefinition(DEF);
+    expect(item.context).toContain('Deuda: $22.00');
+    expect(item.severity).toBe('high'); // 45/30 = 1.5 → high
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // evaluateDefinition — unknown type
 // ─────────────────────────────────────────────────────────────────────────────
 
