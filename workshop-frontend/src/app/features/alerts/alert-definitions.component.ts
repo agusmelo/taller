@@ -252,10 +252,13 @@ export class AlertDefinitionsComponent implements OnInit {
 
   typeLabel(type: string): string {
     return ({
-      overdue_service: 'Servicio vencido',
-      payment_overdue: 'Pago pendiente',
-      lost_customer:   'Cliente inactivo',
-      broken_pattern:  'Patrón roto',
+      overdue_service:  'Servicio vencido',
+      payment_overdue:  'Pago pendiente',
+      lost_customer:    'Cliente inactivo',
+      broken_pattern:   'Patrón roto',
+      quote_pending:    'Presupuesto sin cerrar',
+      upcoming_service: 'Servicio próximo a vencer',
+      high_value_lost:  'Cliente VIP perdido',
     } as Record<string, string>)[type] ?? type;
   }
 
@@ -265,9 +268,14 @@ export class AlertDefinitionsComponent implements OnInit {
         return `${d.catalog_item_description || '—'} · ${d.threshold_days}d`;
       case 'payment_overdue':
       case 'lost_customer':
+      case 'quote_pending':
         return `${d.threshold_days}d`;
       case 'broken_pattern':
         return `×${d.bp_multiplier} (mín ${d.bp_min_days}d)`;
+      case 'upcoming_service':
+        return `${d.catalog_item_description || '—'} · ventana ${d.threshold_days}d / vence ${d.due_after_days}d`;
+      case 'high_value_lost':
+        return `${d.threshold_days}d · gasto ≥ $${d.min_lifetime_value ?? 0}`;
       default: return '';
     }
   }
@@ -320,16 +328,19 @@ interface DialogData { def: AlertDefinition | null; }
           <mat-select [(ngModel)]="form.alert_type" [disabled]="!!data.def"
             (selectionChange)="onTypeChange()">
             <mat-option value="overdue_service">Servicio vencido (por ítem del catálogo)</mat-option>
+            <mat-option value="upcoming_service">Servicio próximo a vencer (por ítem)</mat-option>
             <mat-option value="payment_overdue">Pago pendiente</mat-option>
-            <mat-option value="lost_customer">Cliente inactivo</mat-option>
+            <mat-option value="quote_pending">Presupuesto sin cerrar</mat-option>
             <mat-option value="broken_pattern">Patrón roto</mat-option>
+            <mat-option value="lost_customer">Cliente inactivo</mat-option>
+            <mat-option value="high_value_lost">Cliente VIP perdido</mat-option>
           </mat-select>
           @if (!!data.def) {
             <mat-hint>El tipo no se puede cambiar después de creada</mat-hint>
           }
         </mat-form-field>
 
-        @if (form.alert_type === 'overdue_service') {
+        @if (form.alert_type === 'overdue_service' || form.alert_type === 'upcoming_service') {
           <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
             <mat-label>Ítem del catálogo</mat-label>
             <input matInput
@@ -354,15 +365,33 @@ interface DialogData { def: AlertDefinition | null; }
           </mat-form-field>
         }
 
-        @if (form.alert_type === 'overdue_service'
-          || form.alert_type === 'payment_overdue'
-          || form.alert_type === 'lost_customer') {
+        @if (form.alert_type !== 'broken_pattern') {
           <mat-form-field appearance="outline">
             <mat-label>Umbral</mat-label>
             <input matInput type="number" min="1" max="3650"
               [(ngModel)]="form.threshold_days" required inputmode="numeric">
             <span matTextSuffix>días</span>
             <mat-hint>{{ thresholdHint() }}</mat-hint>
+          </mat-form-field>
+        }
+
+        @if (form.alert_type === 'upcoming_service') {
+          <mat-form-field appearance="outline">
+            <mat-label>Ciclo esperado del servicio</mat-label>
+            <input matInput type="number" min="1" max="3650"
+              [(ngModel)]="form.due_after_days" inputmode="numeric">
+            <span matTextSuffix>días</span>
+            <mat-hint>Alerta cuando el vehículo está dentro del umbral previo a este día</mat-hint>
+          </mat-form-field>
+        }
+
+        @if (form.alert_type === 'high_value_lost') {
+          <mat-form-field appearance="outline">
+            <mat-label>Gasto histórico mínimo</mat-label>
+            <input matInput type="number" min="0" step="100"
+              [(ngModel)]="form.min_lifetime_value" inputmode="numeric">
+            <span matTextSuffix>$</span>
+            <mat-hint>Solo clientes con gasto histórico ≥ este valor</mat-hint>
           </mat-form-field>
         }
 
@@ -443,6 +472,8 @@ export class AlertDefFormDialog {
     threshold_days: 180,
     bp_multiplier: 1.5,
     bp_min_days: 0,
+    due_after_days: 90 as number | null,
+    min_lifetime_value: 5000 as number | null,
     eval_interval_hours: 4,
   };
   catalogQuery = '';
@@ -453,18 +484,24 @@ export class AlertDefFormDialog {
 
   subtitleFor(type: AlertType): string {
     return ({
-      overdue_service: 'Detecta vehículos con servicios pendientes',
-      payment_overdue: 'Detecta trabajos con saldo pendiente',
-      lost_customer:   'Detecta clientes que no vuelven',
-      broken_pattern:  'Detecta clientes que rompen su frecuencia habitual',
+      overdue_service:  'Detecta vehículos con servicios pendientes',
+      upcoming_service: 'Aviso proactivo antes de que venza el servicio',
+      payment_overdue:  'Detecta trabajos con saldo pendiente',
+      quote_pending:    'Presupuestos sin cerrar hace varios días',
+      lost_customer:    'Detecta clientes que no vuelven',
+      broken_pattern:   'Detecta clientes que rompen su frecuencia habitual',
+      high_value_lost:  'Clientes VIP con gasto alto que no vuelven',
     } as Record<string, string>)[type] ?? '';
   }
 
   thresholdHint(): string {
     return ({
-      overdue_service: 'Días desde el último servicio para alertar',
-      payment_overdue: 'Días desde el cierre del trabajo sin cobro',
-      lost_customer:   'Días sin ningún trabajo para considerar inactivo',
+      overdue_service:  'Días desde el último servicio para alertar',
+      upcoming_service: 'Ventana antes del día estimado de vencimiento',
+      payment_overdue:  'Días desde el cierre del trabajo sin cobro',
+      quote_pending:    'Días desde el presupuesto sin conversión',
+      lost_customer:    'Días sin ningún trabajo para considerar inactivo',
+      high_value_lost:  'Días sin visita para considerar cliente perdido',
     } as Record<string, string>)[this.form.alert_type] ?? '';
   }
 
@@ -482,6 +519,8 @@ export class AlertDefFormDialog {
         threshold_days:      data.def.threshold_days,
         bp_multiplier:       data.def.bp_multiplier ?? 1.5,
         bp_min_days:         data.def.bp_min_days ?? 0,
+        due_after_days:      data.def.due_after_days ?? 90,
+        min_lifetime_value:  data.def.min_lifetime_value ?? 5000,
         eval_interval_hours: data.def.eval_interval_hours,
       };
       if (data.def.catalog_item_description) {
@@ -491,14 +530,24 @@ export class AlertDefFormDialog {
   }
 
   onTypeChange() {
-    if (this.form.alert_type !== 'overdue_service') {
+    const usesCatalog = this.form.alert_type === 'overdue_service'
+                     || this.form.alert_type === 'upcoming_service';
+    if (!usesCatalog) {
       this.form.catalog_item_id = null;
       this.catalogQuery         = '';
     }
     if (this.form.alert_type === 'broken_pattern') {
       this.form.threshold_days = null;
     } else if (this.form.threshold_days == null) {
-      this.form.threshold_days = 180;
+      // Defaults razonables por tipo
+      this.form.threshold_days = ({
+        overdue_service:  180,
+        upcoming_service: 14,
+        payment_overdue:  30,
+        quote_pending:    7,
+        lost_customer:    180,
+        high_value_lost:  90,
+      } as Record<string, number>)[this.form.alert_type] ?? 30;
     }
   }
 
@@ -529,11 +578,17 @@ export class AlertDefFormDialog {
   isValid(): boolean {
     if (!this.form.name?.trim()) return false;
     if (this.form.alert_type === 'overdue_service') {
-      // For new: need catalog_item_id; for edit: it's locked
       if (!this.data.def && !this.form.catalog_item_id) return false;
       if (!this.form.threshold_days || this.form.threshold_days < 1) return false;
+    } else if (this.form.alert_type === 'upcoming_service') {
+      if (!this.data.def && !this.form.catalog_item_id) return false;
+      if (!this.form.threshold_days || this.form.threshold_days < 1) return false;
+      if (!this.form.due_after_days || this.form.due_after_days < 1) return false;
     } else if (this.form.alert_type === 'broken_pattern') {
       if (!this.form.bp_multiplier || this.form.bp_multiplier < 1) return false;
+    } else if (this.form.alert_type === 'high_value_lost') {
+      if (!this.form.threshold_days || this.form.threshold_days < 1) return false;
+      if (this.form.min_lifetime_value == null || this.form.min_lifetime_value < 0) return false;
     } else {
       if (!this.form.threshold_days || this.form.threshold_days < 1) return false;
     }
@@ -557,6 +612,12 @@ export class AlertDefFormDialog {
         payload.bp_multiplier = this.form.bp_multiplier;
         payload.bp_min_days   = this.form.bp_min_days;
       }
+      if (this.form.alert_type === 'upcoming_service') {
+        payload.due_after_days = this.form.due_after_days;
+      }
+      if (this.form.alert_type === 'high_value_lost') {
+        payload.min_lifetime_value = this.form.min_lifetime_value;
+      }
       this.api.updateAlertDefinition(this.data.def.id, payload).subscribe({
         next: () => { this.saving = false; this.dialogRef.close(true); },
         error: err => { this.saving = false; this.errorMsg = extractApiError(err); }
@@ -566,9 +627,16 @@ export class AlertDefFormDialog {
       if (this.form.alert_type === 'overdue_service') {
         payload.catalog_item_id = this.form.catalog_item_id;
         payload.threshold_days  = this.form.threshold_days;
+      } else if (this.form.alert_type === 'upcoming_service') {
+        payload.catalog_item_id = this.form.catalog_item_id;
+        payload.threshold_days  = this.form.threshold_days;
+        payload.due_after_days  = this.form.due_after_days;
       } else if (this.form.alert_type === 'broken_pattern') {
         payload.bp_multiplier = this.form.bp_multiplier;
         payload.bp_min_days   = this.form.bp_min_days;
+      } else if (this.form.alert_type === 'high_value_lost') {
+        payload.threshold_days     = this.form.threshold_days;
+        payload.min_lifetime_value = this.form.min_lifetime_value;
       } else {
         payload.threshold_days = this.form.threshold_days;
       }

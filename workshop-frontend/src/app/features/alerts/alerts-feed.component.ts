@@ -17,10 +17,13 @@ import { AlertItem, AlertFeedBlock, AlertType, AlertWaTemplate } from '../../cor
 const SEVERITY_RANK: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 
 const SNOOZE_DEFAULTS: Record<AlertType, number> = {
-  overdue_service: 30,
-  payment_overdue: 7,
-  lost_customer:   90,
-  broken_pattern:  30,
+  overdue_service:  30,
+  payment_overdue:  7,
+  lost_customer:    90,
+  broken_pattern:   30,
+  quote_pending:    7,
+  upcoming_service: 30,
+  high_value_lost:  60,
 };
 
 // HU-12: items por defecto visibles por bloque antes de "Ver más".
@@ -710,7 +713,10 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
   get availableTypes(): AlertType[] {
     const seen = new Set<AlertType>();
     for (const b of this.blocks) seen.add(b.definition.alert_type);
-    const order: AlertType[] = ['overdue_service', 'payment_overdue', 'lost_customer', 'broken_pattern'];
+    const order: AlertType[] = [
+      'overdue_service', 'upcoming_service', 'payment_overdue', 'quote_pending',
+      'broken_pattern', 'lost_customer', 'high_value_lost',
+    ];
     return order.filter(t => seen.has(t));
   }
 
@@ -742,6 +748,12 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
         return `Hola ${name}, te recordamos que el trabajo ${alert.entity_label} tiene saldo pendiente hace ${days} días.`;
       case 'overdue_service':
         return `Hola ${name}, te recordamos que el vehículo ${alert.entity_label} tiene un servicio pendiente.`;
+      case 'upcoming_service':
+        return `Hola ${name}, el vehículo ${alert.entity_label} se aproxima a la próxima revisión. ¿Querés coordinar una fecha?`;
+      case 'quote_pending':
+        return `Hola ${name}, te recordamos el presupuesto ${alert.entity_label}. ¿Avanzamos con el trabajo?`;
+      case 'high_value_lost':
+        return `Hola ${name}, hace ${days} días que no te visitamos. Queríamos saber cómo está todo y si te podemos ayudar.`;
       default:
         return `Hola ${name}, te contactamos del taller.`;
     }
@@ -768,10 +780,13 @@ export class AlertsFeedComponent implements OnInit, OnDestroy {
   }
   typeLabel(type: string): string {
     const map: Record<string, string> = {
-      overdue_service: 'Servicio',
-      payment_overdue: 'Pago',
-      lost_customer:   'Inactivo',
-      broken_pattern:  'Patrón roto',
+      overdue_service:  'Servicio',
+      payment_overdue:  'Pago',
+      lost_customer:    'Inactivo',
+      broken_pattern:   'Patrón roto',
+      quote_pending:    'Presupuesto',
+      upcoming_service: 'Próximo svc.',
+      high_value_lost:  'VIP perdido',
     };
     return map[type] ?? type;
   }

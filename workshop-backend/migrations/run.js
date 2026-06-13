@@ -33,6 +33,7 @@ const migrations = [
   '019_alert_dismissals_entity_type.sql',
   '020_alert_dismissal_status.sql',
   '021_alert_wa_templates.sql',
+  '022_alert_sprint3_types.sql',
 ];
 
 async function run() {

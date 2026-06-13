@@ -399,7 +399,14 @@ export interface MonthlyClosing {
   jobs: MonthlyClosingJob[];
 }
 
-export type AlertType = 'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
+export type AlertType =
+  | 'overdue_service'
+  | 'payment_overdue'
+  | 'lost_customer'
+  | 'broken_pattern'
+  | 'quote_pending'
+  | 'upcoming_service'
+  | 'high_value_lost';
 export type AlertEntityType = 'vehicle' | 'client' | 'job';
 
 export type AlertDismissalStatus = 'snoozed' | 'contacted' | 'resolved';
@@ -443,6 +450,9 @@ export interface AlertDefinition {
   threshold_days:              number | null;
   bp_multiplier:               number | null;
   bp_min_days:                 number | null;
+  // Sprint 3 params
+  due_after_days?:             number | null;
+  min_lifetime_value?:         number | null;
   eval_interval_hours:         number;
   last_evaluated_at:           string | null;
   last_result_count:           number;
