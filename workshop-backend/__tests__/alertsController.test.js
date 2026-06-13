@@ -127,6 +127,22 @@ describe('evaluateDefinition — overdue_service', () => {
     expect(items).toHaveLength(1);
     expect(items[0].entity_id).toBe('vid2');
   });
+
+  // Sprint 0 / fix code-review #1: guardia anti-huérfana en la estrategia
+  // overdueService. Si catalog_item_id es null (def quedó huérfana tras
+  // borrar el item y alguien la reactivó), no debe evaluar — devolvería
+  // una alerta crítica por vehículo (la query con $1=NULL matchea "ningún
+  // job" para todos).
+  test('catalog_item_id null → no evalúa la query de vehículos', async () => {
+    const orphanDef = { ...DEF, catalog_item_id: null };
+    pool.query.mockResolvedValueOnce({ rows: [] }); // dismissals (única query esperada)
+
+    const items = await evaluateDefinition(orphanDef);
+
+    expect(items).toEqual([]);
+    const sqls = pool.query.mock.calls.map(c => c[0]);
+    expect(sqls.find(s => /FROM vehicles/.test(s))).toBeUndefined();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

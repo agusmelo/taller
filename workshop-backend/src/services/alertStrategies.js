@@ -30,6 +30,14 @@ const overdueService = {
   entityType: 'vehicle',
 
   async evaluate(def) {
+    // Guardia anti-huérfana: si una def overdue_service quedó sin item
+    // del catálogo (escenario HU-01 cuando se borra el item y alguien la
+    // reactiva), la query con $1=NULL devolvería "ningún job" para cada
+    // vehículo y dispararía HAVING para todos, generando una alerta
+    // crítica por vehículo del taller. Defense in depth — el controller
+    // también rechaza dejarla enabled=true sin catalog_item_id.
+    if (!def.catalog_item_id) return [];
+
     const r = await pool.query(`
       SELECT
         c.id AS client_id, c.full_name AS client_name,

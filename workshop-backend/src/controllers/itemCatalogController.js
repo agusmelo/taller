@@ -350,14 +350,28 @@ async function replaceChildren(req, res, next) {
 }
 
 async function remove(req, res, next) {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
 
-    // Orfanar y desactivar definiciones de alerta que apuntan a este ítem,
-    // antes de borrarlo. El FK con ON DELETE SET NULL preserva la fila igual,
-    // pero el UPDATE explícito garantiza que la definición quede enabled=false
-    // (el runner no la evalúa) y registra el cambio en updated_at.
+    // Lockear la fila del catálogo primero cierra la ventana entre el UPDATE de
+    // definiciones y el DELETE: si otra transacción intenta crear una nueva
+    // definición que referencie este ítem, se bloquea hasta que cometamos.
+    // Cualquier definición creada antes del lock queda atrapada por el UPDATE
+    // de abajo; cualquiera creada después espera y verá que el ítem ya no existe.
+    const lock = await client.query(
+      `SELECT id FROM item_catalog WHERE id = $1 AND parent_id IS NULL FOR UPDATE`,
+      [req.params.id]
+    );
+    if (lock.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item no encontrado' });
+    }
+
+    // Orfanar y desactivar definiciones de alerta que apuntan a este ítem.
+    // El FK con ON DELETE SET NULL las preservaría igual, pero el UPDATE
+    // explícito garantiza que queden enabled=false (el runner no las evalúa).
     await client.query(
       `UPDATE alert_definitions
          SET enabled         = false,
@@ -367,23 +381,18 @@ async function remove(req, res, next) {
       [req.params.id]
     );
 
-    const r = await client.query(
+    await client.query(
       `DELETE FROM item_catalog WHERE id = $1 AND parent_id IS NULL`,
       [req.params.id]
     );
 
-    if (r.rowCount === 0) {
-      await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Item no encontrado' });
-    }
-
     await client.query('COMMIT');
     res.status(204).send();
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
+    if (client) await client.query('ROLLBACK').catch(() => {});
     next(err);
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
