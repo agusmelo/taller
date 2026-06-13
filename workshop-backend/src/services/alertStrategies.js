@@ -251,7 +251,7 @@ const brokenPattern = {
       JOIN last_visit lv ON lv.client_id = cs.client_id
       JOIN clients c     ON c.id = cs.client_id
       WHERE c.deleted_at IS NULL
-        AND lv.days_since_last > GREATEST(cs.avg_interval_days * $1, COALESCE($2, 0))
+        AND lv.days_since_last > GREATEST((cs.avg_interval_days * $1::numeric)::int, COALESCE($2::int, 0))
       ORDER BY (lv.days_since_last::float / cs.avg_interval_days) DESC
       LIMIT 100
     `, [def.bp_multiplier, def.bp_min_days]);
