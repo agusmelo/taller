@@ -44,7 +44,7 @@ const DEF_ROW = {
   updated_at: new Date(),
 };
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => { pool.query.mockReset(); evaluateAndPersist.mockReset().mockResolvedValue({ items: [], error: null }); });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // list

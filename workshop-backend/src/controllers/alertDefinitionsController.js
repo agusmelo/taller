@@ -1,15 +1,15 @@
 const pool = require('../config/database');
 const { evaluateAndPersist } = require('./alertsController');
+const strategies = require('../services/alertStrategies');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const VALID_TYPES = ['overdue_service', 'payment_overdue', 'lost_customer', 'broken_pattern'];
 
 function validateBody(body, { isUpdate = false } = {}) {
   const errors = [];
   const out = {};
 
   if (!isUpdate) {
-    if (!VALID_TYPES.includes(body.alert_type)) {
+    if (!strategies.has(body.alert_type)) {
       errors.push('"alert_type" inválido');
     } else {
       out.alert_type = body.alert_type;
@@ -28,58 +28,19 @@ function validateBody(body, { isUpdate = false } = {}) {
   if (body.enabled !== undefined) out.enabled = !!body.enabled;
 
   const alertType = out.alert_type || body.alert_type;
+  const strat = strategies.get(alertType);
 
-  if (alertType === 'overdue_service') {
-    if (body.catalog_item_id !== undefined) {
-      if (!UUID_RE.test(body.catalog_item_id || '')) {
-        errors.push('"catalog_item_id" debe ser un UUID válido');
-      } else {
-        out.catalog_item_id = body.catalog_item_id;
-      }
-    } else if (!isUpdate) {
-      errors.push('"catalog_item_id" es requerido para overdue_service');
-    }
-  } else if (alertType && body.catalog_item_id !== undefined && body.catalog_item_id !== null) {
+  // catalog_item_id solo aplica a overdue_service. La estrategia se encarga
+  // del positive case; aquí frenamos su uso en otras estrategias.
+  if (alertType !== 'overdue_service' &&
+      body.catalog_item_id !== undefined && body.catalog_item_id !== null) {
     errors.push('"catalog_item_id" solo aplica a overdue_service');
-  } else if (!isUpdate) {
+  } else if (alertType !== 'overdue_service' && !isUpdate) {
     out.catalog_item_id = null;
   }
 
-  if (['overdue_service', 'payment_overdue', 'lost_customer'].includes(alertType)) {
-    if (body.threshold_days !== undefined) {
-      const t = parseInt(body.threshold_days, 10);
-      if (!Number.isFinite(t) || t < 1 || t > 3650) {
-        errors.push('"threshold_days" debe estar entre 1 y 3650');
-      } else {
-        out.threshold_days = t;
-      }
-    } else if (!isUpdate) {
-      errors.push('"threshold_days" es requerido');
-    }
-  }
-
-  if (alertType === 'broken_pattern') {
-    if (body.bp_multiplier !== undefined) {
-      const m = parseFloat(body.bp_multiplier);
-      if (!Number.isFinite(m) || m < 1.0 || m > 5.0) {
-        errors.push('"bp_multiplier" debe estar entre 1.0 y 5.0');
-      } else {
-        out.bp_multiplier = m;
-      }
-    } else if (!isUpdate) {
-      out.bp_multiplier = 1.5;
-    }
-
-    if (body.bp_min_days !== undefined) {
-      const m = parseInt(body.bp_min_days, 10);
-      if (!Number.isFinite(m) || m < 0 || m > 3650) {
-        errors.push('"bp_min_days" debe estar entre 0 y 3650');
-      } else {
-        out.bp_min_days = m;
-      }
-    } else if (!isUpdate) {
-      out.bp_min_days = 0;
-    }
+  if (strat) {
+    strat.validate(body, { isUpdate, errors, out });
   }
 
   if (body.eval_interval_hours !== undefined) {
@@ -180,7 +141,7 @@ async function update(req, res, next) {
     // HU-01 guard: una def overdue_service huérfana (catalog_item_id=NULL tras
     // borrar el ítem) no puede re-habilitarse sin reasignar el ítem. Si lo
     // permitiéramos, el evaluador correría con NULL y dispararía una alerta
-    // crítica por cada vehículo del taller (ver evalOverdueService).
+    // crítica por cada vehículo del taller (ver alertStrategies.overdueService).
     const willBeEnabled = data.enabled !== undefined ? data.enabled : existing.rows[0].enabled;
     if (existing.rows[0].alert_type === 'overdue_service'
         && willBeEnabled

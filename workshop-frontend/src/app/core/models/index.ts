@@ -400,6 +400,7 @@ export interface MonthlyClosing {
 }
 
 export type AlertType = 'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
+export type AlertEntityType = 'vehicle' | 'client' | 'job';
 
 export interface AlertItem {
   alert_type:    AlertType;
@@ -408,6 +409,7 @@ export interface AlertItem {
   client_name:   string;
   client_phone:  string | null;
   client_email:  string | null;
+  entity_type:   AlertEntityType;
   entity_id:     string;
   entity_label:  string;
   current_value: number | null;

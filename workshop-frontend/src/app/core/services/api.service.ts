@@ -164,10 +164,11 @@ export class ApiService {
   getAlertsFeed() {
     return this.http.get<AlertFeedBlock[]>(`${this.url}/alerts/feed`);
   }
-  dismissAlert(definitionId: string, entityId: string, snoozeDays: number) {
+  dismissAlert(definitionId: string, entityId: string, snoozeDays: number, entityType: string = 'vehicle') {
     return this.http.post(`${this.url}/alerts/dismiss`, {
       definition_id: definitionId,
       entity_id:     entityId,
+      entity_type:   entityType,
       snooze_days:   snoozeDays,
     });
   }

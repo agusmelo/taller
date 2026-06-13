@@ -28,6 +28,9 @@ const migrations = [
   '014_alert_definitions.sql',
   '015_alert_workshop_and_cascade.sql',
   '016_seed_alert_definitions.sql',
+  '017_alert_results_cache.sql',
+  '018_jobs_vehicle_date_index.sql',
+  '019_alert_dismissals_entity_type.sql',
 ];
 
 async function run() {

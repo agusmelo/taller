@@ -41,7 +41,7 @@ function ctx(params = {}, user = { id: 'u1', role: 'admin' }) {
 }
 
 beforeEach(() => {
-  pool.connect.mockClear();
+  pool.connect.mockClear().mockResolvedValue(client);
   client.query.mockReset();
   client.release.mockReset();
 });
@@ -62,8 +62,6 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
     const calls = client.query.mock.calls.map(c => c[0]);
     expect(calls[0]).toMatch(/BEGIN/);
     expect(calls[1]).toMatch(/SELECT.+item_catalog.+FOR UPDATE/s);
-    // Garantía de seguridad: solo se puede lockear / borrar ítems raíz,
-    // nunca un sub-ítem.
     expect(calls[1]).toMatch(/parent_id\s+IS\s+NULL/);
     expect(calls[2]).toMatch(/UPDATE alert_definitions/);
     expect(calls[2]).toMatch(/enabled\s*=\s*false/);
@@ -81,19 +79,18 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
 
     client.query
       .mockResolvedValueOnce({})                              // BEGIN
-      .mockResolvedValueOnce({ rowCount: 0, rows: [] })        // SELECT ... FOR UPDATE → 0
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })       // SELECT ... FOR UPDATE → 0
       .mockResolvedValueOnce({});                             // ROLLBACK
 
     await remove(req, res, next);
 
     const calls = client.query.mock.calls.map(c => c[0]);
     expect(calls[calls.length - 1]).toMatch(/ROLLBACK/);
-    // No debe haberse intentado UPDATE ni DELETE.
     expect(calls.find(s => /UPDATE alert_definitions/.test(s))).toBeUndefined();
     expect(calls.find(s => /DELETE FROM item_catalog/.test(s))).toBeUndefined();
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: 'Item no encontrado' });
-    expect(next).not.toHaveBeenCalled(); // 404 manual, no debe llamarse next(err)
+    expect(next).not.toHaveBeenCalled();
     expect(client.release).toHaveBeenCalledTimes(1);
   });
 
@@ -112,15 +109,11 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }));
     expect(calls).toContainEqual(expect.stringMatching(/ROLLBACK/));
-    // Sin doble respuesta: el catch delega en next(), no en res.
     expect(res.status).not.toHaveBeenCalled();
     expect(res.json).not.toHaveBeenCalled();
     expect(client.release).toHaveBeenCalledTimes(1);
   });
 
-  // Sprint 0 / fix code-review #5: si pool.connect() rechaza (DB caída,
-  // pool agotado), el handler debe enrutar el error a next(err) sin
-  // intentar usar `client` (que es undefined).
   test('si pool.connect() rechaza, llama next(err) sin desreferenciar client', async () => {
     const { req, res, next } = ctx({ id: UUID1 });
     const connectErr = new Error('connection timeout');
@@ -131,7 +124,7 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith(connectErr);
     expect(client.query).not.toHaveBeenCalled();
-    expect(client.release).not.toHaveBeenCalled(); // no hay client que liberar
+    expect(client.release).not.toHaveBeenCalled();
     expect(res.status).not.toHaveBeenCalled();
   });
 });
