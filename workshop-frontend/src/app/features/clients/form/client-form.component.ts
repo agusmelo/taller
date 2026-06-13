@@ -9,23 +9,32 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { ApiService } from '../../../core/services/api.service';
 import { Client } from '../../../core/models';
+import { FormDialogComponent } from '../../../shared/components/form-dialog/form-dialog.component';
+import { extractApiError } from '../../../shared/utils/api-error';
 
 @Component({
   selector: 'app-client-form',
   standalone: true,
   imports: [
     CommonModule, FormsModule, MatDialogModule, MatFormFieldModule,
-    MatInputModule, MatButtonModule, MatSelectModule, MatIconModule
+    MatInputModule, MatButtonModule, MatSelectModule, MatIconModule,
+    FormDialogComponent,
   ],
   template: `
-    <h2 mat-dialog-title>{{ isEdit ? 'Editar' : 'Nuevo' }} Cliente</h2>
-    <mat-dialog-content>
-      @if (error) { <div class="banner banner-error">{{ error }}</div> }
+    <app-form-dialog
+      [title]="isEdit ? 'Editar cliente' : 'Nuevo cliente'"
+      [subtitle]="isEdit ? form.full_name : 'Cargá los datos del cliente'"
+      [error]="error"
+      [saving]="saving"
+      [canSave]="!!form.full_name && !rutMatch"
+      (save)="save()"
+      (cancel)="dialogRef.close(false)">
 
       <div class="form-grid">
         <mat-form-field appearance="outline">
           <mat-label>Nombre completo</mat-label>
-          <input matInput [(ngModel)]="form.full_name" required (ngModelChange)="onNameChange()">
+          <input matInput [(ngModel)]="form.full_name" required
+            (ngModelChange)="onNameChange()" autofocus>
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Tipo</mat-label>
@@ -54,44 +63,40 @@ import { Client } from '../../../core/models';
 
       <div class="form-grid">
         <mat-form-field appearance="outline">
-          <mat-label>RUT (opcional)</mat-label>
-          <input matInput [(ngModel)]="form.rut" placeholder="XX.XXX.XXX-X" (ngModelChange)="onRutChange()">
+          <mat-label>RUT</mat-label>
+          <input matInput [(ngModel)]="form.rut" placeholder="XX.XXX.XXX-X"
+            (ngModelChange)="onRutChange()">
+          <mat-hint>Opcional</mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>Telefono</mat-label>
-          <input matInput [(ngModel)]="form.phone">
+          <mat-label>Teléfono</mat-label>
+          <input matInput [(ngModel)]="form.phone" inputmode="tel">
         </mat-form-field>
       </div>
 
       @if (rutMatch && !isEdit) {
         <div class="banner banner-error">
-          <mat-icon>error</mat-icon>
+          <mat-icon>error_outline</mat-icon>
           <span>Ya existe un cliente con este RUT:
             <strong>{{ rutMatch.full_name }}</strong>
-            {{ rutMatch.phone ? '- Tel: ' + rutMatch.phone : '' }}
+            {{ rutMatch.phone ? '— Tel: ' + rutMatch.phone : '' }}
           </span>
         </div>
       }
 
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Email</mat-label>
-        <input matInput [(ngModel)]="form.email" type="email">
+        <input matInput [(ngModel)]="form.email" type="email" inputmode="email">
       </mat-form-field>
       <mat-form-field appearance="outline" class="full-width">
-        <mat-label>Direccion</mat-label>
+        <mat-label>Dirección</mat-label>
         <input matInput [(ngModel)]="form.address">
       </mat-form-field>
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Notas</mat-label>
         <textarea matInput [(ngModel)]="form.notes" rows="3"></textarea>
       </mat-form-field>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-raised-button color="primary" (click)="save()" [disabled]="!form.full_name || saving || !!rutMatch">
-        {{ saving ? 'Guardando...' : 'Guardar' }}
-      </button>
-    </mat-dialog-actions>
+    </app-form-dialog>
   `,
   styles: [`
     .full-width { width: 100%; }
@@ -103,7 +108,7 @@ import { Client } from '../../../core/models';
 export class ClientFormComponent {
   isEdit: boolean;
   saving = false;
-  error = '';
+  error: string | null = null;
   nameMatches: any[] = [];
   rutMatch: any = null;
   form: Partial<Client> = {
@@ -121,7 +126,7 @@ export class ClientFormComponent {
 
   constructor(
     private api: ApiService,
-    private dialogRef: MatDialogRef<ClientFormComponent>,
+    public  dialogRef: MatDialogRef<ClientFormComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { client?: Client }
   ) {
     this.isEdit = !!data?.client;
@@ -158,13 +163,16 @@ export class ClientFormComponent {
 
   save() {
     this.saving = true;
-    this.error = '';
+    this.error = null;
     const obs = this.isEdit
       ? this.api.updateClient(this.data.client!.id, this.form)
       : this.api.createClient(this.form);
     obs.subscribe({
       next: () => this.dialogRef.close(true),
-      error: (err) => { this.saving = false; this.error = err.error?.detalles?.map((d: any) => d.mensaje).join(', ') || err.error?.error || 'Error al guardar'; }
+      error: (err) => {
+        this.saving = false;
+        this.error = extractApiError(err);
+      }
     });
   }
 }
