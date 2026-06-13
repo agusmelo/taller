@@ -141,7 +141,7 @@ describe('POST /api/alerts/dismiss', () => {
       .set('Authorization', token('admin'))
       .send({ definition_id: UUID1, entity_id: UUID2, snooze_days: 30 });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ ok: true });
+    expect(res.body).toEqual({ ok: true, status: 'snoozed' });
   });
 });
 
