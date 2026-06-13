@@ -41,7 +41,7 @@ function ctx(params = {}, user = { id: 'u1', role: 'admin' }) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  pool.connect.mockClear();
   client.query.mockReset();
   client.release.mockReset();
 });
@@ -62,13 +62,18 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
     const calls = client.query.mock.calls.map(c => c[0]);
     expect(calls[0]).toMatch(/BEGIN/);
     expect(calls[1]).toMatch(/SELECT.+item_catalog.+FOR UPDATE/s);
+    // Garantía de seguridad: solo se puede lockear / borrar ítems raíz,
+    // nunca un sub-ítem.
+    expect(calls[1]).toMatch(/parent_id\s+IS\s+NULL/);
     expect(calls[2]).toMatch(/UPDATE alert_definitions/);
     expect(calls[2]).toMatch(/enabled\s*=\s*false/);
     expect(calls[2]).toMatch(/catalog_item_id\s*=\s*NULL/);
     expect(calls[3]).toMatch(/DELETE FROM item_catalog/);
+    expect(calls[3]).toMatch(/parent_id\s+IS\s+NULL/);
     expect(calls[4]).toMatch(/COMMIT/);
     expect(res.status).toHaveBeenCalledWith(204);
-    expect(client.release).toHaveBeenCalled();
+    expect(client.release).toHaveBeenCalledTimes(1);
+    expect(next).not.toHaveBeenCalled();
   });
 
   test('rollback + 404 cuando el lock no encuentra el ítem (no existe)', async () => {
@@ -87,7 +92,9 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
     expect(calls.find(s => /UPDATE alert_definitions/.test(s))).toBeUndefined();
     expect(calls.find(s => /DELETE FROM item_catalog/.test(s))).toBeUndefined();
     expect(res.status).toHaveBeenCalledWith(404);
-    expect(client.release).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith({ error: 'Item no encontrado' });
+    expect(next).not.toHaveBeenCalled(); // 404 manual, no debe llamarse next(err)
+    expect(client.release).toHaveBeenCalledTimes(1);
   });
 
   test('libera la conexión y emite ROLLBACK cuando una query falla', async () => {
@@ -102,8 +109,29 @@ describe('itemCatalogController.remove — Sprint 0 / HU-01', () => {
     await remove(req, res, next);
 
     const calls = client.query.mock.calls.map(c => c[0]);
+    expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith(expect.objectContaining({ message: 'boom' }));
     expect(calls).toContainEqual(expect.stringMatching(/ROLLBACK/));
-    expect(client.release).toHaveBeenCalled();
+    // Sin doble respuesta: el catch delega en next(), no en res.
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.json).not.toHaveBeenCalled();
+    expect(client.release).toHaveBeenCalledTimes(1);
+  });
+
+  // Sprint 0 / fix code-review #5: si pool.connect() rechaza (DB caída,
+  // pool agotado), el handler debe enrutar el error a next(err) sin
+  // intentar usar `client` (que es undefined).
+  test('si pool.connect() rechaza, llama next(err) sin desreferenciar client', async () => {
+    const { req, res, next } = ctx({ id: UUID1 });
+    const connectErr = new Error('connection timeout');
+    pool.connect.mockRejectedValueOnce(connectErr);
+
+    await remove(req, res, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(next).toHaveBeenCalledWith(connectErr);
+    expect(client.query).not.toHaveBeenCalled();
+    expect(client.release).not.toHaveBeenCalled(); // no hay client que liberar
+    expect(res.status).not.toHaveBeenCalled();
   });
 });

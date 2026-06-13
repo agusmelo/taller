@@ -350,8 +350,9 @@ async function replaceChildren(req, res, next) {
 }
 
 async function remove(req, res, next) {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query('BEGIN');
 
     // Lockear la fila del catálogo primero cierra la ventana entre el UPDATE de
@@ -388,10 +389,10 @@ async function remove(req, res, next) {
     await client.query('COMMIT');
     res.status(204).send();
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => {});
+    if (client) await client.query('ROLLBACK').catch(() => {});
     next(err);
   } finally {
-    client.release();
+    if (client) client.release();
   }
 }
 
