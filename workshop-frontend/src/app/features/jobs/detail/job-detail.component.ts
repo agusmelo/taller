@@ -117,7 +117,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
             <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ job.mileage_at_service.toLocaleString() }} km</span></div>
           }
           @if (job.job_date) {
-            <div class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy' }}</span></div>
+            <div class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy':'UTC' }}</span></div>
           }
         </app-info-card>
 
@@ -388,7 +388,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
           <table mat-table [dataSource]="job.payments || []" style="width:100%;">
             <ng-container matColumnDef="payment_date">
               <th mat-header-cell *matHeaderCellDef>Fecha</th>
-              <td mat-cell *matCellDef="let p">{{ p.payment_date | date:'dd/MM/yyyy' }}</td>
+              <td mat-cell *matCellDef="let p">{{ p.payment_date | date:'dd/MM/yyyy':'UTC' }}</td>
             </ng-container>
             <ng-container matColumnDef="method">
               <th mat-header-cell *matHeaderCellDef>Metodo</th>

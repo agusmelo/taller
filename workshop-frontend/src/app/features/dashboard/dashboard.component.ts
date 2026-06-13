@@ -267,7 +267,7 @@ import Chart from 'chart.js/auto';
                     <table mat-table [dataSource]="monthlyClosing.jobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
-                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
+                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
                       <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
@@ -293,7 +293,7 @@ import Chart from 'chart.js/auto';
                     <table mat-table [dataSource]="closingIvaJobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
-                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
+                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
                       <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
@@ -318,7 +318,7 @@ import Chart from 'chart.js/auto';
                     <table mat-table [dataSource]="closingNoIvaJobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
-                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy' }}</td></ng-container>
+                      <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
                       <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
@@ -391,7 +391,7 @@ import Chart from 'chart.js/auto';
             </ng-container>
             <ng-container matColumnDef="job_date">
               <th mat-header-cell *matHeaderCellDef>Fecha</th>
-              <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
+              <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy':'UTC' }}</td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="['job_number','client_name','plate_number','status','job_date']"></tr>
             <tr mat-row *matRowDef="let row; columns: ['job_number','client_name','plate_number','status','job_date'];"

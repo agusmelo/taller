@@ -175,7 +175,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
                   <th mat-header-cell *matHeaderCellDef>Último registro</th>
                   <td mat-cell *matCellDef="let r">
                     @if (r.last_service_date) {
-                      {{ r.last_service_date | date:'dd/MM/yyyy' }}
+                      {{ r.last_service_date | date:'dd/MM/yyyy':'UTC' }}
                     } @else {
                       <span class="badge b-never">Nunca</span>
                     }
