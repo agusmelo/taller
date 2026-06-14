@@ -6,18 +6,25 @@
 -- HU-16 high_value_lost  → min_lifetime_value (gasto histórico mínimo).
 
 -- ─── jobs.status: agregar 'presupuesto' ─────────────────────────────────────
+-- El CHECK original es inline (CREATE TABLE) → PG auto-genera el nombre
+-- jobs_status_check y normaliza la expresión a `= ANY (ARRAY[...])`, por lo
+-- que un regex contra `IN` no matchea. Recorremos todos los CHECK aplicados
+-- a la columna status y los dropeamos por nombre real antes de re-crear uno.
 DO $$
 DECLARE
   cname TEXT;
 BEGIN
-  SELECT conname INTO cname
-  FROM pg_constraint
-  WHERE conrelid = 'jobs'::regclass
-    AND contype = 'c'
-    AND pg_get_constraintdef(oid) ~ 'status.*IN.*''abierto''';
-  IF cname IS NOT NULL THEN
+  FOR cname IN
+    SELECT DISTINCT con.conname
+    FROM pg_constraint con
+    JOIN pg_class     c ON c.oid = con.conrelid
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(con.conkey)
+    WHERE c.relname = 'jobs'
+      AND con.contype = 'c'
+      AND a.attname  = 'status'
+  LOOP
     EXECUTE format('ALTER TABLE jobs DROP CONSTRAINT %I', cname);
-  END IF;
+  END LOOP;
 END $$;
 
 ALTER TABLE jobs
@@ -25,18 +32,24 @@ ALTER TABLE jobs
   CHECK (status IN ('abierto', 'terminado', 'pagado', 'presupuesto'));
 
 -- ─── alert_definitions.alert_type: expandir CHECK ───────────────────────────
+-- Mismo problema de naming/normalización que jobs.status: el CHECK inline de
+-- la migración 014 quedó como `alert_definitions_alert_type_check` con la
+-- forma `= ANY (ARRAY[...])`.
 DO $$
 DECLARE
   cname TEXT;
 BEGIN
-  SELECT conname INTO cname
-  FROM pg_constraint
-  WHERE conrelid = 'alert_definitions'::regclass
-    AND contype = 'c'
-    AND pg_get_constraintdef(oid) ~ 'alert_type.*IN';
-  IF cname IS NOT NULL THEN
+  FOR cname IN
+    SELECT DISTINCT con.conname
+    FROM pg_constraint con
+    JOIN pg_class     c ON c.oid = con.conrelid
+    JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(con.conkey)
+    WHERE c.relname = 'alert_definitions'
+      AND con.contype = 'c'
+      AND a.attname  = 'alert_type'
+  LOOP
     EXECUTE format('ALTER TABLE alert_definitions DROP CONSTRAINT %I', cname);
-  END IF;
+  END LOOP;
 END $$;
 
 ALTER TABLE alert_definitions
