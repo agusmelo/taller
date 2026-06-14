@@ -23,6 +23,26 @@ import { AlertDefinition, AlertType, CatalogItem } from '../../core/models';
 import { FormDialogComponent } from '../../shared/components/form-dialog/form-dialog.component';
 import { extractApiError } from '../../shared/utils/api-error';
 
+// Descripciones de cada tipo de alerta. Single source of truth: la tabla
+// usa la versión corta como ayuda visual y el dialog la usa como subtítulo
+// y como hint del select de tipo. Editar acá actualiza ambos.
+const TYPE_DESCRIPTIONS: Record<AlertType, string> = {
+  overdue_service:
+    'Vehículos cuyo último servicio del ítem elegido fue hace más del umbral. Útil para mantenimientos periódicos (aceite, frenos, distribución).',
+  upcoming_service:
+    'Aviso proactivo: vehículos que están dentro de la ventana previa al vencimiento estimado de un servicio. Permite contactar antes de que pase la fecha.',
+  payment_overdue:
+    'Trabajos terminados con saldo pendiente hace más del umbral. Considera descuentos, IVA y pagos parciales para calcular la deuda real.',
+  quote_pending:
+    'Presupuestos sin convertirse en trabajo terminado hace más del umbral. Sirve para seguimiento de oportunidades de venta abiertas.',
+  lost_customer:
+    'Clientes que no registran ningún trabajo hace más del umbral. Lista amplia útil para campañas masivas de reactivación.',
+  broken_pattern:
+    'Clientes que rompen su frecuencia habitual: comparan el tiempo desde la última visita contra el intervalo promedio personal × multiplicador.',
+  high_value_lost:
+    'Clientes con gasto histórico ≥ al mínimo configurado que no vuelven hace más del umbral. Pensado para priorizar la recuperación de cuentas VIP.',
+};
+
 @Component({
   selector: 'app-alert-definitions',
   standalone: true,
@@ -74,7 +94,12 @@ import { extractApiError } from '../../shared/utils/api-error';
               <th mat-header-cell *matHeaderCellDef>Nombre</th>
               <td mat-cell *matCellDef="let d">
                 <div class="d-name">{{ d.name }}</div>
-                <span class="badge type-{{ d.alert_type }}">{{ typeLabel(d.alert_type) }}</span>
+                <span class="badge type-{{ d.alert_type }}"
+                  [matTooltip]="typeDescription(d.alert_type)"
+                  matTooltipPosition="right">
+                  {{ typeLabel(d.alert_type) }}
+                </span>
+                <div class="type-desc">{{ typeDescription(d.alert_type) }}</div>
               </td>
             </ng-container>
 
@@ -170,6 +195,13 @@ import { extractApiError } from '../../shared/utils/api-error';
       letter-spacing: -.005em;
       margin-bottom: 4px;
     }
+    .type-desc {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-3);
+      line-height: 1.45;
+      max-width: 480px;
+    }
     .params {
       font-size: 12px;
       color: var(--text-2);
@@ -262,6 +294,12 @@ export class AlertDefinitionsComponent implements OnInit {
     } as Record<string, string>)[type] ?? type;
   }
 
+  // Descripción larga de cada tipo. Se muestra en la tabla bajo el badge y
+  // como subtítulo del dialog al crear/editar. Fuente única de verdad.
+  typeDescription(type: string): string {
+    return (TYPE_DESCRIPTIONS as Record<string, string>)[type] ?? '';
+  }
+
   paramsLabel(d: AlertDefinition): string {
     switch (d.alert_type) {
       case 'overdue_service':
@@ -339,6 +377,11 @@ interface DialogData { def: AlertDefinition | null; }
             <mat-hint>El tipo no se puede cambiar después de creada</mat-hint>
           }
         </mat-form-field>
+
+        <div class="type-help">
+          <mat-icon>info_outline</mat-icon>
+          <span>{{ subtitleFor(form.alert_type) }}</span>
+        </div>
 
         @if (form.alert_type === 'overdue_service' || form.alert_type === 'upcoming_service') {
           <mat-form-field appearance="outline" class="full" [class.disabled-look]="!!data.def">
@@ -447,6 +490,24 @@ interface DialogData { def: AlertDefinition | null; }
     .bp-row mat-form-field { flex: 1; }
     .type-tag { color: var(--text-3); font-size: 11px; margin-left: 8px; }
     .disabled-look { opacity: 0.85; }
+    .type-help {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 12px;
+      margin: -4px 0 4px;
+      background: var(--bg);
+      border-radius: var(--r-sm, 6px);
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-2);
+    }
+    .type-help mat-icon {
+      font-size: 16px; width: 16px; height: 16px;
+      color: var(--text-3);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
     .toggle-row {
       margin-top: 4px;
       padding: 10px 12px;
@@ -483,15 +544,7 @@ export class AlertDefFormDialog {
   private searchTimeout: any;
 
   subtitleFor(type: AlertType): string {
-    return ({
-      overdue_service:  'Detecta vehículos con servicios pendientes',
-      upcoming_service: 'Aviso proactivo antes de que venza el servicio',
-      payment_overdue:  'Detecta trabajos con saldo pendiente',
-      quote_pending:    'Presupuestos sin cerrar hace varios días',
-      lost_customer:    'Detecta clientes que no vuelven',
-      broken_pattern:   'Detecta clientes que rompen su frecuencia habitual',
-      high_value_lost:  'Clientes VIP con gasto alto que no vuelven',
-    } as Record<string, string>)[type] ?? '';
+    return TYPE_DESCRIPTIONS[type] ?? '';
   }
 
   thresholdHint(): string {
