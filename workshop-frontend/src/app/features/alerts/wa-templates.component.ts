@@ -49,6 +49,24 @@ const TYPES: TypeMeta[] = [
     fallback: 'Hola {client_name}, te contactamos del taller. Hace {days} días que no te vemos — ¿todo bien con el auto?',
     hint: 'Variables: {client_name}, {days}',
   },
+  {
+    type: 'upcoming_service',
+    label: 'Servicio próximo a vencer',
+    fallback: 'Hola {client_name}, el vehículo {entity_label} se aproxima a la próxima revisión. ¿Querés coordinar una fecha?',
+    hint: 'Variables: {client_name}, {entity_label} (matrícula), {days}, {service_name}',
+  },
+  {
+    type: 'quote_pending',
+    label: 'Presupuesto sin cerrar',
+    fallback: 'Hola {client_name}, te recordamos el presupuesto {entity_label}. ¿Avanzamos con el trabajo?',
+    hint: 'Variables: {client_name}, {entity_label} (matrícula + fecha), {days}',
+  },
+  {
+    type: 'high_value_lost',
+    label: 'Cliente VIP perdido',
+    fallback: 'Hola {client_name}, hace {days} días que no te visitamos. Queríamos saber cómo está todo y si te podemos ayudar.',
+    hint: 'Variables: {client_name}, {days}',
+  },
 ];
 
 @Component({
