@@ -119,7 +119,7 @@ const BASE_CSS = `
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
-  .sheet { padding: 34px 40px 8px; }
+  .sheet { padding: 0 40px 8px; }
 
   /* Header */
   .hdr { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -162,7 +162,7 @@ async function renderPdf(html, footerTemplate) {
     return await page.pdf({
       format: 'A4',
       printBackground: true,
-      margin: { top: '0mm', right: '0mm', bottom: '30mm', left: '0mm' },
+      margin: { top: '12mm', right: '0mm', bottom: '30mm', left: '0mm' },
       displayHeaderFooter: true,
       headerTemplate: '<div></div>',
       footerTemplate
