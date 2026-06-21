@@ -72,6 +72,7 @@ router.delete('/jobs/:id',       authenticate, requireAdmin, v.uuidParam, jobs.r
 router.put('/jobs/:id/lock',     authenticate, requireAdminOrRecep, v.uuidParam, jobs.lockJob);
 router.put('/jobs/:id/unlock',   authenticate, requireAdmin, v.uuidParam, jobs.unlockJob);
 router.get('/jobs/:id/pdf',      authenticate, v.uuidParam, pdf.generatePdf);
+router.get('/jobs/:id/receipt-pdf', authenticate, requireAdminOrRecep, v.uuidParam, pdf.generateReceiptPdf);
 
 // Items (locked jobs block add/edit/delete)
 router.get('/jobs/:id/items',            authenticate, v.uuidParam, jobs.listItems);
