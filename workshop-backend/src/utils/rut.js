@@ -1,7 +1,7 @@
 /**
- * RUT uruguayo: XX.XXX.XXX-X
- * Pesos para digito verificador: 2,9,8,7,6,3,4 (de derecha a izquierda)
- * Algoritmo: suma(digito * peso) mod 10, si resultado = 0 -> digito = 0
+ * RUT uruguayo: XX.XXX.XXX/XXXXX.XXX-X
+ * Pesos para digito verificador: [2,9,8,7,6,3,4] ciclicos de izquierda a derecha
+ * Algoritmo: suma(digito * peso) mod 11, digitV = 11 - resultado
  */
 
 function clean(rut) {
@@ -10,24 +10,19 @@ function clean(rut) {
 
 function validateRut(rut) {
   try {
-    if (!rut || rut.length !== 12) {
-      return false;
-    }
+    if (rut == null || rut === '') return true;
 
-    const digitC = Number.parseInt(rut.substr(11, 1));
-    const rest = rut.substr(0, 11);
+    const cleaned = clean(rut);
+    if (!cleaned || cleaned.length < 8) return false;
 
+    const digitC = Number.parseInt(cleaned.slice(-1));
+    const body = cleaned.slice(0, -1);
+
+    const weights = [2, 9, 8, 7, 6, 3, 4];
     let total = 0;
-    let factor = 2;
 
-    for (let i = 10; i >= 0; i--) {
-      const n = Number.parseInt(rest.substr(i, 1));
-      total += factor * n;
-      if (factor === 9) {
-        factor = 2;
-      } else {
-        factor++;
-      }
+    for (let i = 0; i < body.length; i++) {
+      total += weights[i % weights.length] * Number.parseInt(body[i]);
     }
 
     let digitV = 11 - (total % 11);

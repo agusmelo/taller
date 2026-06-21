@@ -2,17 +2,22 @@ const { validateRut, formatRut, normalizeRut } = require('../src/utils/rut');
 
 describe('RUT Validation', () => {
   test('valid RUT passes', () => {
-    // 2.110.034-8 computed with weights [2,9,8,7,6,3,4]
-    expect(validateRut('21100348')).toBe(true);
+    // 2.110.034-9 computed with weights [2,9,8,7,6,3,4] left-to-right
+    expect(validateRut('21100349')).toBe(true);
   });
 
   test('valid formatted RUT passes', () => {
-    expect(validateRut('2.110.034-8')).toBe(true);
+    expect(validateRut('2.110.034-9')).toBe(true);
   });
 
   test('valid 8-digit body RUT passes', () => {
     // 12.345.67-6
     expect(validateRut('12345676')).toBe(true);
+  });
+
+  test('valid 12-digit RUT passes', () => {
+    // 45.030.367.001-4
+    expect(validateRut('450303670014')).toBe(true);
   });
 
   test('null/empty RUT returns true (optional)', () => {
