@@ -1,4 +1,5 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -296,7 +297,7 @@ import { CatalogItem, CatalogItemAnalytics, OverdueServiceItem } from '../../../
     .b-warning { background: #fef3c7; color: #d97706; }
   `]
 })
-export class OverdueServiceListComponent implements OnInit {
+export class OverdueServiceListComponent implements OnInit, OnDestroy {
   catalogQuery = '';
   selectedItem: CatalogItem | null = null;
   thresholdDays: number | null = null;
@@ -305,6 +306,7 @@ export class OverdueServiceListComponent implements OnInit {
 
   results: OverdueServiceItem[] = [];
   loading = false;
+  private analyticsSub: Subscription | null = null;
   loadingCatalog = false;
   searched = false;
 
@@ -333,13 +335,18 @@ export class OverdueServiceListComponent implements OnInit {
     // Analytics endpoint is admin-only; non-admin users fall through to item_type fallbacks
     if (!this.auth.isAdmin()) return;
     this.loadingCatalog = true;
-    this.api.getCatalogAnalytics().subscribe({
+    this.analyticsSub = this.api.getCatalogAnalytics().subscribe({
       next: (items) => {
         items.forEach(i => this.analyticsMap.set(i.id, i));
         this.loadingCatalog = false;
+        this.analyticsSub = null;
       },
-      error: () => { this.loadingCatalog = false; }
+      error: () => { this.loadingCatalog = false; this.analyticsSub = null; }
     });
+  }
+
+  ngOnDestroy() {
+    this.analyticsSub?.unsubscribe();
   }
 
   onCatalogInput(value: string) {

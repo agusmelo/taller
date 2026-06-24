@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ApiService } from './api.service';
 import { AuthService } from '../auth/auth.service';
 
@@ -8,6 +9,7 @@ export class AlertsBadgeService {
   lastTick = signal<string | null>(null);
 
   private timer: any = null;
+  private pendingRefresh: Subscription | null = null;
   private readonly POLL_MS = 60_000;
 
   constructor(
@@ -23,17 +25,20 @@ export class AlertsBadgeService {
   }
 
   stop() {
+    if (this.pendingRefresh) { this.pendingRefresh.unsubscribe(); this.pendingRefresh = null; }
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
   }
 
   refresh() {
     if (!this.auth.isAdminOrRecep()) return;
-    this.api.getAlertsBadge().subscribe({
+    if (this.pendingRefresh) this.pendingRefresh.unsubscribe();
+    this.pendingRefresh = this.api.getAlertsBadge().subscribe({
       next: r => {
         this.count.set(r.critical_high_count);
         this.lastTick.set(r.last_runner_tick);
+        this.pendingRefresh = null;
       },
-      error: () => {},
+      error: () => { this.pendingRefresh = null; },
     });
   }
 
