@@ -214,7 +214,10 @@ async function evaluate(req, res, next) {
 
     const { items, error } = await evaluateAndPersist(existing.rows[0]);
     const updated = await pool.query(
-      `SELECT * FROM alert_definitions WHERE id = $1`, [req.params.id]
+      `SELECT d.*, ci.description AS catalog_item_description
+       FROM alert_definitions d
+       LEFT JOIN item_catalog ci ON ci.id = d.catalog_item_id
+       WHERE d.id = $1`, [req.params.id]
     );
     res.json({ definition: updated.rows[0], items, error });
   } catch (err) { next(err); }
