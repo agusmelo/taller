@@ -47,7 +47,8 @@ async function checkAndPay(client, jobId) {
   const { balance } = calcFinancials(jobRes.rows[0], itemsRes.rows, paysRes.rows);
   if (balance <= 0) {
     await client.query(
-      `UPDATE jobs SET status = 'pagado', is_locked = TRUE WHERE id = $1 AND status != 'pagado'`, [jobId]);
+      `UPDATE jobs SET status = 'pagado', is_locked = TRUE, paid_at = NOW()
+       WHERE id = $1 AND status != 'pagado'`, [jobId]);
   }
 }
 
@@ -220,10 +221,17 @@ async function update(req, res, next) {
       }
     }
 
-    // Auto-lock when transitioning to terminado or pagado
+    // Auto-lock + record transition timestamps when status changes
     let is_locked = undefined;
-    if (status === 'terminado' || status === 'pagado') {
+    let finished_at_expr = 'finished_at';
+    let paid_at_expr = 'paid_at';
+    if (status === 'terminado') {
       is_locked = true;
+      finished_at_expr = 'COALESCE(finished_at, NOW())';
+    } else if (status === 'pagado') {
+      is_locked = true;
+      finished_at_expr = 'COALESCE(finished_at, NOW())';
+      paid_at_expr = 'COALESCE(paid_at, NOW())';
     }
 
     const r = await pool.query(`
@@ -238,7 +246,9 @@ async function update(req, res, next) {
         internal_notes            = COALESCE($8, internal_notes),
         job_date                  = COALESCE($9, job_date),
         is_locked                 = COALESCE($10, is_locked),
-        show_item_details_pricing = COALESCE($11, show_item_details_pricing)
+        show_item_details_pricing = COALESCE($11, show_item_details_pricing),
+        finished_at               = ${finished_at_expr},
+        paid_at                   = ${paid_at_expr}
       WHERE id = $12 AND deleted_at IS NULL RETURNING *`,
       [mileage_at_service, status, tax_enabled, tax_rate,
        discount_amount, discount_type, notes, internal_notes, job_date, is_locked,
@@ -309,7 +319,7 @@ async function addItem(req, res, next) {
       if (parent.job_id !== req.params.id) return res.status(400).json({ error: 'parent_id pertenece a otro trabajo' });
       if (parent.parent_id !== null) return res.status(400).json({ error: 'No se admite anidamiento mayor a 1 nivel' });
       finalParentId = parent_id;
-      finalItemType = parent.item_type;
+      finalItemType = item_type || 'mano_de_obra';
       finalQuantity = 1;
       finalSupplier = null;
       finalCatalogItemId = null;
@@ -317,7 +327,11 @@ async function addItem(req, res, next) {
 
     const cleanChildren = !finalParentId && Array.isArray(children)
       ? children
-          .map(c => ({ description: (c?.description || '').toString().trim(), unit_price: Number(c?.unit_price) || 0 }))
+          .map(c => ({
+            description: (c?.description || '').toString().trim(),
+            unit_price: Number(c?.unit_price) || 0,
+            item_type: c?.item_type || 'mano_de_obra',
+          }))
           .filter(c => c.description)
       : [];
     if (cleanChildren.length > 0) {
@@ -339,6 +353,11 @@ async function addItem(req, res, next) {
     }
 
     await client.query('BEGIN');
+    // When adding a child to an existing parent, zero out the parent's price
+    // to eliminate orphaned phantom data from the original simple-item price.
+    if (finalParentId) {
+      await client.query('UPDATE job_items SET unit_price = 0 WHERE id = $1', [finalParentId]);
+    }
     const r = await client.query(
       `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order, catalog_item_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
@@ -352,7 +371,7 @@ async function addItem(req, res, next) {
       await client.query(
         `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, supplier, parent_id, sort_order)
          VALUES ($1,$2,1,$3,$4,NULL,$5,$6)`,
-        [req.params.id, c.description, c.unit_price, finalItemType, created.id, i]
+        [req.params.id, c.description, c.unit_price, c.item_type, created.id, i]
       );
     }
     await client.query('COMMIT');
@@ -371,13 +390,22 @@ async function updateItem(req, res, next) {
     if (parent_id !== undefined) {
       return res.status(400).json({ error: 'No se admite re-asignar parent_id; eliminar y volver a crear' });
     }
+    // Guard: parent rows with children cannot have a price set — their total is
+    // always derived from children, so a non-zero price would be phantom data.
+    let safeUnitPrice = unit_price;
+    if (unit_price != null) {
+      const childCheck = await pool.query(
+        `SELECT 1 FROM job_items WHERE parent_id = $1 LIMIT 1`, [req.params.itemId]
+      );
+      if (childCheck.rows.length > 0) safeUnitPrice = 0;
+    }
     const r = await pool.query(`
       UPDATE job_items SET
         description = COALESCE($1, description), quantity   = COALESCE($2, quantity),
         unit_price  = COALESCE($3, unit_price),  item_type  = COALESCE($4, item_type),
         supplier    = COALESCE($5, supplier),    sort_order = COALESCE($6, sort_order)
       WHERE id = $7 AND job_id = $8 RETURNING *`,
-      [description, quantity, unit_price, item_type, supplier, sort_order,
+      [description, quantity, safeUnitPrice, item_type, supplier, sort_order,
        req.params.itemId, req.params.id]
     );
     if (!r.rows[0]) return res.status(404).json({ error: 'Item no encontrado' });
