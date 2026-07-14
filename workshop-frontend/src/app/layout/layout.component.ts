@@ -1,4 +1,5 @@
-import { Component, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
@@ -384,6 +385,7 @@ export class LayoutComponent implements OnDestroy {
   todayChip = '';
   private searchTimeout: any;
   private dateTimer: any;
+  private breakpointSub!: Subscription;
 
   constructor(
     public auth: AuthService,
@@ -393,7 +395,7 @@ export class LayoutComponent implements OnDestroy {
     private router: Router,
     private breakpointObserver: BreakpointObserver
   ) {
-    this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(result => {
+    this.breakpointSub = this.breakpointObserver.observe([Breakpoints.Handset]).subscribe(result => {
       this.isMobile = result.matches;
     });
     this.refreshDateChip();
@@ -402,6 +404,7 @@ export class LayoutComponent implements OnDestroy {
   }
 
   ngOnDestroy() {
+    this.breakpointSub.unsubscribe();
     if (this.dateTimer) clearInterval(this.dateTimer);
     this.alertsBadge.stop();
   }

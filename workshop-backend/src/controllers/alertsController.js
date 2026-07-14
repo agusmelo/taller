@@ -80,7 +80,7 @@ async function evaluateAndPersist(def) {
 // ─── Public endpoints ──────────────────────────────────────────────────────
 
 // GET /alerts/feed — lee de last_results (caché del runner) + aplica
-// dismissals actuales. O(1) por definición en términos de queries de negocio.
+// dismissals actuales. 2 queries total: una para defs, una para dismissals activas.
 async function feed(req, res, next) {
   try {
     const defs = await pool.query(
@@ -90,19 +90,35 @@ async function feed(req, res, next) {
        WHERE d.enabled = true ORDER BY d.created_at ASC`
     );
 
-    const blocks = await Promise.all(defs.rows.map(async def => {
-      try {
-        const raw = Array.isArray(def.last_results) ? def.last_results : [];
-        const items = await filterDismissed(def.id, raw);
-        return {
-          definition: def,
-          items: items.map(i => ({ ...i, definition_id: def.id })),
-          error: def.last_run_error || null,
-        };
-      } catch (err) {
-        return { definition: def, items: [], error: err.message };
-      }
-    }));
+    if (defs.rows.length === 0) return res.json([]);
+
+    // Batch-load all active dismissals for all enabled definitions in one query
+    // instead of one SELECT per definition (N+1 pattern).
+    const defIds = defs.rows.map(d => d.id);
+    const dismissedRows = await pool.query(
+      `SELECT alert_definition_id, entity_id, entity_type
+         FROM alert_dismissals
+        WHERE alert_definition_id = ANY($1::uuid[]) AND snooze_until > NOW()`,
+      [defIds]
+    );
+    const snoozedByDef = new Map();
+    for (const r of dismissedRows.rows) {
+      if (!snoozedByDef.has(r.alert_definition_id)) snoozedByDef.set(r.alert_definition_id, new Set());
+      snoozedByDef.get(r.alert_definition_id).add(`${r.entity_type}:${r.entity_id}`);
+    }
+
+    const blocks = defs.rows.map(def => {
+      const raw = Array.isArray(def.last_results) ? def.last_results : [];
+      const snoozed = snoozedByDef.get(def.id) ?? new Set();
+      const items = raw
+        .filter(i => !snoozed.has(`${i.entity_type || 'vehicle'}:${i.entity_id}`))
+        .map(i => ({ ...i, definition_id: def.id }));
+      return {
+        definition: def,
+        items,
+        error: def.last_run_error || null,
+      };
+    });
 
     res.json(blocks);
   } catch (err) { next(err); }
