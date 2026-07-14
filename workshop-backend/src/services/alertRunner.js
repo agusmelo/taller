@@ -17,6 +17,7 @@ function initialDelayMs() {
 }
 
 let timer = null;
+let initialTimer = null;
 
 // HU-05: pg_try_advisory_xact_lock evita que dos instancias del backend
 // (e.g. detrás de un load balancer) evalúen la misma definición a la vez.
@@ -34,8 +35,9 @@ async function evaluateWithLock(def) {
       await client.query('ROLLBACK');
       return { skipped: true };
     }
-    await evaluateAndPersist(def);
+    const result = await evaluateAndPersist(def);
     await client.query('COMMIT');
+    if (result.error) throw new Error(result.error);
     return { skipped: false };
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
@@ -81,12 +83,13 @@ async function tick() {
 
 function start() {
   if (timer) return;
-  setTimeout(tick, initialDelayMs());
+  initialTimer = setTimeout(tick, initialDelayMs());
   timer = setInterval(tick, TICK_MS);
   console.log(`[alertRunner] started (tick every ${TICK_MS / 1000}s)`);
 }
 
 function stop() {
+  if (initialTimer) { clearTimeout(initialTimer); initialTimer = null; }
   if (timer) { clearInterval(timer); timer = null; }
 }
 
