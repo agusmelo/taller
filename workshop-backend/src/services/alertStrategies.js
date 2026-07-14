@@ -80,7 +80,7 @@ const overdueService = {
         threshold:     def.threshold_days,
         unit:          'days',
         context:       row.last_service_date
-          ? `Último registro: ${new Date(row.last_service_date).toLocaleDateString('es-UY')}`
+          ? `Último registro: ${new Date(row.last_service_date + 'T12:00:00').toLocaleDateString('es-UY')}`
           : 'Sin registro previo',
         action_route:  `/vehiculos/${row.vehicle_id}`,
       };
@@ -158,7 +158,6 @@ const paymentOverdue = {
       WHERE balance > 0.005     -- tolerancia para redondeo (mismo umbral que calcFinancials usa con cents)
         AND days_pending > $1
       ORDER BY days_pending DESC
-      LIMIT 100
     `, [def.threshold_days]);
 
     return r.rows.map(row => {
@@ -226,7 +225,7 @@ const lostCustomer = {
         threshold:     def.threshold_days,
         unit:          'days',
         context:       row.last_job_date
-          ? `Última visita: ${new Date(row.last_job_date).toLocaleDateString('es-UY')}`
+          ? `Última visita: ${new Date(row.last_job_date + 'T12:00:00').toLocaleDateString('es-UY')}`
           : 'Sin historial',
         action_route:  `/clientes/${row.client_id}`,
       };
@@ -261,7 +260,7 @@ const brokenPattern = {
                ROUND(AVG(gap_days))::int AS avg_interval_days
         FROM client_intervals
         GROUP BY client_id
-        HAVING COUNT(*) >= 2 AND AVG(gap_days) > 0
+        HAVING COUNT(*) >= 1 AND AVG(gap_days) > 0
       ),
       last_visit AS (
         SELECT DISTINCT ON (client_id)
@@ -282,7 +281,6 @@ const brokenPattern = {
       WHERE c.deleted_at IS NULL
         AND lv.days_since_last > GREATEST((cs.avg_interval_days * $1::numeric)::int, COALESCE($2::int, 0))
       ORDER BY (lv.days_since_last::float / cs.avg_interval_days) DESC
-      LIMIT 100
     `, [def.bp_multiplier, def.bp_min_days]);
 
     return r.rows.map(row => {

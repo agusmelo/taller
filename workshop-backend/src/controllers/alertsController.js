@@ -51,7 +51,10 @@ async function evaluateAndPersist(def) {
   try {
     const raw = await evaluateRawItems(def);
     const filtered = await filterDismissed(def.id, raw);
-    const criticalHigh = filtered.filter(
+    // Badge counts all outstanding alerts regardless of snooze state so the
+    // bell never silently drops to 0 while real problems are only temporarily
+    // dismissed. The feed still applies dismissal filtering at read time.
+    const criticalHigh = raw.filter(
       i => i.severity === 'critical' || i.severity === 'high'
     ).length;
     await pool.query(
