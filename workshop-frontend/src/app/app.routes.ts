@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { adminGuard } from './core/auth/role.guard';
+import { adminGuard, adminOrRecepGuard } from './core/auth/role.guard';
 
 export const routes: Routes = [
   {
@@ -73,11 +73,13 @@ export const routes: Routes = [
       },
       {
         path: 'retencion',
+        canActivate: [adminOrRecepGuard],
         loadComponent: () => import('./features/retention/overdue-service/overdue-service-list.component')
           .then(m => m.OverdueServiceListComponent)
       },
       {
         path: 'alertas',
+        canActivate: [adminOrRecepGuard],
         loadComponent: () => import('./features/alerts/alerts-feed.component')
           .then(m => m.AlertsFeedComponent)
       },
