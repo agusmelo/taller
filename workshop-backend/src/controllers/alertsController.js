@@ -68,8 +68,9 @@ async function evaluateAndPersist(def) {
   } catch (err) {
     await pool.query(
       `UPDATE alert_definitions
-         SET last_run_error = $1,
-             updated_at     = NOW()
+         SET last_evaluated_at = NOW(),
+             last_run_error    = $1,
+             updated_at        = NOW()
        WHERE id = $2`,
       [err.message.slice(0, 500), def.id]
     );
