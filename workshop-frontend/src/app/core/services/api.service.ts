@@ -82,7 +82,7 @@ export class ApiService {
   addJobItem(jobId: string, data: Partial<JobItem> & {
     parent_id?: string | null;
     sort_order?: number;
-    children?: { description: string; unit_price: number }[];
+    children?: { description: string; unit_price: number; item_type?: string }[];
   }) {
     return this.http.post<JobItem>(`${this.url}/jobs/${jobId}/items`, data);
   }

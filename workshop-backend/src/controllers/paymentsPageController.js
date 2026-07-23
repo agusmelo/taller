@@ -22,9 +22,9 @@ async function jobsWithBalances(req, res, next) {
       SELECT j.id, j.job_number, j.job_date, j.status,
              c.full_name AS client_name, c.id AS client_id, c.rut AS client_rut,
              v.plate_number,
-             COALESCE(SUM(ji.quantity * ji.unit_price), 0) AS total,
+             COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) AS total,
              COALESCE(p.paid, 0) AS total_paid,
-             COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance,
+             COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance,
              p.last_payment_date,
              p.last_payment_method,
              COUNT(*) OVER() AS total_count
@@ -99,13 +99,13 @@ async function agingReport(req, res, next) {
       FROM (
         SELECT j.id, j.client_id,
                CURRENT_DATE - j.job_date::date AS age_days,
-               COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance
+               COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance
         FROM jobs j
         LEFT JOIN job_items ji ON ji.job_id = j.id
         LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
         WHERE j.status != 'pagado' AND j.deleted_at IS NULL
         GROUP BY j.id, j.client_id, j.job_date, p.paid
-        HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
+        HAVING COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) > 0
       ) sub
       GROUP BY bucket
       ORDER BY bucket
@@ -137,13 +137,13 @@ async function debtors(req, res, next) {
       FROM clients c
       JOIN (
         SELECT j.id, j.client_id, j.job_date,
-               COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance
+               COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance
         FROM jobs j
         LEFT JOIN job_items ji ON ji.job_id = j.id
         LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
         WHERE j.status != 'pagado' AND j.deleted_at IS NULL
         GROUP BY j.id, j.client_id, j.job_date, p.paid
-        HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
+        HAVING COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) > 0
       ) sub ON sub.client_id = c.id
       WHERE c.deleted_at IS NULL
       GROUP BY c.id, c.full_name, c.rut, c.phone
@@ -166,13 +166,13 @@ async function paymentsSummary(req, res, next) {
       pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date >= $1`, [monthStart]),
       pool.query(`
         SELECT COALESCE(SUM(sub.balance), 0) AS total FROM (
-          SELECT COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) AS balance
+          SELECT COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance
           FROM jobs j
           LEFT JOIN job_items ji ON ji.job_id = j.id
           LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
           WHERE j.status != 'pagado' AND j.deleted_at IS NULL
           GROUP BY j.id, p.paid
-          HAVING COALESCE(SUM(ji.quantity * ji.unit_price), 0) - COALESCE(p.paid, 0) > 0
+          HAVING COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) > 0
         ) sub`),
       pool.query(`
         SELECT COUNT(DISTINCT c.id) AS total FROM clients c
@@ -181,7 +181,7 @@ async function paymentsSummary(req, res, next) {
         LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
         WHERE c.deleted_at IS NULL
         GROUP BY c.id
-        HAVING SUM(COALESCE(ji.quantity * ji.unit_price, 0)) - COALESCE(MAX(p.paid), 0) > 0`),
+        HAVING SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE COALESCE(ji.quantity * ji.unit_price, 0) END) - COALESCE(MAX(p.paid), 0) > 0`),
       pool.query(`
         SELECT method, SUM(amount) AS total, COUNT(*) AS count
         FROM payments WHERE payment_date >= $1

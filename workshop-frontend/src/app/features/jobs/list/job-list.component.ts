@@ -204,6 +204,7 @@ export class JobListComponent implements OnInit {
     const params: Record<string, string> = {};
     if (this.dateFromFilter) params['date_from'] = this.formatDate(this.dateFromFilter);
     if (this.dateToFilter) params['date_to'] = this.formatDate(this.dateToFilter);
+    if (this.statusFilter) params['status'] = this.statusFilter;
     this.api.exportJobsCsv(params).subscribe(blob => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
