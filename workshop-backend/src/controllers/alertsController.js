@@ -136,6 +136,24 @@ async function dismiss(req, res, next) {
       return res.status(400).json({ error: '"snooze_days" debe estar entre 1 y 365' });
     }
 
+    // Verify the definition exists and the entity_id actually appears in its
+    // cached last_results, so users cannot snooze arbitrary entity UUIDs they
+    // never received via the feed.
+    const defRow = await pool.query(
+      `SELECT last_results FROM alert_definitions WHERE id = $1 AND enabled = true`,
+      [definition_id]
+    );
+    if (defRow.rows.length === 0) {
+      return res.status(404).json({ error: 'Definición no encontrada' });
+    }
+    const cached = Array.isArray(defRow.rows[0].last_results) ? defRow.rows[0].last_results : [];
+    const entityInResults = cached.some(
+      i => i.entity_id === entity_id && (i.entity_type || 'vehicle') === etype
+    );
+    if (!entityInResults) {
+      return res.status(404).json({ error: 'Entidad no encontrada en los resultados de esta alerta' });
+    }
+
     await pool.query(
       `INSERT INTO alert_dismissals
          (alert_definition_id, entity_id, entity_type, dismissed_by, snooze_until)
