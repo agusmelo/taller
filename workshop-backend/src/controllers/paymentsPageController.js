@@ -1,4 +1,8 @@
 const pool = require('../config/database');
+const { JOB_SUBTOTALS_SUBQUERY, JOB_PAID_SUBQUERY, jobTotalRounded, jobBalanceRounded } = require('../utils/financials');
+
+const TOTAL    = jobTotalRounded('j', 'COALESCE(it.subtotal, 0)');
+const BALANCE  = jobBalanceRounded('j', 'COALESCE(it.subtotal, 0)', 'COALESCE(p.paid, 0)');
 
 async function jobsWithBalances(req, res, next) {
   try {
@@ -22,16 +26,16 @@ async function jobsWithBalances(req, res, next) {
       SELECT j.id, j.job_number, j.job_date, j.status,
              c.full_name AS client_name, c.id AS client_id, c.rut AS client_rut,
              v.plate_number,
-             COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) AS total,
+             ${TOTAL} AS total,
              COALESCE(p.paid, 0) AS total_paid,
-             COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance,
+             ${BALANCE} AS balance,
              p.last_payment_date,
              p.last_payment_method,
              COUNT(*) OVER() AS total_count
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
       JOIN vehicles v ON v.id = j.vehicle_id
-      LEFT JOIN job_items ji ON ji.job_id = j.id
+      LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
       LEFT JOIN (
         SELECT job_id, SUM(amount) AS paid,
                MAX(paid_at) AS last_payment_date,
@@ -39,9 +43,6 @@ async function jobsWithBalances(req, res, next) {
         FROM payments GROUP BY job_id
       ) p ON p.job_id = j.id
       WHERE ${conditions.join(' AND ')}
-      GROUP BY j.id, j.job_number, j.job_date, j.status,
-               c.full_name, c.id, c.rut, v.plate_number,
-               p.paid, p.last_payment_date, p.last_payment_method
       ORDER BY j.job_date DESC
       LIMIT $${params.length - 1} OFFSET $${params.length}
     `, params);
@@ -97,16 +98,15 @@ async function agingReport(req, res, next) {
         SUM(balance) AS total_balance,
         COUNT(DISTINCT client_id) AS client_count
       FROM (
-        SELECT j.id, j.client_id,
+        SELECT j.client_id,
                CURRENT_DATE - j.job_date::date AS age_days,
-               COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance
+               ${BALANCE} AS balance
         FROM jobs j
-        LEFT JOIN job_items ji ON ji.job_id = j.id
-        LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
+        LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+        LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
         WHERE j.status != 'pagado' AND j.deleted_at IS NULL
-        GROUP BY j.id, j.client_id, j.job_date, p.paid
-        HAVING COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) > 0
       ) sub
+      WHERE balance > 0
       GROUP BY bucket
       ORDER BY bucket
     `);
@@ -136,14 +136,14 @@ async function debtors(req, res, next) {
              CURRENT_DATE - MIN(sub.job_date)::date AS days_overdue
       FROM clients c
       JOIN (
-        SELECT j.id, j.client_id, j.job_date,
-               COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance
-        FROM jobs j
-        LEFT JOIN job_items ji ON ji.job_id = j.id
-        LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
-        WHERE j.status != 'pagado' AND j.deleted_at IS NULL
-        GROUP BY j.id, j.client_id, j.job_date, p.paid
-        HAVING COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) > 0
+        SELECT * FROM (
+          SELECT j.id, j.client_id, j.job_date,
+                 ${BALANCE} AS balance
+          FROM jobs j
+          LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+          LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
+          WHERE j.status != 'pagado' AND j.deleted_at IS NULL
+        ) z WHERE z.balance > 0
       ) sub ON sub.client_id = c.id
       WHERE c.deleted_at IS NULL
       GROUP BY c.id, c.full_name, c.rut, c.phone
@@ -165,23 +165,21 @@ async function paymentsSummary(req, res, next) {
     const [cobrado, pendiente, deudoresCount, byMethod] = await Promise.all([
       pool.query(`SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE payment_date >= $1`, [monthStart]),
       pool.query(`
-        SELECT COALESCE(SUM(sub.balance), 0) AS total FROM (
-          SELECT COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) AS balance
+        SELECT COALESCE(SUM(balance), 0) AS total FROM (
+          SELECT ${BALANCE} AS balance
           FROM jobs j
-          LEFT JOIN job_items ji ON ji.job_id = j.id
-          LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
+          LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+          LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
           WHERE j.status != 'pagado' AND j.deleted_at IS NULL
-          GROUP BY j.id, p.paid
-          HAVING COALESCE(SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END), 0) - COALESCE(p.paid, 0) > 0
-        ) sub`),
+        ) sub WHERE balance > 0`),
       pool.query(`
-        SELECT COUNT(DISTINCT c.id) AS total FROM clients c
-        JOIN jobs j ON j.client_id = c.id AND j.status != 'pagado' AND j.deleted_at IS NULL
-        LEFT JOIN job_items ji ON ji.job_id = j.id
-        LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) p ON p.job_id = j.id
-        WHERE c.deleted_at IS NULL
-        GROUP BY c.id
-        HAVING SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE COALESCE(ji.quantity * ji.unit_price, 0) END) - COALESCE(MAX(p.paid), 0) > 0`),
+        SELECT COUNT(DISTINCT client_id) AS total FROM (
+          SELECT j.client_id, ${BALANCE} AS balance
+          FROM jobs j
+          LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
+          LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
+          WHERE j.status != 'pagado' AND j.deleted_at IS NULL
+        ) sub WHERE balance > 0`),
       pool.query(`
         SELECT method, SUM(amount) AS total, COUNT(*) AS count
         FROM payments WHERE payment_date >= $1
@@ -191,7 +189,7 @@ async function paymentsSummary(req, res, next) {
     res.json({
       cobrado_month: parseFloat(cobrado.rows[0].total),
       pendiente_total: parseFloat(pendiente.rows[0].total),
-      deudores_count: deudoresCount.rows.length,
+      deudores_count: parseInt(deudoresCount.rows[0].total),
       by_method: byMethod.rows.map(r => ({
         method: r.method,
         total: parseFloat(r.total),
