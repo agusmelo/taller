@@ -399,8 +399,17 @@ export interface MonthlyClosing {
   jobs: MonthlyClosingJob[];
 }
 
-export type AlertType = 'overdue_service' | 'payment_overdue' | 'lost_customer' | 'broken_pattern';
+export type AlertType =
+  | 'overdue_service'
+  | 'payment_overdue'
+  | 'lost_customer'
+  | 'broken_pattern'
+  | 'quote_pending'
+  | 'upcoming_service'
+  | 'high_value_lost';
 export type AlertEntityType = 'vehicle' | 'client' | 'job';
+
+export type AlertDismissalStatus = 'snoozed' | 'contacted' | 'resolved';
 
 export interface AlertItem {
   alert_type:    AlertType;
@@ -418,6 +427,17 @@ export interface AlertItem {
   context:       string;
   action_route:  string;
   definition_id?: string;
+  // Sprint 2 / HU-13: anotación cuando la alerta tiene una dismissal activa
+  // con status='contacted' — el ítem se muestra con pill "Contactado".
+  dismissal_status?: AlertDismissalStatus;
+  dismissal_until?:  string;
+  contacted_at?:     string | null;
+}
+
+export interface AlertWaTemplate {
+  alert_type:  string;
+  template:    string;
+  updated_at:  string;
 }
 
 export interface AlertDefinition {
@@ -430,6 +450,9 @@ export interface AlertDefinition {
   threshold_days:              number | null;
   bp_multiplier:               number | null;
   bp_min_days:                 number | null;
+  // Sprint 3 params
+  due_after_days?:             number | null;
+  min_lifetime_value?:         number | null;
   eval_interval_hours:         number;
   last_evaluated_at:           string | null;
   last_result_count:           number;

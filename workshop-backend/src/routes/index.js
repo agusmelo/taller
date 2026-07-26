@@ -20,6 +20,7 @@ const itemCatalog  = require('../controllers/itemCatalogController');
 const retention    = require('../controllers/retentionController');
 const alerts       = require('../controllers/alertsController');
 const alertDefs    = require('../controllers/alertDefinitionsController');
+const alertWaTpl   = require('../controllers/alertWaTemplatesController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -145,6 +146,11 @@ router.get('/alerts/feed',          authenticate, requireAdminOrRecep, alerts.fe
 router.post('/alerts/dismiss',      authenticate, requireAdminOrRecep, alerts.dismiss);
 router.get('/alerts/badge',         authenticate, requireAdminOrRecep, alerts.badge);
 router.post('/alerts/evaluate-all', authenticate, requireAdminOrRecep, alerts.evaluateAll);
+
+// WhatsApp templates (HU-11): listar es admin/recep, editar/eliminar es admin
+router.get('/alerts/wa-templates',         authenticate, requireAdminOrRecep, alertWaTpl.list);
+router.put('/alerts/wa-templates/:type',   authenticate, requireAdmin,        alertWaTpl.upsert);
+router.delete('/alerts/wa-templates/:type',authenticate, requireAdmin,        alertWaTpl.remove);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);

@@ -109,7 +109,7 @@ describe('evaluateDefinition — overdue_service', () => {
   test('filters out entity_ids that are currently snoozed', async () => {
     pool.query
       .mockResolvedValueOnce({ rows: [{ ...BASE_VEHICLE_ROW, last_service_date: '2025-01-01', days_since_service: '200' }] })
-      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle' }] }); // vid1 snoozed
+      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle', status: 'snoozed', snooze_until: new Date(Date.now() + 86400000).toISOString(), contacted_at: null }] }); // vid1 snoozed
     const items = await evaluateDefinition(DEF);
     expect(items).toHaveLength(0);
   });
@@ -122,7 +122,7 @@ describe('evaluateDefinition — overdue_service', () => {
           { ...BASE_VEHICLE_ROW, vehicle_id: 'vid2', plate_number: 'BBB 2', last_service_date: '2025-01-01', days_since_service: '200' },
         ],
       })
-      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle' }] }); // only vid1 dismissed
+      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle', status: 'snoozed', snooze_until: new Date(Date.now() + 86400000).toISOString(), contacted_at: null }] }); // only vid1 dismissed
     const items = await evaluateDefinition(DEF);
     expect(items).toHaveLength(1);
     expect(items[0].entity_id).toBe('vid2');
@@ -411,7 +411,7 @@ describe('feed endpoint', () => {
     ];
     pool.query
       .mockResolvedValueOnce({ rows: [{ ...DEF, last_results: cached }] })
-      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle' }] });
+      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle', status: 'snoozed', snooze_until: new Date(Date.now() + 86400000).toISOString(), contacted_at: null }] });
 
     await feed(req, res, next);
 
@@ -485,7 +485,22 @@ describe('dismiss endpoint', () => {
     expect(pool.query.mock.calls[0][0]).toContain('INSERT INTO alert_dismissals');
     expect(pool.query.mock.calls[0][1]).toContain(UUID1);
     expect(pool.query.mock.calls[0][1]).toContain(UUID2);
-    expect(res.json).toHaveBeenCalledWith({ ok: true });
+    expect(res.json).toHaveBeenCalledWith({ ok: true, status: 'snoozed' });
+  });
+
+  test('accepts status="contacted" and reports it back', async () => {
+    const { req, res, next } = ctx({ ...VALID, status: 'contacted', snooze_days: 7 });
+    pool.query.mockResolvedValueOnce({ rows: [] });
+    await dismiss(req, res, next);
+    expect(res.json).toHaveBeenCalledWith({ ok: true, status: 'contacted' });
+    // El parámetro de status va en la posición 6 (índice 5).
+    expect(pool.query.mock.calls[0][1][5]).toBe('contacted');
+  });
+
+  test('returns 400 for invalid status', async () => {
+    const { req, res, next } = ctx({ ...VALID, status: 'pending' });
+    await dismiss(req, res, next);
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 });
 

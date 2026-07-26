@@ -66,7 +66,7 @@ describe('AlertsFeedComponent', () => {
   let component: AlertsFeedComponent;
   let fixture:   ComponentFixture<AlertsFeedComponent>;
   let apiMock:    jest.Mocked<Pick<ApiService,
-    'getAlertsFeed' | 'evaluateAllAlerts' | 'evaluateAlertDefinition' | 'dismissAlert'>>;
+    'getAlertsFeed' | 'evaluateAllAlerts' | 'evaluateAlertDefinition' | 'dismissAlert' | 'listAlertWaTemplates'>>;
   let notifyMock: jest.Mocked<Pick<NotificationService, 'handleError' | 'success'>>;
   let authMock:   jest.Mocked<Pick<AuthService, 'isAdmin' | 'isAdminOrRecep'>>;
 
@@ -75,7 +75,8 @@ describe('AlertsFeedComponent', () => {
       getAlertsFeed:            jest.fn().mockReturnValue(of([])),
       evaluateAllAlerts:        jest.fn().mockReturnValue(of({ ok: true, evaluated: 0 })),
       evaluateAlertDefinition:  jest.fn(),
-      dismissAlert:             jest.fn().mockReturnValue(of({})),
+      dismissAlert:             jest.fn().mockReturnValue(of({ ok: true, status: 'snoozed' })),
+      listAlertWaTemplates:     jest.fn().mockReturnValue(of([])),
     };
     notifyMock = {
       handleError: jest.fn(),
@@ -161,7 +162,7 @@ describe('AlertsFeedComponent', () => {
     const alert = makeAlert('vid1', 'critical', 'def1');
     component.blocks = [makeBlock('def1', [alert])];
     component.dismiss(alert, 30);
-    expect(apiMock.dismissAlert).toHaveBeenCalledWith('def1', 'vid1', 30, 'vehicle');
+    expect(apiMock.dismissAlert).toHaveBeenCalledWith('def1', 'vid1', 30, 'vehicle', 'snoozed');
   });
 
   test('dismiss() removes item from block optimistically on success', fakeAsync(() => {
@@ -192,6 +193,45 @@ describe('AlertsFeedComponent', () => {
     expect(notifyMock.handleError).toHaveBeenCalledTimes(1);
     expect(component.blocks[0].items).toHaveLength(1); // not removed on error
   }));
+
+  // ── markContacted() / openWa() — Sprint 2 HU-10/13 ────────────────────────
+
+  test('markContacted() sends status=contacted with 7-day snooze', () => {
+    const alert = makeAlert('vid1', 'critical', 'def1');
+    component.blocks = [makeBlock('def1', [alert])];
+    component.markContacted(alert);
+    expect(apiMock.dismissAlert).toHaveBeenCalledWith('def1', 'vid1', 7, 'vehicle', 'contacted');
+  });
+
+  test('markContacted() keeps item visible but annotates with dismissal_status', fakeAsync(() => {
+    const alert = makeAlert('vid1', 'critical', 'def1');
+    component.blocks = [makeBlock('def1', [alert])];
+    component.markContacted(alert);
+    tick();
+    expect(component.blocks[0].items).toHaveLength(1);
+    expect(component.blocks[0].items[0].dismissal_status).toBe('contacted');
+  }));
+
+  // ── HU-12: top-N visibility ──────────────────────────────────────────────
+
+  test('visibleItemsFor() caps to ITEMS_VISIBLE by default', () => {
+    const items = Array.from({ length: 8 }, (_, i) =>
+      makeAlert(`vid${i}`, 'high', 'def1'),
+    );
+    component.blocks = [makeBlock('def1', items)];
+    expect(component.visibleItemsFor(component.blocks[0])).toHaveLength(component.ITEMS_VISIBLE);
+    expect(component.hasHiddenItems(component.blocks[0])).toBe(true);
+  });
+
+  test('toggleExpanded() shows all items', () => {
+    const items = Array.from({ length: 8 }, (_, i) =>
+      makeAlert(`vid${i}`, 'high', 'def1'),
+    );
+    component.blocks = [makeBlock('def1', items)];
+    component.toggleExpanded('def1');
+    expect(component.isExpanded('def1')).toBe(true);
+    expect(component.visibleItemsFor(component.blocks[0])).toHaveLength(8);
+  });
 
   // ── refreshBlock() ───────────────────────────────────────────────────────
 

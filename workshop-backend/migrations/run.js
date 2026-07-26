@@ -32,6 +32,9 @@ const migrations = [
   '018_jobs_vehicle_date_index.sql',
   '019_alert_dismissals_entity_type.sql',
   '020_item_model_and_audit.sql',
+  '021_alert_dismissal_status.sql',
+  '022_alert_wa_templates.sql',
+  '023_alert_sprint3_types.sql',
 ];
 
 async function run() {

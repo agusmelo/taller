@@ -30,12 +30,13 @@ function validateBody(body, { isUpdate = false } = {}) {
   const alertType = out.alert_type || body.alert_type;
   const strat = strategies.get(alertType);
 
-  // catalog_item_id solo aplica a overdue_service. La estrategia se encarga
-  // del positive case; aquí frenamos su uso en otras estrategias.
-  if (alertType !== 'overdue_service' &&
+  // catalog_item_id aplica a overdue_service y upcoming_service. La estrategia
+  // de cada uno valida el positive case; aquí frenamos su uso en otras.
+  const TYPES_WITH_CATALOG = new Set(['overdue_service', 'upcoming_service']);
+  if (!TYPES_WITH_CATALOG.has(alertType) &&
       body.catalog_item_id !== undefined && body.catalog_item_id !== null) {
-    errors.push('"catalog_item_id" solo aplica a overdue_service');
-  } else if (alertType !== 'overdue_service' && !isUpdate) {
+    errors.push('"catalog_item_id" no aplica a este tipo de alerta');
+  } else if (!TYPES_WITH_CATALOG.has(alertType) && !isUpdate) {
     out.catalog_item_id = null;
   }
 
@@ -95,8 +96,9 @@ async function create(req, res, next) {
       const r = await pool.query(
         `INSERT INTO alert_definitions
           (alert_type, name, enabled, catalog_item_id, threshold_days,
-           bp_multiplier, bp_min_days, eval_interval_hours, created_by)
-         VALUES ($1, $2, COALESCE($3, true), $4, $5, $6, $7, $8, $9)
+           bp_multiplier, bp_min_days, due_after_days, min_lifetime_value,
+           eval_interval_hours, created_by)
+         VALUES ($1, $2, COALESCE($3, true), $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
         [
           data.alert_type,
@@ -106,6 +108,8 @@ async function create(req, res, next) {
           data.threshold_days ?? null,
           data.bp_multiplier ?? null,
           data.bp_min_days ?? null,
+          data.due_after_days ?? null,
+          data.min_lifetime_value ?? null,
           data.eval_interval_hours,
           req.user?.id || null,
         ]
@@ -138,23 +142,24 @@ async function update(req, res, next) {
     const { errors, data } = validateBody(body, { isUpdate: true });
     if (errors.length > 0) return res.status(422).json({ error: 'Datos inválidos', detalles: errors });
 
-    // HU-01 guard: una def overdue_service huérfana (catalog_item_id=NULL tras
-    // borrar el ítem) no puede re-habilitarse sin reasignar el ítem. Si lo
-    // permitiéramos, el evaluador correría con NULL y dispararía una alerta
-    // crítica por cada vehículo del taller (ver alertStrategies.overdueService).
+    // HU-01 guard: una def basada en catalog_item_id (overdue_service /
+    // upcoming_service) no puede re-habilitarse si quedó huérfana
+    // (catalog_item_id=NULL tras borrar el ítem). Si lo permitiéramos el
+    // evaluador correría con NULL y dispararía alertas falsas.
+    const TYPES_WITH_CATALOG = new Set(['overdue_service', 'upcoming_service']);
     const willBeEnabled = data.enabled !== undefined ? data.enabled : existing.rows[0].enabled;
-    if (existing.rows[0].alert_type === 'overdue_service'
+    if (TYPES_WITH_CATALOG.has(existing.rows[0].alert_type)
         && willBeEnabled
         && existing.rows[0].catalog_item_id === null) {
       return res.status(422).json({
-        error: 'No se puede habilitar una definición overdue_service sin catalog_item_id. Creá una nueva apuntando a un ítem del catálogo.',
+        error: `No se puede habilitar una definición ${existing.rows[0].alert_type} sin catalog_item_id. Creá una nueva apuntando a un ítem del catálogo.`,
       });
     }
 
     const fields = [];
     const values = [];
     let idx = 1;
-    for (const k of ['name', 'enabled', 'threshold_days', 'bp_multiplier', 'bp_min_days', 'eval_interval_hours']) {
+    for (const k of ['name', 'enabled', 'threshold_days', 'bp_multiplier', 'bp_min_days', 'due_after_days', 'min_lifetime_value', 'eval_interval_hours']) {
       if (data[k] !== undefined) {
         fields.push(`${k} = $${idx++}`);
         values.push(data[k]);
