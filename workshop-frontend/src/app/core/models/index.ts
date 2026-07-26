@@ -371,6 +371,7 @@ export interface AppSettings {
 export interface MonthlyClosingTotals {
   count: number;
   subtotal: number;
+  discount: number;
   tax: number;
   total: number;
   paid: number;
@@ -385,6 +386,7 @@ export interface MonthlyClosingJob {
   status: string;
   tax_enabled: boolean;
   subtotal: number;
+  discount: number;
   tax: number;
   total: number;
   paid: number;

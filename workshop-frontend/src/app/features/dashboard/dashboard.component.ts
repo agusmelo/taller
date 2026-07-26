@@ -259,6 +259,7 @@ import Chart from 'chart.js/auto';
                     <div class="closing-summary">
                       <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.all.count }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.all.subtotal | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Descuento</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.all.discount | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">IVA</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.all.tax | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.all.total | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.all.paid | appCurrency) }}</span></div>
@@ -285,6 +286,7 @@ import Chart from 'chart.js/auto';
                     <div class="closing-summary">
                       <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.iva.count }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.iva.subtotal | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Descuento</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.iva.discount | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">IVA</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.iva.tax | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.iva.total | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.iva.paid | appCurrency) }}</span></div>
@@ -311,6 +313,7 @@ import Chart from 'chart.js/auto';
                     <div class="closing-summary">
                       <div class="closing-stat"><span class="closing-label">Trabajos</span><span class="closing-value">{{ monthlyClosing.no_iva.count }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Subtotal</span><span class="closing-value">{{ privacyMode ? '***' : (monthlyClosing.no_iva.subtotal | appCurrency) }}</span></div>
+                      <div class="closing-stat"><span class="closing-label">Descuento</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.discount | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Total</span><span class="closing-value" style="font-weight:600;">{{ privacyMode ? '***' : (monthlyClosing.no_iva.total | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.paid | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.balance | appCurrency) }}</span></div>
