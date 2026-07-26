@@ -31,6 +31,7 @@ const migrations = [
   '017_alert_results_cache.sql',
   '018_jobs_vehicle_date_index.sql',
   '019_alert_dismissals_entity_type.sql',
+  '020_item_model_and_audit.sql',
 ];
 
 async function run() {
