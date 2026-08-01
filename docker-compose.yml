@@ -111,10 +111,14 @@ services:
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot
-    # No fixed command — invoked on demand:
+    # No fixed command, default entrypoint (the image's own `certbot` binary)
+    # left as-is — invoked on demand:
     #   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d <domain> ...
     #   docker compose run --rm certbot renew --quiet
-    entrypoint: ["/bin/true"]
+    # `docker compose run` only overrides the COMMAND, not the ENTRYPOINT — a
+    # custom entrypoint here (e.g. /bin/true as a no-op placeholder) would
+    # silently swallow both of the above, which is exactly what happened the
+    # first time this ran: no error, no certificate, just a clean exit 0.
 
 volumes:
   pg_data:
