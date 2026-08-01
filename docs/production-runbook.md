@@ -44,26 +44,43 @@ actual.
 
 ## 2. Credenciales de producción
 
-Editá `.env` en el VPS (nunca en git):
+Generá los secretos directamente en la VPS — nunca los tipees a mano ni los
+pegues desde otro lado, así no pasan por portapapeles ni quedan en texto en
+ningún otro sistema:
 
 ```bash
 cd /home/pi/workshop
-cp .env.example .env   # si no existe todavía
-nano .env
-```
+cp .env.example .env
 
-Completá:
-- `DB_PASSWORD`: `openssl rand -hex 24`
-- `JWT_SECRET`: `openssl rand -hex 32`
-- `CORS_ORIGIN=https://admin.tallerlallave.com`
-- `SEED_ADMIN_PASSWORD` / `SEED_RECEP_PASSWORD` / `SEED_MECH_PASSWORD`: contraseñas
-  fuertes — son las de los usuarios sembrados en el primer arranque, cambialas
-  desde la app después del primer login.
-- `GF_SECURITY_ADMIN_PASSWORD`: `openssl rand -hex 16` (admin de Grafana).
+DB_PW=$(openssl rand -hex 24)
+JWT=$(openssl rand -hex 32)
+ADMIN_PW=$(openssl rand -base64 12)
+RECEP_PW=$(openssl rand -base64 12)
+MECH_PW=$(openssl rand -base64 12)
+GF_PW=$(openssl rand -hex 16)
 
-```bash
+sed -i "s#^DB_PASSWORD=.*#DB_PASSWORD=$DB_PW#" .env
+sed -i "s#^JWT_SECRET=.*#JWT_SECRET=$JWT#" .env
+sed -i "s#^CORS_ORIGIN=.*#CORS_ORIGIN=https://admin.tallerlallave.com#" .env
+sed -i "s#^SEED_ADMIN_PASSWORD=.*#SEED_ADMIN_PASSWORD=$ADMIN_PW#" .env
+sed -i "s#^SEED_RECEP_PASSWORD=.*#SEED_RECEP_PASSWORD=$RECEP_PW#" .env
+sed -i "s#^SEED_MECH_PASSWORD=.*#SEED_MECH_PASSWORD=$MECH_PW#" .env
+sed -i "s#^GF_SECURITY_ADMIN_PASSWORD=.*#GF_SECURITY_ADMIN_PASSWORD=$GF_PW#" .env
+
 chmod 600 .env
+
+echo "Admin:         $ADMIN_PW"
+echo "Recepcionista: $RECEP_PW"
+echo "Mecanico:      $MECH_PW"
+echo "Grafana admin: $GF_PW"
 ```
+
+Copiá esas 4 líneas a un gestor de contraseñas apenas se impriman — es la
+única vez que vas a verlas en texto plano. `DB_PASSWORD`/`JWT_SECRET` no
+hace falta guardarlos con la misma urgencia (viven solo en este `.env`,
+`chmod 600`; rotarlos algún día en el peor caso solo fuerza un re-login).
+Admin/recepcionista/mecánico deberían cambiar su contraseña desde la app en
+el primer login — esto es solo el valor inicial de arranque.
 
 ## 3. Traer los cambios del repo
 
