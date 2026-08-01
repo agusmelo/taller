@@ -2,7 +2,7 @@
 
 set -e
 
-cd /home/pi/workshop
+cd "$(dirname "$(readlink -f "$0")")"
 
 # Tag to deploy: explicit arg > current git commit (matches what CI built on
 # the push that produced this checkout) > "latest" as last resort. Pinning to

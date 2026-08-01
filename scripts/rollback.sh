@@ -6,7 +6,7 @@
 
 set -e
 
-cd /home/pi/workshop
+cd "$(dirname "$(readlink -f "$0")")/.."
 
 if [ ! -f .last-good-tag ]; then
   echo "No .last-good-tag found — nothing to roll back to (need at least two deploys)." >&2

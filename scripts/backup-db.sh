@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-cd /home/pi/workshop
+cd "$(dirname "$(readlink -f "$0")")/.."
 set -a
 source .env
 set +a

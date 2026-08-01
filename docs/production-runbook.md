@@ -16,11 +16,17 @@ Antes de empezar:
 
 ---
 
+`deploy.sh`, `scripts/rollback.sh` y `scripts/backup-db.sh` se ubican solos
+(resuelven su propio directorio, no asumen un usuario ni un path fijo) — cloná
+el repo donde quieras. Las entradas de `crontab` en los pasos 6 y 9 sí
+necesitan un path literal: correr `pwd` una vez que estés en el repo y
+sustituir ese valor donde diga `<REPO_DIR>`.
+
 ## 1. Hardening del VPS (una sola vez)
 
 ```bash
-git clone <repo> /home/pi/workshop   # si todavía no está
-cd /home/pi/workshop
+git clone <repo>   # donde prefieras
+cd <carpeta-clonada>
 chmod +x deploy.sh scripts/*.sh
 sudo scripts/vps-setup.sh
 ```
@@ -49,7 +55,6 @@ pegues desde otro lado, así no pasan por portapapeles ni quedan en texto en
 ningún otro sistema:
 
 ```bash
-cd /home/pi/workshop
 cp .env.example .env
 
 DB_PW=$(openssl rand -hex 24)
@@ -136,7 +141,7 @@ crontab -e
 Agregar:
 
 ```
-0 3,15 * * * cd /home/pi/workshop && docker compose run --rm certbot renew --quiet && docker compose exec edge nginx -s reload
+0 3,15 * * * cd <REPO_DIR> && docker compose run --rm certbot renew --quiet && docker compose exec edge nginx -s reload
 ```
 
 Corre dos veces al día; certbot no hace nada si al certificado le quedan más
@@ -180,7 +185,7 @@ crontab -e
 Agregar:
 
 ```
-0 2 * * * /home/pi/workshop/scripts/backup-db.sh >> /home/pi/workshop/backups/backup.log 2>&1
+0 2 * * * <REPO_DIR>/scripts/backup-db.sh >> <REPO_DIR>/backups/backup.log 2>&1
 ```
 
 Corré uno a mano para confirmar que funciona:
