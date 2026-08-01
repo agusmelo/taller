@@ -11,6 +11,16 @@ const alertRunner  = require('./services/alertRunner');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust exactly one hop of X-Forwarded-For. In prod, requests go
+// client -> edge (sets X-Forwarded-For once) -> frontend (passes it through
+// unchanged, does not add another hop) -> api — so there's exactly one
+// header-modifying proxy in front of the app, even though there are two
+// nginx containers in the path. Without this, express-rate-limit refuses to
+// start (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) because trusting X-Forwarded-For
+// with no trust-proxy config is a classic rate-limit bypass, and req.ip
+// would resolve to frontend's internal Docker IP instead of the real client.
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet());
 
