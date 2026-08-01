@@ -378,23 +378,28 @@ describe('feed endpoint', () => {
     expect(blocks[0].error).toBeNull();
   });
 
-  test('returns empty items when cache is empty (no dismissals query)', async () => {
+  test('returns empty items when cache is empty (still batches the dismissals query)', async () => {
     const { req, res, next } = ctx();
-    pool.query.mockResolvedValueOnce({ rows: [DEF] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [DEF] })
+      .mockResolvedValueOnce({ rows: [] }); // batched dismissals query, runs for all enabled defs
 
     await feed(req, res, next);
 
     expect(res.json).toHaveBeenCalledWith([
       expect.objectContaining({ definition: DEF, items: [], error: null }),
     ]);
-    // Solo se hizo la query de SELECT definitions; sin items no se consulta dismissals.
-    expect(pool.query).toHaveBeenCalledTimes(1);
+    // Dismissals are now batch-loaded once for every enabled definition
+    // (regardless of whether a given def has cached items), not per-def.
+    expect(pool.query).toHaveBeenCalledTimes(2);
   });
 
   test('block surfaces last_run_error from the runner', async () => {
     const { req, res, next } = ctx();
     const defWithError = { ...DEF, last_run_error: 'DB timeout en último tick' };
-    pool.query.mockResolvedValueOnce({ rows: [defWithError] });
+    pool.query
+      .mockResolvedValueOnce({ rows: [defWithError] })
+      .mockResolvedValueOnce({ rows: [] }); // batched dismissals query
 
     await feed(req, res, next);
 
@@ -411,7 +416,7 @@ describe('feed endpoint', () => {
     ];
     pool.query
       .mockResolvedValueOnce({ rows: [{ ...DEF, last_results: cached }] })
-      .mockResolvedValueOnce({ rows: [{ entity_id: 'vid1', entity_type: 'vehicle', status: 'snoozed', snooze_until: new Date(Date.now() + 86400000).toISOString(), contacted_at: null }] });
+      .mockResolvedValueOnce({ rows: [{ alert_definition_id: 'def1', entity_id: 'vid1', entity_type: 'vehicle', status: 'snoozed', snooze_until: new Date(Date.now() + 86400000).toISOString(), contacted_at: null }] });
 
     await feed(req, res, next);
 
@@ -476,25 +481,34 @@ describe('dismiss endpoint', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  // dismiss() first verifies the definition exists and that entity_id is
+  // actually present in its cached last_results (HU-08 ownership check),
+  // then does the upsert — two sequential queries, in that order.
+  const CACHED_ENTITY_ROW = { rows: [{ last_results: [{ entity_id: UUID2, entity_type: 'vehicle' }] }] };
+
   test('upserts dismissal record on valid input', async () => {
     const { req, res, next } = ctx(VALID);
-    pool.query.mockResolvedValueOnce({ rows: [] });
+    pool.query
+      .mockResolvedValueOnce(CACHED_ENTITY_ROW) // ownership-check SELECT
+      .mockResolvedValueOnce({ rows: [] });      // INSERT
 
     await dismiss(req, res, next);
 
-    expect(pool.query.mock.calls[0][0]).toContain('INSERT INTO alert_dismissals');
-    expect(pool.query.mock.calls[0][1]).toContain(UUID1);
-    expect(pool.query.mock.calls[0][1]).toContain(UUID2);
+    expect(pool.query.mock.calls[1][0]).toContain('INSERT INTO alert_dismissals');
+    expect(pool.query.mock.calls[1][1]).toContain(UUID1);
+    expect(pool.query.mock.calls[1][1]).toContain(UUID2);
     expect(res.json).toHaveBeenCalledWith({ ok: true, status: 'snoozed' });
   });
 
   test('accepts status="contacted" and reports it back', async () => {
     const { req, res, next } = ctx({ ...VALID, status: 'contacted', snooze_days: 7 });
-    pool.query.mockResolvedValueOnce({ rows: [] });
+    pool.query
+      .mockResolvedValueOnce(CACHED_ENTITY_ROW) // ownership-check SELECT
+      .mockResolvedValueOnce({ rows: [] });      // INSERT
     await dismiss(req, res, next);
     expect(res.json).toHaveBeenCalledWith({ ok: true, status: 'contacted' });
-    // El parámetro de status va en la posición 6 (índice 5).
-    expect(pool.query.mock.calls[0][1][5]).toBe('contacted');
+    // El parámetro de status va en la posición 6 (índice 5) del INSERT (segunda query).
+    expect(pool.query.mock.calls[1][1][5]).toBe('contacted');
   });
 
   test('returns 400 for invalid status', async () => {

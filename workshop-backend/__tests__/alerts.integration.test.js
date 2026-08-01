@@ -135,7 +135,11 @@ describe('POST /api/alerts/dismiss', () => {
   });
 
   test('200 on valid payload', async () => {
-    pool.query.mockResolvedValueOnce({ rows: [] });
+    // dismiss() first checks the definition exists and that entity_id is
+    // present in its cached last_results (ownership check), then upserts.
+    pool.query
+      .mockResolvedValueOnce({ rows: [{ last_results: [{ entity_id: UUID2, entity_type: 'vehicle' }] }] })
+      .mockResolvedValueOnce({ rows: [] });
     const res = await request(app)
       .post('/api/alerts/dismiss')
       .set('Authorization', token('admin'))
