@@ -117,7 +117,8 @@ const paymentOverdue = {
         SELECT j.id AS job_id,
                COALESCE(SUM(
                  CASE
-                   WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = it.id)
+                   WHEN it.pricing_mode = 'detallado'
+                        AND EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = it.id)
                      THEN (SELECT SUM(ch.unit_price) FROM job_items ch WHERE ch.parent_id = it.id)
                    ELSE it.quantity * it.unit_price
                  END
@@ -481,7 +482,8 @@ const highValueLost = {
         SELECT j.client_id,
                SUM(
                  CASE
-                   WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = it.id)
+                   WHEN it.pricing_mode = 'detallado'
+                        AND EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = it.id)
                      THEN (SELECT SUM(ch.unit_price) FROM job_items ch WHERE ch.parent_id = it.id)
                    ELSE it.quantity * it.unit_price
                  END

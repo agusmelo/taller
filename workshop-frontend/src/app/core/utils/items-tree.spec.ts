@@ -9,6 +9,7 @@ function item(partial: Partial<JobItem>): JobItem {
     quantity: 1,
     unit_price: 0,
     item_type: 'mano_de_obra',
+    pricing_mode: null,
     supplier: null,
     parent_id: null,
     sort_order: 0,

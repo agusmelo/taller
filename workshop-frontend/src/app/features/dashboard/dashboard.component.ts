@@ -17,11 +17,24 @@ import {
   DashboardSummary, ClientFinancialRow, Job,
   OverdueDebt, UnpaidJob, TopClient,
   NewClientsData, RevenueTrendItem,
-  MonthlyClosing, MonthlyClosingJob
+  MonthlyClosing, MonthlyClosingJob, MonthlyClosingTotals, ItemType
 } from '../../core/models';
-import { StatusLabelPipe } from '../../shared/pipes/status.pipe';
+import { StatusLabelPipe, ItemTypePipe } from '../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../shared/pipes/currency.pipe';
 import Chart from 'chart.js/auto';
+
+// Canonical category order, matching ITEM_TYPES in the backend's
+// utils/financials.js (which is also its rounding-residue tie-break order).
+const CLOSING_ITEM_TYPES: ItemType[] = ['mano_de_obra', 'repuesto', 'otro'];
+
+interface ClosingTypeRow {
+  type: ItemType;
+  badge: string;
+  subtotal: number;
+  total: number;
+  share: number;
+  shareLabel: string;
+}
 
 @Component({
   selector: 'app-dashboard',
@@ -30,7 +43,7 @@ import Chart from 'chart.js/auto';
     CommonModule, FormsModule, MatCardModule, MatButtonModule, MatIconModule,
     MatTableModule, MatSelectModule, MatFormFieldModule, MatInputModule,
     MatDatepickerModule, MatNativeDateModule, MatTabsModule,
-    StatusLabelPipe, AppCurrencyPipe
+    StatusLabelPipe, AppCurrencyPipe, ItemTypePipe
   ],
   template: `
     <main class="content">
@@ -265,11 +278,44 @@ import Chart from 'chart.js/auto';
                       <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.all.paid | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.all.balance | appCurrency) }}</span></div>
                     </div>
+
+                    <div class="type-breakdown">
+                      <h4>Ingresos por tipo</h4>
+                      <table class="type-table">
+                        <thead>
+                          <tr>
+                            <th>Tipo</th>
+                            <th class="text-right">Subtotal</th>
+                            <th class="text-right">% del subtotal</th>
+                            <th class="text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (r of closingTypesAll; track r.type) {
+                            <tr>
+                              <td><span [class]="'badge b-' + r.badge">{{ r.type | itemType }}</span></td>
+                              <td class="text-right type-num">{{ privacyMode ? '***' : (r.subtotal | appCurrency) }}</td>
+                              <td class="text-right type-num type-share">{{ r.shareLabel }}</td>
+                              <td class="text-right type-num type-total">{{ privacyMode ? '***' : (r.total | appCurrency) }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td>Total</td>
+                            <td class="text-right type-num">{{ privacyMode ? '***' : (monthlyClosing.all.subtotal | appCurrency) }}</td>
+                            <td class="text-right type-num type-share">{{ closingTypesAll.length ? '100,0 %' : '' }}</td>
+                            <td class="text-right type-num">{{ privacyMode ? '***' : (monthlyClosing.all.total | appCurrency) }}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
                     <table mat-table [dataSource]="monthlyClosing.jobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
                       <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
-                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="last_payment_date"><th mat-header-cell *matHeaderCellDef>Fecha de pago</th><td mat-cell *matCellDef="let j">{{ j.last_payment_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
                       <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
@@ -292,11 +338,44 @@ import Chart from 'chart.js/auto';
                       <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.iva.paid | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.iva.balance | appCurrency) }}</span></div>
                     </div>
+
+                    <div class="type-breakdown">
+                      <h4>Ingresos por tipo</h4>
+                      <table class="type-table">
+                        <thead>
+                          <tr>
+                            <th>Tipo</th>
+                            <th class="text-right">Subtotal</th>
+                            <th class="text-right">% del subtotal</th>
+                            <th class="text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (r of closingTypesIva; track r.type) {
+                            <tr>
+                              <td><span [class]="'badge b-' + r.badge">{{ r.type | itemType }}</span></td>
+                              <td class="text-right type-num">{{ privacyMode ? '***' : (r.subtotal | appCurrency) }}</td>
+                              <td class="text-right type-num type-share">{{ r.shareLabel }}</td>
+                              <td class="text-right type-num type-total">{{ privacyMode ? '***' : (r.total | appCurrency) }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td>Total</td>
+                            <td class="text-right type-num">{{ privacyMode ? '***' : (monthlyClosing.iva.subtotal | appCurrency) }}</td>
+                            <td class="text-right type-num type-share">{{ closingTypesIva.length ? '100,0 %' : '' }}</td>
+                            <td class="text-right type-num">{{ privacyMode ? '***' : (monthlyClosing.iva.total | appCurrency) }}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
                     <table mat-table [dataSource]="closingIvaJobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
                       <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
-                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="last_payment_date"><th mat-header-cell *matHeaderCellDef>Fecha de pago</th><td mat-cell *matCellDef="let j">{{ j.last_payment_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
                       <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
@@ -318,11 +397,44 @@ import Chart from 'chart.js/auto';
                       <div class="closing-stat"><span class="closing-label">Cobrado</span><span class="closing-value" style="color:var(--green);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.paid | appCurrency) }}</span></div>
                       <div class="closing-stat"><span class="closing-label">Pendiente</span><span class="closing-value" style="color:var(--red);">{{ privacyMode ? '***' : (monthlyClosing.no_iva.balance | appCurrency) }}</span></div>
                     </div>
+
+                    <div class="type-breakdown">
+                      <h4>Ingresos por tipo</h4>
+                      <table class="type-table">
+                        <thead>
+                          <tr>
+                            <th>Tipo</th>
+                            <th class="text-right">Subtotal</th>
+                            <th class="text-right">% del subtotal</th>
+                            <th class="text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (r of closingTypesNoIva; track r.type) {
+                            <tr>
+                              <td><span [class]="'badge b-' + r.badge">{{ r.type | itemType }}</span></td>
+                              <td class="text-right type-num">{{ privacyMode ? '***' : (r.subtotal | appCurrency) }}</td>
+                              <td class="text-right type-num type-share">{{ r.shareLabel }}</td>
+                              <td class="text-right type-num type-total">{{ privacyMode ? '***' : (r.total | appCurrency) }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td>Total</td>
+                            <td class="text-right type-num">{{ privacyMode ? '***' : (monthlyClosing.no_iva.subtotal | appCurrency) }}</td>
+                            <td class="text-right type-num type-share">{{ closingTypesNoIva.length ? '100,0 %' : '' }}</td>
+                            <td class="text-right type-num">{{ privacyMode ? '***' : (monthlyClosing.no_iva.total | appCurrency) }}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
                     <table mat-table [dataSource]="closingNoIvaJobs" style="width:100%;">
                       <ng-container matColumnDef="job_number"><th mat-header-cell *matHeaderCellDef>N.o</th><td mat-cell *matCellDef="let j">{{ j.job_number }}</td></ng-container>
                       <ng-container matColumnDef="client_name"><th mat-header-cell *matHeaderCellDef>Cliente</th><td mat-cell *matCellDef="let j">{{ j.client_name }}</td></ng-container>
                       <ng-container matColumnDef="job_date"><th mat-header-cell *matHeaderCellDef>Fecha</th><td mat-cell *matCellDef="let j">{{ j.job_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
-                      <ng-container matColumnDef="status"><th mat-header-cell *matHeaderCellDef>Estado</th><td mat-cell *matCellDef="let j"><span [class]="'badge b-' + j.status">{{ j.status | statusLabel }}</span></td></ng-container>
+                      <ng-container matColumnDef="last_payment_date"><th mat-header-cell *matHeaderCellDef>Fecha de pago</th><td mat-cell *matCellDef="let j">{{ j.last_payment_date | date:'dd/MM/yyyy':'UTC' }}</td></ng-container>
                       <ng-container matColumnDef="iva"><th mat-header-cell *matHeaderCellDef>IVA</th><td mat-cell *matCellDef="let j">{{ j.tax_enabled ? 'Si' : 'No' }}</td></ng-container>
                       <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef class="text-right">Total</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.total | appCurrency) }}</td></ng-container>
                       <ng-container matColumnDef="paid"><th mat-header-cell *matHeaderCellDef class="text-right">Pagado</th><td mat-cell *matCellDef="let j" class="text-right">{{ privacyMode ? '***' : (j.paid | appCurrency) }}</td></ng-container>
@@ -524,6 +636,52 @@ import Chart from 'chart.js/auto';
       font-weight: 700;
       color: var(--text-1);
     }
+    .type-breakdown {
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    .type-breakdown h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--text-2);
+    }
+    .type-table {
+      width: 100%;
+      max-width: 560px;
+      border-collapse: collapse;
+    }
+    .type-table th {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--text-3);
+      text-align: left;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .type-table td {
+      font-size: 13px;
+      color: var(--text-1);
+      padding: 8px;
+      border-bottom: 1px solid var(--border2);
+      white-space: nowrap;
+    }
+    .type-table tfoot td {
+      font-weight: 700;
+      border-bottom: none;
+      border-top: 1px solid var(--border);
+    }
+    .type-num {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-variant-numeric: tabular-nums;
+    }
+    .type-share { color: var(--text-2); }
+    .type-total { font-weight: 600; }
   `]
 })
 export class DashboardComponent implements OnInit, AfterViewInit {
@@ -552,9 +710,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   // Monthly closing
   monthlyClosing: MonthlyClosing | null = null;
   closingMonth = new Date().toISOString().slice(0, 7);
-  closingColumns = ['job_number', 'client_name', 'job_date', 'status', 'iva', 'total', 'paid', 'balance'];
+  closingColumns = ['job_number', 'client_name', 'job_date', 'last_payment_date', 'iva', 'total', 'paid', 'balance'];
   closingIvaJobs: MonthlyClosingJob[] = [];
   closingNoIvaJobs: MonthlyClosingJob[] = [];
+  // Revenue-by-item_type rows, precomputed per tab so the template does no work
+  // per change-detection cycle. See spec/monthly-closing-by-item-type.md.
+  closingTypesAll: ClosingTypeRow[] = [];
+  closingTypesIva: ClosingTypeRow[] = [];
+  closingTypesNoIva: ClosingTypeRow[] = [];
 
   // Insights
   topClients: TopClient[] = [];
@@ -613,6 +776,30 @@ export class DashboardComponent implements OnInit, AfterViewInit {
       this.monthlyClosing = d;
       this.closingIvaJobs = d.jobs.filter(j => j.tax_enabled);
       this.closingNoIvaJobs = d.jobs.filter(j => !j.tax_enabled);
+      this.closingTypesAll = this.buildTypeRows(d.all);
+      this.closingTypesIva = this.buildTypeRows(d.iva);
+      this.closingTypesNoIva = this.buildTypeRows(d.no_iva);
+    });
+  }
+
+  // One row per category, always all three so the layout is stable and a $0
+  // category is stated rather than merely absent. `Total` is the apportioned
+  // figure and sums to the bucket's `total` exactly (enforced backend-side);
+  // `Subtotal` is the gross split and sums to the bucket's `subtotal`.
+  private buildTypeRows(t: MonthlyClosingTotals): ClosingTypeRow[] {
+    if (!t || t.count === 0) return [];
+    const base = t.subtotal || 0;
+    return CLOSING_ITEM_TYPES.map(type => {
+      const subtotal = t.subtotal_by_type?.[type] ?? 0;
+      const share = base !== 0 ? (subtotal / base) * 100 : 0;
+      return {
+        type,
+        badge: type === 'mano_de_obra' ? 'teal' : 'reg',
+        subtotal,
+        total: t.total_by_type?.[type] ?? 0,
+        share,
+        shareLabel: share.toLocaleString('es-UY', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %',
+      };
     });
   }
 

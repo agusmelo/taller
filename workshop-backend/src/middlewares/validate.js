@@ -72,6 +72,7 @@ const createJobRules = [
   body('items.*.quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
   body('items.*.unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario debe ser positivo'),
   body('items.*.item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  body('items.*.pricing_mode').optional().isIn(['detallado', 'agregado']).withMessage('Modo de precio invalido'),
   body('items.*.children').optional().isArray().withMessage('children debe ser un array'),
   body('items.*.children.*.description').optional().trim().notEmpty().withMessage('Descripcion del detalle es requerida'),
   body('items.*.children.*.unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario del detalle debe ser positivo'),
@@ -109,6 +110,7 @@ const addItemRules = [
   body('quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
   body('unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario debe ser positivo'),
   body('item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  body('pricing_mode').optional().isIn(['detallado', 'agregado']).withMessage('Modo de precio invalido'),
   body('parent_id').optional({ values: 'null' }).isUUID().withMessage('parent_id debe ser un UUID valido'),
   body('catalog_item_id').optional({ values: 'null' }).isUUID().withMessage('catalog_item_id debe ser un UUID valido'),
   body('sort_order').optional().isInt({ min: 0 }).withMessage('sort_order debe ser entero >= 0'),
@@ -124,6 +126,7 @@ const updateItemRules = [
   body('quantity').optional().isFloat({ min: 0.01 }).withMessage('Cantidad debe ser mayor a 0'),
   body('unit_price').optional().isFloat({ min: 0 }).withMessage('Precio unitario debe ser positivo'),
   body('item_type').optional().isIn(['mano_de_obra', 'repuesto', 'otro']).withMessage('Tipo de item invalido'),
+  body('pricing_mode').optional().isIn(['detallado', 'agregado']).withMessage('Modo de precio invalido'),
   body('sort_order').optional().isInt({ min: 0 }).withMessage('sort_order debe ser entero >= 0'),
   handleValidation
 ];

@@ -265,7 +265,7 @@ Copy the HTML structure from the prototype and re-wire with the existing compone
 ### Login (`auth/login/login.component.ts`)
 - Full-viewport `.login-wrapper` with `--bg` background.
 - Centered `.login-card` (400px, radius 14px, soft deep shadow).
-- Brand: 44×44 logo-mark + "Taller Morales e Hijos" + "Iniciar sesión".
+- Brand: 44×44 logo-mark + "Taller La Llave" + "Iniciar sesión".
 - Two `.field` inputs + primary button full width + footer with version + "¿Olvidaste tu contraseña?" link.
 
 ## Interactions & Behavior

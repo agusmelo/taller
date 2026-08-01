@@ -83,13 +83,24 @@ export interface Job {
   updated_at: string;
 }
 
+export type ItemType = 'mano_de_obra' | 'repuesto' | 'otro';
+
+// How a group with children derives its line total (backend migration 024):
+//   'detallado' -> sum of the children's unit_price (children carry the prices)
+//   'agregado'  -> the root's own quantity * unit_price; children are
+//                  descriptions only and carry no price at all
+export type PricingMode = 'detallado' | 'agregado';
+
 export interface JobItem {
   id: string;
   job_id: string;
   description: string;
   quantity: number;
   unit_price: number;
-  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
+  // Root-only: item_type and pricing_mode describe the group as a whole and are
+  // always null on child rows (enforced by CHECK constraints in migration 024).
+  item_type: ItemType | null;
+  pricing_mode: PricingMode | null;
   supplier: string | null;
   parent_id: string | null;
   sort_order: number;
@@ -368,6 +379,11 @@ export interface AppSettings {
   [key: string]: string;
 }
 
+// Revenue split across the three item categories. item_type is a group-level
+// property (migration 024), so every group's whole line total lands in exactly
+// one of these. See spec/monthly-closing-by-item-type.md.
+export type MonthlyClosingByType = Record<ItemType, number>;
+
 export interface MonthlyClosingTotals {
   count: number;
   subtotal: number;
@@ -376,6 +392,10 @@ export interface MonthlyClosingTotals {
   total: number;
   paid: number;
   balance: number;
+  // Gross, pre-discount/pre-IVA — sums to `subtotal`.
+  subtotal_by_type: MonthlyClosingByType;
+  // Discount + IVA apportioned pro-rata — sums to `total` exactly.
+  total_by_type: MonthlyClosingByType;
 }
 
 export interface MonthlyClosingJob {
@@ -383,6 +403,7 @@ export interface MonthlyClosingJob {
   job_number: string;
   client_name: string;
   job_date: string;
+  last_payment_date: string;
   status: string;
   tax_enabled: boolean;
   subtotal: number;
@@ -391,6 +412,8 @@ export interface MonthlyClosingJob {
   total: number;
   paid: number;
   balance: number;
+  subtotal_by_type: MonthlyClosingByType;
+  total_by_type: MonthlyClosingByType;
 }
 
 export interface MonthlyClosing {

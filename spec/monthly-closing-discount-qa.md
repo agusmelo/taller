@@ -3,7 +3,7 @@
 **Feature**: Dashboard → *Cierre mensual* now shows a **Descuento** stat.
 **Spec**: [`monthly-closing-discount.md`](./monthly-closing-discount.md)
 **PR**: [#42](https://github.com/agusmelo/taller/pull/42)
-**Tester**: ______________  **Date**: ____________  **Result**: ☐ Pass ☐ Fail
+**Tester**: Claude (/qa)  **Date**: 2026-07-26  **Result**: ☒ Pass ☐ Fail
 
 ---
 
@@ -82,12 +82,14 @@ month so each case below is covered:
 
 ## Sign-off
 
-- [ ] All test cases pass
-- [ ] `Subtotal − Descuento + IVA = Total` holds in every tab
-- [ ] Con IVA + Sin IVA discounts reconcile to the Todos total
-- [ ] Privacy mode masks the new stat
-- [ ] No console errors when switching months / empty months
+- [x] All test cases pass
+- [x] `Subtotal − Descuento + IVA = Total` holds in every tab
+- [x] Con IVA + Sin IVA discounts reconcile to the Todos total
+- [x] Privacy mode masks the new stat
+- [x] No console errors when switching months / empty months
 
 **Notes / defects found:**
 
-_______________________________________________________________
+None. Tested against branch `claude/dashboard-metrics-closing-2n3ihz` (base `develop`)
+using 4 seeded jobs in Aug 2026 covering fixed/percentage/no-discount/Sin-IVA cases.
+Full evidence: `.gstack/qa-reports/qa-report-monthly-closing-discount-2026-07-26.md`
