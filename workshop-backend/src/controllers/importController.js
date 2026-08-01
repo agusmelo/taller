@@ -184,8 +184,8 @@ async function execute(req, res, next) {
 
         const description = parseDescription(row.doc_field);
         await client.query(
-          `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type)
-           VALUES ($1, $2, 1, $3, 'otro')`,
+          `INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, pricing_mode)
+           VALUES ($1, $2, 1, $3, 'otro', 'detallado')`,
           [jobId, description, row.total]
         );
 

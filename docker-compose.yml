@@ -8,8 +8,10 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
+    # No ports published to the host — only reachable by other containers on
+    # the compose network, by service name (`db`). Publishing 5432 here would
+    # expose Postgres directly to the internet on a VPS with no firewall rule
+    # blocking it. Need a one-off connection? Use an SSH tunnel instead.
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,7 +21,7 @@ services:
       retries: 10
 
   migrate:
-    image: ozzon42/ozzon-images:migrate-latest
+    image: ozzon42/ozzon-images:migrate-${IMAGE_TAG:-latest}
     build:
       context: ./workshop-backend
     container_name: workshop-migrate
@@ -39,13 +41,17 @@ services:
     restart: "no"
 
   api:
-    image: ozzon42/ozzon-images:api-latest
+    image: ozzon42/ozzon-images:api-${IMAGE_TAG:-latest}
     build:
       context: ./workshop-backend
     container_name: workshop-api
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Not published to the host — frontend's nginx.conf already proxies
+    # /api to api:3000 internally, and everything external goes through
+    # `edge` on 80/443. Publishing 3000 here would let anyone bypass TLS
+    # entirely by hitting http://vps-ip:3000 directly.
+    expose:
+      - "3000"
     volumes:
       - ./workshop-backend/assets:/app/assets:ro
     environment:
@@ -73,15 +79,50 @@ services:
         condition: service_completed_successfully
 
   frontend:
-    image: ozzon42/ozzon-images:web-latest
+    image: ozzon42/ozzon-images:web-${IMAGE_TAG:-latest}
     build:
       context: ./workshop-frontend
     container_name: workshop-frontend
     restart: unless-stopped
-    ports:
-      - "4200:80"
+    # Not published to the host anymore — sits behind `edge`, which is the
+    # only thing exposed on 80/443. Reachable internally as `frontend:80`.
+    expose:
+      - "80"
     depends_on:
       - api
 
+  edge:
+    image: nginx:alpine
+    container_name: workshop-edge
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx-edge/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      - frontend
+
+  certbot:
+    image: certbot/certbot
+    container_name: workshop-certbot
+    volumes:
+      - certbot-etc:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    # No fixed command — invoked on demand:
+    #   docker compose run --rm certbot certonly --webroot -w /var/www/certbot -d <domain> ...
+    #   docker compose run --rm certbot renew --quiet
+    entrypoint: ["/bin/true"]
+
 volumes:
   pg_data:
+  certbot-etc:
+  certbot-webroot:
+
+# Named (not project-scoped) so docker-compose.observability.yml can attach
+# to it as `external: true` — `edge` needs to reach `grafana` by service name.
+networks:
+  default:
+    name: workshop-net

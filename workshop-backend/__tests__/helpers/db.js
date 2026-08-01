@@ -30,6 +30,23 @@ const MIGRATIONS = [
   '005_settings.sql',
   '006_import_source.sql',
   '007_item_hierarchy_and_pdf_visibility.sql',
+  '008_item_catalog.sql',
+  '009_item_catalog_children.sql',
+  '010_item_catalog_backfill.sql',
+  '011_catalog_item_ref.sql',
+  '012_catalog_analytics_index.sql',
+  '013_jobs_job_date_index.sql',
+  '014_alert_definitions.sql',
+  '015_alert_workshop_and_cascade.sql',
+  '016_seed_alert_definitions.sql',
+  '017_alert_results_cache.sql',
+  '018_jobs_vehicle_date_index.sql',
+  '019_alert_dismissals_entity_type.sql',
+  '020_item_model_and_audit.sql',
+  '021_alert_dismissal_status.sql',
+  '022_alert_wa_templates.sql',
+  '023_alert_sprint3_types.sql',
+  '024_group_item_type_and_pricing_mode.sql',
 ];
 
 async function dbReachable() {
@@ -41,14 +58,53 @@ async function dbReachable() {
   }
 }
 
-// Idempotently apply migrations if the core schema is missing.
+// Apply any migration this database hasn't seen yet, tracked in a ledger table.
+//
+// This used to short-circuit on `to_regclass('public.jobs')` — i.e. "if the
+// schema exists at all, assume it's current". That silently ran the whole suite
+// against a stale schema whenever a new migration was added to an existing
+// workshop_test database, which is exactly as misleading as a suite that never
+// reaches Postgres at all. The ledger makes the check per-migration instead, so
+// adding a file to MIGRATIONS is enough — no manual dropdb required.
 async function ensureSchema() {
-  const has = await pool.query(`SELECT to_regclass('public.jobs') AS t`);
-  if (has.rows[0].t) return;
   const dir = path.join(__dirname, '..', '..', 'migrations');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      filename   TEXT PRIMARY KEY,
+      applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+
+  // A pre-existing database built before the ledger existed has the schema but
+  // no record of it. Backfill it as "everything up to the newest migration whose
+  // effect is already visible" — detected via a column each one adds.
+  const applied = await pool.query(`SELECT filename FROM schema_migrations`);
+  if (applied.rows.length === 0) {
+    const hasJobs = await pool.query(`SELECT to_regclass('public.jobs') AS t`);
+    if (hasJobs.rows[0].t) {
+      const known = await pool.query(`
+        SELECT
+          to_regclass('public.alert_wa_templates')  IS NOT NULL AS thru_022,
+          EXISTS (SELECT 1 FROM information_schema.columns
+                   WHERE table_name = 'job_items' AND column_name = 'pricing_mode') AS thru_024`);
+      const { thru_022, thru_024 } = known.rows[0];
+      const upTo = thru_024 ? '024' : (thru_022 ? '023' : '021');
+      const seen = MIGRATIONS.filter(f => f.slice(0, 3) <= upTo || f === 'schema.sql');
+      for (const file of seen) {
+        await pool.query(
+          `INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING`, [file]);
+      }
+    }
+  }
+
   for (const file of MIGRATIONS) {
+    const done = await pool.query(
+      `SELECT 1 FROM schema_migrations WHERE filename = $1`, [file]);
+    if (done.rows.length > 0) continue;
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
     await pool.query(sql);
+    await pool.query(
+      `INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING`, [file]);
   }
 }
 

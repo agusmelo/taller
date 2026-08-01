@@ -23,12 +23,17 @@ export function buildItemsTree(flat: JobItem[]): JobItemNode[] {
 }
 
 /**
- * Per-row total: parents with children take the sum of their children's
- * unit prices (the parent's own unit_price is ignored). Parents without
- * children behave as a single priced line: quantity * unit_price.
+ * Per-row total, mirroring groupLineTotal in the backend's jobsController:
+ *
+ *  - 'detallado' group with children: sum of the children's unit prices (the
+ *    parent's own unit_price is ignored).
+ *  - 'agregado' group: the parent's own quantity * unit_price — the shop only
+ *    knows the group total, so children carry descriptions and no prices.
+ *  - no children: a single priced line, quantity * unit_price, either way.
  */
 export function computeLineTotal(node: JobItemNode): number {
-  if (node.children.length > 0) {
+  const detailed = node.pricing_mode !== 'agregado';
+  if (detailed && node.children.length > 0) {
     return node.children.reduce((s, c) => s + Number(c.unit_price), 0);
   }
   return Number(node.quantity) * Number(node.unit_price);

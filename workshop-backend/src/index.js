@@ -14,9 +14,20 @@ const PORT = process.env.PORT || 3000;
 // Security headers
 app.use(helmet());
 
-// Request logging
+// Request logging — JSON in production so log shippers (Promtail/Loki) can
+// parse status/path/response time without a text parser; 'dev' locally for
+// readability.
+const jsonLogFormat = (tokens, req, res) => JSON.stringify({
+  timestamp: new Date().toISOString(),
+  level: 'info',
+  method: tokens.method(req, res),
+  path: tokens.url(req, res),
+  status: Number(tokens.status(req, res)),
+  responseTimeMs: Number(tokens['response-time'](req, res)),
+});
+
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+  app.use(morgan(process.env.NODE_ENV === 'production' ? jsonLogFormat : 'dev'));
 }
 
 // Rate limiting

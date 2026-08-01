@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const { JOB_SUBTOTALS_SUBQUERY } = require('../utils/financials');
 
 function toCsv(rows, columns) {
   if (!rows.length) return columns.map(c => c.label).join(',') + '\n';
@@ -46,10 +47,7 @@ async function exportJobs(req, res, next) {
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
       JOIN vehicles v ON v.id = j.vehicle_id
-      LEFT JOIN (
-        SELECT ji.job_id, SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END) AS subtotal
-        FROM job_items ji GROUP BY ji.job_id
-      ) it ON it.job_id = j.id
+      LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
       LEFT JOIN (SELECT job_id, SUM(amount) AS paid FROM payments GROUP BY job_id) py ON py.job_id = j.id
       WHERE ${conditions.join(' AND ')}
       ORDER BY j.job_date DESC, j.created_at DESC
@@ -84,14 +82,11 @@ async function exportClients(req, res, next) {
     const r = await pool.query(`
       SELECT c.full_name, c.rut, c.phone, c.email, c.address, c.type,
              COUNT(DISTINCT j.id) AS job_count,
-             COALESCE(SUM(DISTINCT it.subtotal_per_job), 0) AS total_facturado,
+             COALESCE(SUM(DISTINCT it.subtotal), 0) AS total_facturado,
              COALESCE(SUM(DISTINCT py.paid_per_job), 0) AS total_pagado
       FROM clients c
       LEFT JOIN jobs j ON j.client_id = c.id AND j.deleted_at IS NULL
-      LEFT JOIN (
-        SELECT ji.job_id, SUM(CASE WHEN EXISTS (SELECT 1 FROM job_items ch WHERE ch.parent_id = ji.id) THEN 0 ELSE ji.quantity * ji.unit_price END) AS subtotal_per_job
-        FROM job_items ji GROUP BY ji.job_id
-      ) it ON it.job_id = j.id
+      LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
       LEFT JOIN (SELECT job_id, SUM(amount) AS paid_per_job FROM payments GROUP BY job_id) py ON py.job_id = j.id
       WHERE c.deleted_at IS NULL
       GROUP BY c.id, c.full_name, c.rut, c.phone, c.email, c.address, c.type

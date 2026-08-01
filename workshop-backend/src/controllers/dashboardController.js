@@ -1,5 +1,6 @@
 const pool = require('../config/database');
-const { JOB_SUBTOTALS_SUBQUERY, JOB_PAID_SUBQUERY, jobTotalRounded, jobBalanceRounded } = require('../utils/financials');
+const { JOB_SUBTOTALS_SUBQUERY, JOB_TYPE_SUBTOTALS_SUBQUERY, JOB_PAID_SUBQUERY,
+        ITEM_TYPES, apportionByType, jobTotalRounded, jobBalanceRounded } = require('../utils/financials');
 
 const TOTAL   = jobTotalRounded('j', 'COALESCE(it.subtotal, 0)');
 const BALANCE = jobBalanceRounded('j', 'COALESCE(it.subtotal, 0)', 'COALESCE(p.paid, 0)');
@@ -303,15 +304,36 @@ async function monthlyClosing(req, res, next) {
         j.discount_amount, j.discount_type, j.status, j.job_date,
         c.full_name AS client_name,
         COALESCE(it.subtotal, 0) AS subtotal,
-        COALESCE(p.paid, 0) AS total_paid
+        p.paid AS total_paid, p.last_payment_date
       FROM jobs j
       JOIN clients c ON c.id = j.client_id
       LEFT JOIN ( ${JOB_SUBTOTALS_SUBQUERY} ) it ON it.job_id = j.id
-      LEFT JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
+      JOIN ( ${JOB_PAID_SUBQUERY} ) p ON p.job_id = j.id
       WHERE j.deleted_at IS NULL
-        AND j.job_date >= $1 AND j.job_date < $2
-      ORDER BY j.job_date
+        AND j.status = 'pagado'
+        AND p.last_payment_date >= $1 AND p.last_payment_date < $2
+      ORDER BY p.last_payment_date
     `, [monthStart, monthEnd]);
+
+    // Revenue breakdown by item_type (spec/monthly-closing-by-item-type.md).
+    // Queried for exactly the job ids just returned rather than by repeating the
+    // WHERE clause, so the breakdown can never describe a different job set than
+    // the rows it decorates. item_type is a group-level property since migration
+    // 024: every group contributes its whole line total to one bucket.
+    const jobIds = r.rows.map(row => row.id);
+    const sharesByJob = new Map();
+    if (jobIds.length > 0) {
+      const t = await pool.query(
+        `SELECT job_id, item_type, subtotal FROM ( ${JOB_TYPE_SUBTOTALS_SUBQUERY} ) bt
+         WHERE bt.job_id = ANY($1::uuid[])`, [jobIds]);
+      for (const row of t.rows) {
+        const shares = sharesByJob.get(row.job_id) || {};
+        shares[row.item_type] = (shares[row.item_type] || 0) + parseFloat(row.subtotal);
+        sharesByJob.set(row.job_id, shares);
+      }
+    }
+
+    const round2 = (n) => Math.round(n * 100) / 100;
 
     const jobs = r.rows.map(row => {
       const subtotal = parseFloat(row.subtotal);
@@ -323,11 +345,16 @@ async function monthlyClosing(req, res, next) {
       const tax = Math.round(rawTax * 100) / 100;
       const total = Math.round((taxBase + rawTax) * 100) / 100;
       const paid = parseFloat(row.total_paid);
+      // Gross split is exact (a plain regrouping of the same item line totals);
+      // the total split apportions the job-level discount and IVA pro-rata by
+      // each type's share of the subtotal, forced to sum to `total` exactly.
+      const shares = sharesByJob.get(row.id) || {};
       return {
         id: row.id,
         job_number: row.job_number,
         client_name: row.client_name,
         job_date: row.job_date,
+        last_payment_date: row.last_payment_date,
         status: row.status,
         tax_enabled: row.tax_enabled,
         subtotal,
@@ -336,8 +363,19 @@ async function monthlyClosing(req, res, next) {
         total,
         paid,
         balance: Math.round((total - paid) * 100) / 100,
+        subtotal_by_type: apportionByType(shares, round2(subtotal)),
+        total_by_type: apportionByType(shares, total),
       };
     });
+
+    // Per-job parts each sum to that job's figure exactly, so summing them
+    // across the list reconciles with the period figure too. round2 only kills
+    // float noise from adding 2-decimal values.
+    const sumByType = (list, key) => {
+      const out = {};
+      for (const t of ITEM_TYPES) out[t] = round2(list.reduce((s, j) => s + j[key][t], 0));
+      return out;
+    };
 
     const calc = (list) => ({
       count: list.length,
@@ -347,6 +385,8 @@ async function monthlyClosing(req, res, next) {
       total: list.reduce((s, j) => s + j.total, 0),
       paid: list.reduce((s, j) => s + j.paid, 0),
       balance: list.reduce((s, j) => s + j.balance, 0),
+      subtotal_by_type: sumByType(list, 'subtotal_by_type'),
+      total_by_type: sumByType(list, 'total_by_type'),
     });
 
     const ivaJobs = jobs.filter(j => j.tax_enabled);

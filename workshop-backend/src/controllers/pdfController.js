@@ -80,14 +80,20 @@ function groupItemsByType(items) {
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   const groups = {};
   for (const root of roots) {
-    if (!groups[root.item_type]) groups[root.item_type] = [];
-    groups[root.item_type].push({ ...root, _children: childrenByParent.get(root.id) || [] });
+    // item_type is a property of the group as a whole and lives only on the
+    // root row (migration 024) — children have none to consult.
+    const type = root.item_type || 'otro';
+    if (!groups[type]) groups[type] = [];
+    groups[type].push({ ...root, _children: childrenByParent.get(root.id) || [] });
   }
   return groups;
 }
 
+// Mirrors groupLineTotal in jobsController: an 'agregado' group is priced on its
+// root row, a 'detallado' group on its children.
 function lineTotal(rootItem) {
-  if (rootItem._children && rootItem._children.length > 0) {
+  const detailed = rootItem.pricing_mode !== 'agregado';
+  if (detailed && rootItem._children && rootItem._children.length > 0) {
     return rootItem._children.reduce((s, c) => s + parseFloat(c.unit_price), 0);
   }
   return parseFloat(rootItem.quantity) * parseFloat(rootItem.unit_price);
@@ -233,9 +239,14 @@ function buildItems(job, items) {
   // Render one line item (parent row + its child rows).
   function itemRows(item) {
     const hasChildren = item._children && item._children.length > 0;
+    const aggregate = item.pricing_mode === 'agregado';
     const total = lineTotal(item);
-    const qty = hasChildren ? 1 : item.quantity;
-    const unitCell = hasChildren ? '—' : formatCurrency(item.unit_price);
+    // An 'agregado' group is priced like a simple item — its own quantity and
+    // unit price are the real numbers, so show them. Only a 'detallado' group
+    // has a derived total with nothing meaningful to put in the unit column.
+    const derived = hasChildren && !aggregate;
+    const qty = derived ? 1 : item.quantity;
+    const unitCell = derived ? '—' : formatCurrency(item.unit_price);
 
     let rows = `
         <tr class="item-row${hasChildren ? ' has-children' : ''}">
@@ -247,8 +258,12 @@ function buildItems(job, items) {
 
     if (hasChildren) {
       item._children.forEach((child, i) => {
+        // An 'agregado' group doesn't track per-child prices at all, so its
+        // children never show a price column — independent of the job-level
+        // show_item_details_pricing flag, which only decides whether prices the
+        // shop *does* track are revealed to the customer.
         let childUnit = '';
-        if (showDetailsPricing) {
+        if (showDetailsPricing && !aggregate) {
           childUnit = parseFloat(child.unit_price) > 0 ? formatCurrency(child.unit_price) : '—';
         }
         const last = i === item._children.length - 1;
