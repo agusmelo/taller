@@ -35,7 +35,9 @@ export class ItemTypePipe implements PipeTransform {
     otro: 'Otros'
   };
 
-  transform(value: string): string {
+  // item_type is null on child rows, where it is meaningless by design.
+  transform(value: string | null | undefined): string {
+    if (!value) return '';
     return this.labels[value] || value;
   }
 }

@@ -12,7 +12,9 @@ import {
   AgingReport, Debtor, PaymentsSummary, AppSettings,
   MonthlyClosing,
   CatalogItem, CatalogSuggestion, CatalogBulkResult,
-  CatalogItemAnalytics, CatalogAnalyticsParams
+  CatalogItemAnalytics, CatalogAnalyticsParams,
+  OverdueServiceItem, AlertItem,
+  AlertDefinition, AlertFeedBlock, AlertBadge, AlertWaTemplate
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -73,13 +75,14 @@ export class ApiService {
   lockJob(id: string) { return this.http.put<Job>(`${this.url}/jobs/${id}/lock`, {}); }
   unlockJob(id: string) { return this.http.put<Job>(`${this.url}/jobs/${id}/unlock`, {}); }
   getJobPdfUrl(id: string) { return `${this.url}/jobs/${id}/pdf`; }
+  getJobReceiptPdfUrl(id: string) { return `${this.url}/jobs/${id}/receipt-pdf`; }
 
   // Job Items
   getJobItems(jobId: string) { return this.http.get<JobItem[]>(`${this.url}/jobs/${jobId}/items`); }
   addJobItem(jobId: string, data: Partial<JobItem> & {
     parent_id?: string | null;
     sort_order?: number;
-    children?: { description: string; unit_price: number }[];
+    children?: { description: string; unit_price: number; item_type?: string }[];
   }) {
     return this.http.post<JobItem>(`${this.url}/jobs/${jobId}/items`, data);
   }
@@ -139,6 +142,70 @@ export class ApiService {
       `${this.url}/item-catalog/analytics`,
       { params: params as Record<string, string> }
     );
+  }
+
+  // Alert definitions (CRUD, admin)
+  listAlertDefinitions() {
+    return this.http.get<AlertDefinition[]>(`${this.url}/alert-definitions`);
+  }
+  createAlertDefinition(data: Partial<AlertDefinition>) {
+    return this.http.post<AlertDefinition>(`${this.url}/alert-definitions`, data);
+  }
+  updateAlertDefinition(id: string, data: Partial<AlertDefinition>) {
+    return this.http.patch<AlertDefinition>(`${this.url}/alert-definitions/${id}`, data);
+  }
+  deleteAlertDefinition(id: string) {
+    return this.http.delete(`${this.url}/alert-definitions/${id}`);
+  }
+  evaluateAlertDefinition(id: string) {
+    return this.http.post<AlertFeedBlock>(`${this.url}/alert-definitions/${id}/evaluate`, {});
+  }
+
+  // Alerts feed (live + dismiss + badge)
+  getAlertsFeed() {
+    return this.http.get<AlertFeedBlock[]>(`${this.url}/alerts/feed`);
+  }
+  dismissAlert(
+    definitionId: string,
+    entityId: string,
+    snoozeDays: number,
+    entityType: string = 'vehicle',
+    status: 'snoozed' | 'contacted' | 'resolved' = 'snoozed',
+  ) {
+    return this.http.post<{ ok: boolean; status: string }>(`${this.url}/alerts/dismiss`, {
+      definition_id: definitionId,
+      entity_id:     entityId,
+      entity_type:   entityType,
+      snooze_days:   snoozeDays,
+      status,
+    });
+  }
+  getAlertsBadge() {
+    return this.http.get<AlertBadge>(`${this.url}/alerts/badge`);
+  }
+  evaluateAllAlerts() {
+    return this.http.post<{ ok: boolean; evaluated: number }>(`${this.url}/alerts/evaluate-all`, {});
+  }
+
+  // Alerts WA templates (HU-11)
+  listAlertWaTemplates() {
+    return this.http.get<AlertWaTemplate[]>(`${this.url}/alerts/wa-templates`);
+  }
+  upsertAlertWaTemplate(alertType: string, template: string) {
+    return this.http.put<AlertWaTemplate>(
+      `${this.url}/alerts/wa-templates/${alertType}`,
+      { template }
+    );
+  }
+  deleteAlertWaTemplate(alertType: string) {
+    return this.http.delete<{ ok: boolean }>(`${this.url}/alerts/wa-templates/${alertType}`);
+  }
+
+  // Retention (detailed per-vehicle view)
+  getOverdueService(catalogItemId: string, thresholdDays: number) {
+    return this.http.get<OverdueServiceItem[]>(`${this.url}/retention/overdue-service`, {
+      params: { catalog_item_id: catalogItemId, threshold_days: thresholdDays.toString() }
+    });
   }
 
   // Payments

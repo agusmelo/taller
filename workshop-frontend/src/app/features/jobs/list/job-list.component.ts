@@ -117,7 +117,7 @@ import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
               </ng-container>
               <ng-container matColumnDef="job_date">
                 <th mat-header-cell *matHeaderCellDef>Fecha</th>
-                <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy' }}</td>
+                <td mat-cell *matCellDef="let j">{{ (j.job_date || j.created_at) | date:'dd/MM/yyyy':'UTC' }}</td>
               </ng-container>
               <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: displayedColumns;"
@@ -204,6 +204,7 @@ export class JobListComponent implements OnInit {
     const params: Record<string, string> = {};
     if (this.dateFromFilter) params['date_from'] = this.formatDate(this.dateFromFilter);
     if (this.dateToFilter) params['date_to'] = this.formatDate(this.dateToFilter);
+    if (this.statusFilter) params['status'] = this.statusFilter;
     this.api.exportJobsCsv(params).subscribe(blob => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

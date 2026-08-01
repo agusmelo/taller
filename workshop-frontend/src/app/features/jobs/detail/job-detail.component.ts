@@ -19,7 +19,7 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { ApiService } from '../../../core/services/api.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { Job, JobItem, JobItemNode, CatalogItem } from '../../../core/models';
+import { Job, JobItem, JobItemNode, CatalogItem, ItemType, PricingMode } from '../../../core/models';
 import { buildItemsTree, computeLineTotal } from '../../../core/utils/items-tree';
 import { StatusLabelPipe, PaymentMethodPipe, ItemTypePipe } from '../../../shared/pipes/status.pipe';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
@@ -117,7 +117,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
             <div class="info-row"><span>Kilometraje</span><span class="t-mono">{{ job.mileage_at_service.toLocaleString() }} km</span></div>
           }
           @if (job.job_date) {
-            <div class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy' }}</span></div>
+            <div class="info-row"><span>Fecha</span><span>{{ job.job_date | date:'dd/MM/yyyy':'UTC' }}</span></div>
           }
         </app-info-card>
 
@@ -167,30 +167,124 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
           </mat-autocomplete>
 
           @if (showAddItem && canEditItems()) {
-            <div class="add-row">
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:130px;">
-                <mat-select [(ngModel)]="newItem.item_type">
-                  <mat-option value="mano_de_obra">Mano de obra</mat-option>
-                  <mat-option value="repuesto">Repuesto</mat-option>
-                  <mat-option value="otro">Otro</mat-option>
-                </mat-select>
-              </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="flex:1;min-width:160px;">
-                <input matInput [(ngModel)]="newItem.description"
-                       placeholder="Descripcion"
-                       [matAutocomplete]="descAuto"
-                       (focus)="autocompleteTarget = 'new'"
-                       (input)="onDescriptionInput(newItem.description)">
-              </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:70px;">
-                <input matInput [(ngModel)]="newItem.quantity" type="number" placeholder="Cant.">
-              </mat-form-field>
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:110px;">
-                <input matInput [(ngModel)]="newItem.unit_price" type="number" placeholder="Precio">
-              </mat-form-field>
-              <button mat-raised-button color="primary" (click)="addItem()" [disabled]="!newItem.description || savingItem">
-                {{ savingItem ? '...' : 'Agregar' }}
-              </button>
+            <div class="add-form-wrap">
+              <div class="mode-toggle">
+                <button type="button" class="mode-btn" [class.active]="itemMode === 'simple'"
+                        (click)="setItemMode('simple')">
+                  <mat-icon>remove</mat-icon> Simple
+                </button>
+                <button type="button" class="mode-btn" [class.active]="itemMode === 'compuesto'"
+                        (click)="setItemMode('compuesto')">
+                  <mat-icon>format_list_bulleted</mat-icon> Compuesto
+                </button>
+              </div>
+
+              @if (itemMode === 'simple') {
+                <div class="add-row">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:130px;">
+                    <mat-select [(ngModel)]="newItem.item_type">
+                      <mat-option value="mano_de_obra">Mano de obra</mat-option>
+                      <mat-option value="repuesto">Repuesto</mat-option>
+                      <mat-option value="otro">Otro</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" style="flex:1;min-width:160px;">
+                    <input matInput [(ngModel)]="newItem.description"
+                           placeholder="Descripción"
+                           [matAutocomplete]="descAuto"
+                           (focus)="autocompleteTarget = 'new'"
+                           (input)="onDescriptionInput(newItem.description)">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:70px;">
+                    <input matInput [(ngModel)]="newItem.quantity" type="number" placeholder="Cant.">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic" style="width:110px;">
+                    <input matInput [(ngModel)]="newItem.unit_price" type="number" placeholder="Precio">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="addItem()"
+                          [disabled]="!newItem.description || savingItem">
+                    {{ savingItem ? '...' : 'Agregar' }}
+                  </button>
+                  <button mat-icon-button (click)="toggleAddItem()"><mat-icon>close</mat-icon></button>
+                </div>
+              } @else {
+                <div class="add-compuesto">
+                  <div class="comp-header-row">
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="comp-group-type">
+                      <mat-label>Tipo</mat-label>
+                      <mat-select [(ngModel)]="newItem.item_type">
+                        <mat-option value="mano_de_obra">Mano de obra</mat-option>
+                        <mat-option value="repuesto">Repuesto</mat-option>
+                        <mat-option value="otro">Otro</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="comp-group-name">
+                      <mat-label>Nombre del grupo</mat-label>
+                      <input matInput [(ngModel)]="newItem.description"
+                             placeholder="Ej: Revisión 10.000 km"
+                             [matAutocomplete]="descAuto"
+                             (focus)="autocompleteTarget = 'new'"
+                             (input)="onDescriptionInput(newItem.description)">
+                    </mat-form-field>
+                    <button mat-icon-button (click)="toggleAddItem()"><mat-icon>close</mat-icon></button>
+                  </div>
+
+                  <div class="pricing-mode-row">
+                    <span class="pricing-mode-label">Precio</span>
+                    <div class="mode-toggle mode-toggle-sm">
+                      <button type="button" class="mode-btn"
+                              [class.active]="newItemPricingMode === 'detallado'"
+                              (click)="setPricingMode('detallado')">
+                        Por detalle
+                      </button>
+                      <button type="button" class="mode-btn"
+                              [class.active]="newItemPricingMode === 'agregado'"
+                              (click)="setPricingMode('agregado')">
+                        Total del grupo
+                      </button>
+                    </div>
+                    @if (newItemPricingMode === 'agregado') {
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="comp-group-price">
+                        <mat-label>Total</mat-label>
+                        <input matInput [(ngModel)]="newItem.unit_price" type="number" min="0">
+                      </mat-form-field>
+                    } @else {
+                      <span class="pricing-mode-hint t-mono">{{ newItemChildrenSum() | appCurrency }}</span>
+                    }
+                  </div>
+
+                  <div class="comp-children">
+                    <p class="comp-children-label">Detalles</p>
+                    @for (ch of newItemChildren; track $index; let i = $index) {
+                      <div class="new-child-row">
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="nch-desc">
+                          <input matInput [(ngModel)]="ch.description" placeholder="Descripción">
+                        </mat-form-field>
+                        @if (newItemPricingMode === 'detallado') {
+                          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="nch-price">
+                            <input matInput [(ngModel)]="ch.unit_price" type="number" placeholder="Precio">
+                          </mat-form-field>
+                        }
+                        <button mat-icon-button (click)="removeChildFromNew(i)"
+                                [disabled]="newItemChildren.length === 1">
+                          <mat-icon>close</mat-icon>
+                        </button>
+                      </div>
+                    }
+                    <button class="add-detail-btn" type="button" (click)="addChildToNew()">
+                      <mat-icon>add</mat-icon> Agregar detalle
+                    </button>
+                  </div>
+                  <div class="comp-actions">
+                    <button mat-raised-button color="primary" (click)="addItem()"
+                            [disabled]="!newItem.description || !newItemChildren.length ||
+                                        hasEmptyChild() || savingItem">
+                      {{ savingItem ? '...' : 'Crear grupo' }}
+                    </button>
+                    <button mat-button (click)="toggleAddItem()">Cancelar</button>
+                  </div>
+                </div>
+              }
             </div>
           }
 
@@ -200,7 +294,30 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
 
           @for (node of itemsTree; track node.id; let pIdx = $index) {
             <div class="item-block">
-              <div class="parent-row" [class.has-children]="node.children.length > 0">
+              @if (editingItemId === node.id && node.children.length > 0) {
+                <div class="edit-mode-row">
+                  <span class="pricing-mode-label">Precio del grupo</span>
+                  <div class="mode-toggle mode-toggle-sm">
+                    <button type="button" class="mode-btn"
+                            [class.active]="editItem.pricing_mode === 'detallado'"
+                            (click)="editItem.pricing_mode = 'detallado'">
+                      Por detalle
+                    </button>
+                    <button type="button" class="mode-btn"
+                            [class.active]="editItem.pricing_mode === 'agregado'"
+                            (click)="editItem.pricing_mode = 'agregado'">
+                      Total del grupo
+                    </button>
+                  </div>
+                  @if (editItem.pricing_mode === 'agregado' && node.pricing_mode !== 'agregado') {
+                    <span class="pricing-mode-warn">
+                      <mat-icon inline>warning</mat-icon>
+                      Se borrarán los precios por detalle
+                    </span>
+                  }
+                </div>
+              }
+              <div class="parent-row" [class.has-children]="isDerivedGroup(node)">
                 @if (editingItemId === node.id) {
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-type">
                     <mat-select [(ngModel)]="editItem.item_type">
@@ -217,16 +334,19 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
                   </mat-form-field>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-qty">
                     <input matInput [(ngModel)]="editItem.quantity" type="number" min="1"
-                           [disabled]="node.children.length > 0">
+                           [disabled]="isEditingDerived(node)">
                   </mat-form-field>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="cell-price">
-                    @if (node.children.length > 0) {
+                    @if (isEditingDerived(node)) {
                       <input matInput [value]="lineTotal(node).toFixed(2)" disabled class="input-computed">
                     } @else {
                       <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
                     }
                   </mat-form-field>
-                  <span class="cell-total t-mono">{{ (editItem.quantity * editItem.unit_price) | appCurrency }}</span>
+                  <span class="cell-total t-mono">
+                    {{ (isEditingDerived(node) ? lineTotal(node)
+                                               : editItem.quantity * editItem.unit_price) | appCurrency }}
+                  </span>
                   <div class="cell-actions">
                     <button mat-icon-button color="primary" (click)="saveEditItem()" [disabled]="savingItem">
                       <mat-icon>check</mat-icon>
@@ -241,10 +361,18 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
                   </span>
                   <span class="cell-desc">
                     {{ node.description }}
+                    @if (node.children.length > 0) {
+                      <span class="badge badge-sm b-group group-tag"
+                            [matTooltip]="node.pricing_mode === 'agregado'
+                                            ? 'Grupo con precio total (sin precios por detalle)'
+                                            : 'Grupo con precio por detalle'">
+                        {{ node.pricing_mode === 'agregado' ? 'Grupo · total' : 'Grupo' }}
+                      </span>
+                    }
                     @if (node.supplier) { <small style="color:var(--text-3);"> ({{ node.supplier }})</small> }
                   </span>
-                  <span class="cell-qty t-mono">{{ node.children.length > 0 ? '1' : node.quantity }}</span>
-                  <span class="cell-price t-mono">{{ node.children.length > 0 ? '—' : (node.unit_price | appCurrency) }}</span>
+                  <span class="cell-qty t-mono">{{ isDerivedGroup(node) ? '1' : node.quantity }}</span>
+                  <span class="cell-price t-mono">{{ isDerivedGroup(node) ? '—' : (node.unit_price | appCurrency) }}</span>
                   <span class="cell-total t-mono">{{ lineTotal(node) | appCurrency }}</span>
                   <div class="cell-actions">
                     @if (canEditItems()) {
@@ -262,14 +390,16 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
               @if (node.children.length > 0) {
                 <div class="children-block">
                   @for (child of node.children; track child.id; let cIdx = $index) {
-                    <div class="child-row">
+                    <div class="child-row" [class.no-price]="node.pricing_mode === 'agregado'">
                       @if (editingItemId === child.id) {
                         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-desc">
                           <input matInput [(ngModel)]="editItem.description">
                         </mat-form-field>
-                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
-                          <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
-                        </mat-form-field>
+                        @if (node.pricing_mode !== 'agregado') {
+                          <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
+                            <input matInput [(ngModel)]="editItem.unit_price" type="number" min="0">
+                          </mat-form-field>
+                        }
                         <div class="cell-actions">
                           <button mat-icon-button color="primary" (click)="saveEditItem()" [disabled]="savingItem">
                             <mat-icon>check</mat-icon>
@@ -280,7 +410,9 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
                         </div>
                       } @else {
                         <span class="child-desc">↳ {{ child.description }}</span>
-                        <span class="child-price t-mono">{{ child.unit_price | appCurrency }}</span>
+                        @if (node.pricing_mode !== 'agregado') {
+                          <span class="child-price t-mono">{{ child.unit_price | appCurrency }}</span>
+                        }
                         <div class="cell-actions">
                           @if (canEditItems()) {
                             <button mat-icon-button (click)="startEditItem(child)" matTooltip="Editar">
@@ -298,15 +430,18 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
               }
 
               @if (showAddChildFor === node.id && canEditItems()) {
-                <div class="add-child-row children-block">
+                <div class="add-child-row children-block"
+                     [class.no-price]="node.pricing_mode === 'agregado'">
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-desc">
-                    <input matInput [(ngModel)]="newChild.description" placeholder="Detalle"
+                    <input matInput [(ngModel)]="newChild.description" placeholder="Descripción"
                            (keydown.enter)="addChildInline(node.id)">
                   </mat-form-field>
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
-                    <input matInput [(ngModel)]="newChild.unit_price" type="number" placeholder="P. unit."
-                           (keydown.enter)="addChildInline(node.id)">
-                  </mat-form-field>
+                  @if (node.pricing_mode !== 'agregado') {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
+                      <input matInput [(ngModel)]="newChild.unit_price" type="number" placeholder="Precio"
+                             (keydown.enter)="addChildInline(node.id)">
+                    </mat-form-field>
+                  }
                   <button mat-icon-button color="primary" (click)="addChildInline(node.id)" [disabled]="!newChild.description">
                     <mat-icon>check</mat-icon>
                   </button>
@@ -316,7 +451,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
                 </div>
               }
 
-              @if (canEditItems() && showAddChildFor !== node.id) {
+              @if (canEditItems() && showAddChildFor !== node.id && node.children.length > 0) {
                 <button class="add-child-btn" type="button" (click)="openAddChild(node.id)">
                   <mat-icon>subdirectory_arrow_right</mat-icon> Agregar detalle
                 </button>
@@ -331,11 +466,22 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
         <mat-card-content>
           <div class="card-head">
             <h3 class="card-title-lg">Pagos</h3>
-            @if (auth.isAdminOrRecep() && canAddPayments()) {
-              <button mat-stroked-button (click)="showAddPayment = !showAddPayment">
-                <mat-icon>payment</mat-icon> Registrar pago
-              </button>
-            }
+            <div style="display:flex;gap:8px;">
+              @if (auth.isAdminOrRecep()) {
+                <button mat-stroked-button
+                        (click)="printReceiptPdf()"
+                        [disabled]="!(job.payments?.length) || receiptPdfLoading"
+                        [matTooltip]="!(job.payments?.length) ? 'Registra al menos un pago para generar el recibo' : ''">
+                  <mat-icon>receipt_long</mat-icon>
+                  {{ receiptPdfLoading ? 'Generando...' : 'Generar recibo PDF' }}
+                </button>
+              }
+              @if (auth.isAdminOrRecep() && canAddPayments()) {
+                <button mat-stroked-button (click)="showAddPayment = !showAddPayment">
+                  <mat-icon>payment</mat-icon> Registrar pago
+                </button>
+              }
+            </div>
           </div>
 
           @if (showAddPayment && canAddPayments()) {
@@ -388,7 +534,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
           <table mat-table [dataSource]="job.payments || []" style="width:100%;">
             <ng-container matColumnDef="payment_date">
               <th mat-header-cell *matHeaderCellDef>Fecha</th>
-              <td mat-cell *matCellDef="let p">{{ p.payment_date | date:'dd/MM/yyyy' }}</td>
+              <td mat-cell *matCellDef="let p">{{ p.payment_date | date:'dd/MM/yyyy':'UTC' }}</td>
             </ng-container>
             <ng-container matColumnDef="method">
               <th mat-header-cell *matHeaderCellDef>Metodo</th>
@@ -485,13 +631,108 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
       color: var(--text-3);
       font-size: 13px;
     }
+    .add-form-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+    .mode-toggle {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      width: fit-content;
+    }
+    .mode-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--surface);
+      border: none;
+      cursor: pointer;
+      color: var(--text-2);
+      transition: background .12s, color .12s;
+    }
+    .mode-btn mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .mode-btn.active { background: var(--navy); color: #fff; }
+    .mode-btn:not(.active):hover { background: var(--bg); }
     .add-row {
       display: flex;
       gap: 8px;
       align-items: center;
-      margin-bottom: 12px;
       flex-wrap: wrap;
     }
+    .add-compuesto { display: flex; flex-direction: column; gap: 10px; }
+    .comp-header-row { display: flex; gap: 8px; align-items: flex-start; }
+    .comp-group-name { flex: 1; }
+    .comp-children { display: flex; flex-direction: column; gap: 6px; }
+    .comp-children-label {
+      margin: 0 0 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-3);
+    }
+    .new-child-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .nch-desc { flex: 1; min-width: 120px; }
+    .nch-price { width: 110px; }
+    .comp-group-type { width: 130px; }
+    .comp-group-price { width: 130px; }
+    .pricing-mode-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .pricing-mode-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-3);
+    }
+    .mode-toggle-sm { margin-bottom: 0; }
+    .mode-toggle-sm .mode-btn { padding: 4px 10px; font-size: 11px; }
+    .pricing-mode-hint { font-size: 12px; color: var(--text-3); }
+    .pricing-mode-warn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--amber-text, #92400e);
+    }
+    .pricing-mode-warn mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .edit-mode-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 6px 0 8px;
+    }
+    .group-tag { margin-left: 6px; font-size: 10px; vertical-align: middle; }
+    .comp-actions { display: flex; gap: 8px; align-items: center; }
+    .add-detail-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--navy);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 2px;
+      font-weight: 500;
+    }
+    .add-detail-btn:hover { text-decoration: underline; }
+    .add-detail-btn mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .b-group { background: var(--amber-bg, #fef3c7); color: var(--amber-text, #92400e); }
     .item-block {
       border-bottom: 1px solid var(--border2);
       padding: 8px 0 6px;
@@ -521,22 +762,26 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
     }
     .child-row {
       display: grid;
-      grid-template-columns: 1fr 130px auto;
+      grid-template-columns: 1fr 110px auto;
       gap: 8px;
       align-items: center;
       padding: 3px 0;
       font-size: 12px;
       color: var(--text-2);
     }
+    /* An 'agregado' group tracks no per-sub-item price, so the price column
+       is absent entirely rather than shown empty. */
+    .child-row.no-price { grid-template-columns: 1fr auto; }
     .child-desc, .child-price { min-width: 0; }
     .add-child-row {
       display: grid;
-      grid-template-columns: 1fr 130px 36px 36px;
+      grid-template-columns: 1fr 110px 36px 36px;
       gap: 8px;
       align-items: center;
       padding: 4px 0 4px 12px;
       margin: 4px 0 4px 18px;
     }
+    .add-child-row.no-price { grid-template-columns: 1fr 36px 36px; }
     .add-child-btn {
       display: inline-flex;
       align-items: center;
@@ -567,9 +812,16 @@ export class JobDetailComponent implements OnInit {
   internalNotes = '';
   loading = true;
   pdfLoading = false;
+  receiptPdfLoading = false;
   savingItem = false;
   savingPayment = false;
+  itemMode: 'simple' | 'compuesto' = 'simple';
+  // Pricing mode for the group being composed. 'detallado' prices each sub-item;
+  // 'agregado' prices the group as a whole and sub-items carry no price at all.
+  newItemPricingMode: PricingMode = 'detallado';
   newItem: any = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
+  // item_type deliberately absent: it belongs to the group, not the sub-item.
+  newItemChildren: Array<{description: string; unit_price: number}> = [];
   newChild: { description: string; unit_price: number } = { description: '', unit_price: 0 };
   newPayment: any = { amount: 0, method: 'efectivo', reference: '', notes: '', payment_date: new Date() };
   clientCredit = 0;
@@ -607,7 +859,7 @@ export class JobDetailComponent implements OnInit {
 
   lineTotal(node: JobItemNode): number { return computeLineTotal(node); }
 
-  typeBadge(t: string): string {
+  typeBadge(t: string | null): string {
     return t === 'mano_de_obra' ? 'teal' : 'reg';
   }
 
@@ -617,6 +869,40 @@ export class JobDetailComponent implements OnInit {
       next: () => this.notify.success(checked ? 'Desglose visible en PDF' : 'Desglose oculto en PDF'),
       error: err => this.notify.handleError(err)
     });
+  }
+
+  setItemMode(mode: 'simple' | 'compuesto') {
+    this.itemMode = mode;
+    if (mode === 'compuesto' && this.newItemChildren.length === 0) {
+      this.newItemChildren = [{ description: '', unit_price: 0 }];
+    }
+  }
+
+  setPricingMode(mode: PricingMode) {
+    this.newItemPricingMode = mode;
+    // Sub-item prices don't exist in 'agregado' mode; drop anything typed so far
+    // rather than keeping numbers the user can no longer see or correct.
+    if (mode === 'agregado') {
+      this.newItemChildren.forEach(c => c.unit_price = 0);
+    } else {
+      this.newItem.unit_price = 0;
+    }
+  }
+
+  newItemChildrenSum(): number {
+    return this.newItemChildren.reduce((s, c) => s + (Number(c.unit_price) || 0), 0);
+  }
+
+  addChildToNew() {
+    this.newItemChildren.push({ description: '', unit_price: 0 });
+  }
+
+  removeChildFromNew(idx: number) {
+    this.newItemChildren.splice(idx, 1);
+  }
+
+  hasEmptyChild(): boolean {
+    return this.newItemChildren.some(c => !c.description);
   }
 
   openAddChild(parentId: string) {
@@ -631,6 +917,7 @@ export class JobDetailComponent implements OnInit {
 
   addChildInline(parentId: string) {
     if (!this.newChild.description) return;
+    // No item_type: a sub-item takes its group's category (backend forces NULL).
     this.api.addJobItem(this.job!.id, {
       description: this.newChild.description,
       unit_price: Number(this.newChild.unit_price) || 0,
@@ -641,8 +928,6 @@ export class JobDetailComponent implements OnInit {
         this.notify.success('Detalle agregado');
         const keepOpenFor = parentId;
         this.load();
-        // Keep the inline-add form open on the same parent so the user can
-        // add several details in a row without re-clicking.
         setTimeout(() => { this.showAddChildFor = keepOpenFor; }, 0);
       },
       error: err => this.notify.handleError(err)
@@ -651,9 +936,14 @@ export class JobDetailComponent implements OnInit {
 
   toggleAddItem() {
     this.showAddItem = !this.showAddItem;
-    if (!this.showAddItem) {
-      this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
-    }
+    if (!this.showAddItem) this.resetNewItem();
+  }
+
+  private resetNewItem() {
+    this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
+    this.itemMode = 'simple';
+    this.newItemPricingMode = 'detallado';
+    this.newItemChildren = [];
   }
 
   onDescriptionInput(value: string) {
@@ -671,7 +961,7 @@ export class JobDetailComponent implements OnInit {
     }, 200);
   }
 
-  typeLabel(t: CatalogItem['item_type']): string {
+  typeLabel(t: ItemType | null): string {
     return t === 'mano_de_obra' ? 'Mano de obra' : t === 'repuesto' ? 'Repuesto' : 'Otro';
   }
 
@@ -688,12 +978,17 @@ export class JobDetailComponent implements OnInit {
           unit_price: 0,
         }));
         if (incomingChildren.length > 0) {
-          this.newItem.children = incomingChildren;
+          this.itemMode = 'compuesto';
+          this.newItemChildren = incomingChildren;
         }
       }
     } else if (this.autocompleteTarget) {
       this.editItem.description = value;
-      if (match) this.editItem.item_type = match.item_type;
+      // Only adopt the catalog entry's type when editing a root row — a child
+      // has no type of its own, and editItem.item_type is absent for children.
+      if (match && this.editItem.item_type !== undefined) {
+        this.editItem.item_type = match.item_type;
+      }
     }
     this.descriptionSuggestions = [];
   }
@@ -779,12 +1074,36 @@ export class JobDetailComponent implements OnInit {
   addItem() {
     if (!this.newItem.description) return;
     this.savingItem = true;
-    this.api.addJobItem(this.job!.id, this.newItem).subscribe({
+    const isCompuesto = this.itemMode === 'compuesto';
+
+    const payload: any = { description: this.newItem.description, catalog_item_id: this.newItem.catalog_item_id };
+    if (isCompuesto) {
+      const aggregate = this.newItemPricingMode === 'agregado';
+      // The group carries the item_type the user chose — it is a property of the
+      // group as a whole, no longer of each sub-item.
+      payload.item_type = this.newItem.item_type;
+      payload.pricing_mode = this.newItemPricingMode;
+      payload.quantity = 1;
+      payload.unit_price = aggregate ? (Number(this.newItem.unit_price) || 0) : 0;
+      payload.children = this.newItemChildren.map(c => ({
+        description: c.description,
+        unit_price: aggregate ? 0 : (Number(c.unit_price) || 0),
+      }));
+    } else {
+      payload.quantity = this.newItem.quantity;
+      payload.unit_price = this.newItem.unit_price;
+      payload.item_type = this.newItem.item_type;
+      payload.pricing_mode = 'detallado';
+      payload.supplier = this.newItem.supplier;
+      payload.children = [];
+    }
+
+    this.api.addJobItem(this.job!.id, payload).subscribe({
       next: () => {
-        this.newItem = { description: '', quantity: 1, unit_price: 0, item_type: 'mano_de_obra', supplier: '', children: [], catalog_item_id: null };
+        this.resetNewItem();
         this.showAddItem = false;
         this.savingItem = false;
-        this.notify.success('Item agregado');
+        this.notify.success(isCompuesto ? 'Grupo agregado' : 'Item agregado');
         this.load();
       },
       error: err => { this.notify.handleError(err); this.savingItem = false; }
@@ -801,12 +1120,29 @@ export class JobDetailComponent implements OnInit {
     if (!this.canEditItems()) return;
     this.editingItemId = item.id;
     this.editItem = {
-      item_type: item.item_type,
       description: item.description,
       quantity: item.quantity,
       unit_price: item.unit_price,
       supplier: item.supplier || ''
     };
+    // item_type / pricing_mode are group-level: only ever sent for a root row.
+    // The backend rejects them on a child (400), so never put them in the patch.
+    if (!item.parent_id) {
+      this.editItem.item_type = item.item_type;
+      this.editItem.pricing_mode = item.pricing_mode ?? 'detallado';
+    }
+  }
+
+  // True when the row's price is derived from its children rather than entered:
+  // a 'detallado' group with children. Uses the persisted pricing_mode.
+  isDerivedGroup(node: JobItemNode): boolean {
+    return node.children.length > 0 && node.pricing_mode !== 'agregado';
+  }
+
+  // Same question, but honouring the pending edit so toggling the mode inside the
+  // edit row immediately enables/disables the price field.
+  isEditingDerived(node: JobItemNode): boolean {
+    return node.children.length > 0 && this.editItem.pricing_mode !== 'agregado';
   }
 
   cancelEditItem() {
@@ -895,16 +1231,30 @@ export class JobDetailComponent implements OnInit {
   }
 
   printPdf() {
+    this.openPdf(this.api.getJobPdfUrl(this.job!.id), 'Error al generar PDF', v => (this.pdfLoading = v));
+  }
+
+  printReceiptPdf() {
+    if (!this.job?.payments?.length) return;
+    this.openPdf(this.api.getJobReceiptPdfUrl(this.job.id), 'Error al generar el recibo', v => (this.receiptPdfLoading = v));
+  }
+
+  // Fetch a PDF with auth, open it in a new tab, and release the blob URL once
+  // the tab has had time to load it.
+  private openPdf(url: string, errorMsg: string, setLoading: (v: boolean) => void) {
     const token = localStorage.getItem('workshop_token');
-    const url = this.api.getJobPdfUrl(this.job!.id);
-    this.pdfLoading = true;
+    setLoading(true);
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.blob())
+      .then(async r => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.blob();
+      })
       .then(blob => {
         const blobUrl = URL.createObjectURL(blob);
         window.open(blobUrl, '_blank');
-        this.pdfLoading = false;
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+        setLoading(false);
       })
-      .catch(() => { this.notify.error('Error al generar PDF'); this.pdfLoading = false; });
+      .catch(() => { this.notify.error(errorMsg); setLoading(false); });
   }
 }

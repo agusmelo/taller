@@ -22,6 +22,20 @@ const migrations = [
   '008_item_catalog.sql',
   '009_item_catalog_children.sql',
   '010_item_catalog_backfill.sql',
+  '011_catalog_item_ref.sql',
+  '012_catalog_analytics_index.sql',
+  '013_jobs_job_date_index.sql',
+  '014_alert_definitions.sql',
+  '015_alert_workshop_and_cascade.sql',
+  '016_seed_alert_definitions.sql',
+  '017_alert_results_cache.sql',
+  '018_jobs_vehicle_date_index.sql',
+  '019_alert_dismissals_entity_type.sql',
+  '020_item_model_and_audit.sql',
+  '021_alert_dismissal_status.sql',
+  '022_alert_wa_templates.sql',
+  '023_alert_sprint3_types.sql',
+  '024_group_item_type_and_pricing_mode.sql',
 ];
 
 async function run() {

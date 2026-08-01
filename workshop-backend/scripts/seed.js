@@ -81,11 +81,11 @@ async function seed() {
         const jobId = jRes.rows[0].id;
 
         await client.query(`
-          INSERT INTO job_items (job_id, description, quantity, unit_price, item_type)
+          INSERT INTO job_items (job_id, description, quantity, unit_price, item_type, pricing_mode)
           VALUES
-            ($1, 'Cambio de aceite 5W-30', 1, 800,  'mano_de_obra'),
-            ($1, 'Filtro de aceite',       1, 320,  'repuesto'),
-            ($1, 'Revision de frenos',     1, 500,  'mano_de_obra')
+            ($1, 'Cambio de aceite 5W-30', 1, 800,  'mano_de_obra', 'detallado'),
+            ($1, 'Filtro de aceite',       1, 320,  'repuesto',     'detallado'),
+            ($1, 'Revision de frenos',     1, 500,  'mano_de_obra', 'detallado')
         `, [jobId]);
       }
     }

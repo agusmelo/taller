@@ -83,13 +83,24 @@ export interface Job {
   updated_at: string;
 }
 
+export type ItemType = 'mano_de_obra' | 'repuesto' | 'otro';
+
+// How a group with children derives its line total (backend migration 024):
+//   'detallado' -> sum of the children's unit_price (children carry the prices)
+//   'agregado'  -> the root's own quantity * unit_price; children are
+//                  descriptions only and carry no price at all
+export type PricingMode = 'detallado' | 'agregado';
+
 export interface JobItem {
   id: string;
   job_id: string;
   description: string;
   quantity: number;
   unit_price: number;
-  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
+  // Root-only: item_type and pricing_mode describe the group as a whole and are
+  // always null on child rows (enforced by CHECK constraints in migration 024).
+  item_type: ItemType | null;
+  pricing_mode: PricingMode | null;
   supplier: string | null;
   parent_id: string | null;
   sort_order: number;
@@ -368,13 +379,23 @@ export interface AppSettings {
   [key: string]: string;
 }
 
+// Revenue split across the three item categories. item_type is a group-level
+// property (migration 024), so every group's whole line total lands in exactly
+// one of these. See spec/monthly-closing-by-item-type.md.
+export type MonthlyClosingByType = Record<ItemType, number>;
+
 export interface MonthlyClosingTotals {
   count: number;
   subtotal: number;
+  discount: number;
   tax: number;
   total: number;
   paid: number;
   balance: number;
+  // Gross, pre-discount/pre-IVA — sums to `subtotal`.
+  subtotal_by_type: MonthlyClosingByType;
+  // Discount + IVA apportioned pro-rata — sums to `total` exactly.
+  total_by_type: MonthlyClosingByType;
 }
 
 export interface MonthlyClosingJob {
@@ -382,13 +403,17 @@ export interface MonthlyClosingJob {
   job_number: string;
   client_name: string;
   job_date: string;
+  last_payment_date: string;
   status: string;
   tax_enabled: boolean;
   subtotal: number;
+  discount: number;
   tax: number;
   total: number;
   paid: number;
   balance: number;
+  subtotal_by_type: MonthlyClosingByType;
+  total_by_type: MonthlyClosingByType;
 }
 
 export interface MonthlyClosing {
@@ -397,4 +422,94 @@ export interface MonthlyClosing {
   iva: MonthlyClosingTotals;
   no_iva: MonthlyClosingTotals;
   jobs: MonthlyClosingJob[];
+}
+
+export type AlertType =
+  | 'overdue_service'
+  | 'payment_overdue'
+  | 'lost_customer'
+  | 'broken_pattern'
+  | 'quote_pending'
+  | 'upcoming_service'
+  | 'high_value_lost';
+export type AlertEntityType = 'vehicle' | 'client' | 'job';
+
+export type AlertDismissalStatus = 'snoozed' | 'contacted' | 'resolved';
+
+export interface AlertItem {
+  alert_type:    AlertType;
+  severity:      'critical' | 'high' | 'medium' | 'low';
+  client_id:     string;
+  client_name:   string;
+  client_phone:  string | null;
+  client_email:  string | null;
+  entity_type:   AlertEntityType;
+  entity_id:     string;
+  entity_label:  string;
+  current_value: number | null;
+  threshold:     number;
+  unit:          'days' | 'currency';
+  context:       string;
+  action_route:  string;
+  definition_id?: string;
+  // Sprint 2 / HU-13: anotación cuando la alerta tiene una dismissal activa
+  // con status='contacted' — el ítem se muestra con pill "Contactado".
+  dismissal_status?: AlertDismissalStatus;
+  dismissal_until?:  string;
+  contacted_at?:     string | null;
+}
+
+export interface AlertWaTemplate {
+  alert_type:  string;
+  template:    string;
+  updated_at:  string;
+}
+
+export interface AlertDefinition {
+  id:                          string;
+  alert_type:                  AlertType;
+  name:                        string;
+  enabled:                     boolean;
+  catalog_item_id:             string | null;
+  catalog_item_description?:   string | null;
+  threshold_days:              number | null;
+  bp_multiplier:               number | null;
+  bp_min_days:                 number | null;
+  // Sprint 3 params
+  due_after_days?:             number | null;
+  min_lifetime_value?:         number | null;
+  eval_interval_hours:         number;
+  last_evaluated_at:           string | null;
+  last_result_count:           number;
+  last_run_error:              string | null;
+  created_by:                  string | null;
+  created_at:                  string;
+  updated_at:                  string;
+}
+
+export interface AlertFeedBlock {
+  definition: AlertDefinition;
+  items:      AlertItem[];
+  error:      string | null;
+}
+
+export interface AlertBadge {
+  critical_high_count: number;
+  last_runner_tick:    string | null;
+}
+
+export interface OverdueServiceItem {
+  client_id:                   string;
+  client_name:                 string;
+  client_phone:                string | null;
+  client_email:                string | null;
+  vehicle_id:                  string;
+  plate_number:                string;
+  make:                        string;
+  model:                       string;
+  year:                        number | null;
+  last_service_date:           string | null;
+  days_since_service:          number | null;
+  vehicle_avg_interval_days:   number | null;
+  vehicle_interval_confidence: 'high' | 'low' | null;
 }

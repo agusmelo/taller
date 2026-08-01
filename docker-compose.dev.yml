@@ -1,0 +1,96 @@
+name: workshop-dev
+
+# Self-contained local dev stack. Deliberately independent of
+# docker-compose.yml (that one is VPS-production-only now: no host ports,
+# everything behind `edge` with a real domain + TLS). This file owns its own
+# db/api/frontend on the "classic" local ports (5432/3000/4200), which are
+# free precisely because the prod compose no longer publishes them.
+
+services:
+
+  db-dev:
+    image: postgres:16-alpine
+    container_name: workshop-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workshop -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate-dev:
+    build:
+      context: ./workshop-backend
+    container_name: workshop-migrate-dev
+    environment:
+      DB_HOST: db-dev
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_RECEP_PASSWORD: ${SEED_RECEP_PASSWORD}
+      SEED_MECH_PASSWORD: ${SEED_MECH_PASSWORD}
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    # Regular seed.js (small, idempotent sample data) — not the QA dataset
+    # used by the test environment.
+    command: sh -c "node migrations/run.js && node scripts/seed.js"
+    restart: "no"
+
+  api-dev:
+    build:
+      context: ./workshop-backend
+    container_name: workshop-api-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./workshop-backend/assets:/app/assets:ro
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: db-dev
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 24h
+      WORKSHOP_NAME: Mi Taller Mecanico
+      WORKSHOP_ADDRESS: Calle Principal 123, Montevideo
+      WORKSHOP_PHONE: "+598 99 000 000"
+      WORKSHOP_EMAIL: taller@ejemplo.com
+      WORKSHOP_LOGO_URL: /assets/logo.png
+      WORKSHOP_SERVICES: Diagnostico y reparacion mecanica
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
+    depends_on:
+      db-dev:
+        condition: service_healthy
+      migrate-dev:
+        condition: service_completed_successfully
+
+  frontend-dev:
+    build:
+      context: ./workshop-frontend
+    container_name: workshop-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "4200:80"
+    volumes:
+      - ./workshop-frontend/nginx.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api-dev
+
+volumes:
+  pg_dev_data:

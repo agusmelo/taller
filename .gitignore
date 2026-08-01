@@ -12,3 +12,9 @@ coverage/
 .vscode/
 *.swp
 *.swo
+.gstack/
+
+# VPS-local deploy state (never meaningful outside the box that made it)
+.deployed-tag
+.last-good-tag
+backups/

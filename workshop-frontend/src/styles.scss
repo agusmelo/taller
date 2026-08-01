@@ -306,6 +306,35 @@ html, body {
   }
 }
 
+// Required field marker — style Material's auto-injected asterisk
+// (rendered when an input has `required`). One source of truth, no
+// duplicated <span class="req">*</span> next to <mat-label>.
+.mat-mdc-form-field-required-marker {
+  color: var(--red) !important;
+  font-weight: 700;
+}
+
+// Inline keyboard hint shown next to the primary action in dialogs
+.kbd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-3);
+  margin-right: auto;
+  letter-spacing: .02em;
+}
+.kbd-hint kbd {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--text-2);
+}
+
 // ============================
 // BADGES
 // ============================

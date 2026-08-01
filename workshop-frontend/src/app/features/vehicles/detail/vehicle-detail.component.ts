@@ -121,11 +121,11 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
               </ng-container>
               <ng-container matColumnDef="started_at">
                 <th mat-header-cell *matHeaderCellDef>Desde</th>
-                <td mat-cell *matCellDef="let h">{{ h.started_at | date:'dd/MM/yyyy' }}</td>
+                <td mat-cell *matCellDef="let h">{{ h.started_at | date:'dd/MM/yyyy':'UTC' }}</td>
               </ng-container>
               <ng-container matColumnDef="ended_at">
                 <th mat-header-cell *matHeaderCellDef>Hasta</th>
-                <td mat-cell *matCellDef="let h">{{ h.ended_at ? (h.ended_at | date:'dd/MM/yyyy') : 'Actual' }}</td>
+                <td mat-cell *matCellDef="let h">{{ h.ended_at ? (h.ended_at | date:'dd/MM/yyyy':'UTC') : 'Actual' }}</td>
               </ng-container>
               <ng-container matColumnDef="transfer_notes">
                 <th mat-header-cell *matHeaderCellDef>Nota</th>
@@ -154,7 +154,7 @@ import { ContactCardComponent } from '../../../shared/components/contact-card/co
             </ng-container>
             <ng-container matColumnDef="created_at">
               <th mat-header-cell *matHeaderCellDef>Fecha</th>
-              <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy' }}</td>
+              <td mat-cell *matCellDef="let j">{{ j.created_at | date:'dd/MM/yyyy':'UTC' }}</td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="['job_number','status','created_at']"></tr>
             <tr mat-row *matRowDef="let row; columns: ['job_number','status','created_at'];"

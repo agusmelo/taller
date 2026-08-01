@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
-import { adminGuard } from './core/auth/role.guard';
+import { adminGuard, adminOrRecepGuard } from './core/auth/role.guard';
 
 export const routes: Routes = [
   {
@@ -70,6 +70,30 @@ export const routes: Routes = [
         path: 'importar',
         canActivate: [adminGuard],
         loadComponent: () => import('./features/import/import.component').then(m => m.ImportComponent)
+      },
+      {
+        path: 'retencion',
+        canActivate: [adminOrRecepGuard],
+        loadComponent: () => import('./features/retention/overdue-service/overdue-service-list.component')
+          .then(m => m.OverdueServiceListComponent)
+      },
+      {
+        path: 'alertas',
+        canActivate: [adminOrRecepGuard],
+        loadComponent: () => import('./features/alerts/alerts-feed.component')
+          .then(m => m.AlertsFeedComponent)
+      },
+      {
+        path: 'alertas/definiciones',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/alerts/alert-definitions.component')
+          .then(m => m.AlertDefinitionsComponent)
+      },
+      {
+        path: 'alertas/plantillas-wa',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./features/alerts/wa-templates.component')
+          .then(m => m.WaTemplatesComponent)
       },
     ]
   },

@@ -15,7 +15,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule } from '@angular/material/core';
 import { ApiService } from '../../../core/services/api.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { VehicleSearchResult, CatalogItem } from '../../../core/models';
+import { VehicleSearchResult, CatalogItem, ItemType, PricingMode } from '../../../core/models';
 import { VehicleFormComponent } from '../../vehicles/form/vehicle-form.component';
 import { AppCurrencyPipe } from '../../../shared/pipes/currency.pipe';
 
@@ -23,11 +23,14 @@ interface ChildDraft {
   description: string;
   unit_price: number;
 }
+// item_type and pricing_mode live on the parent only: a group is categorized
+// and priced as a whole, its sub-items are not (backend migration 024).
 interface ParentDraft {
   description: string;
   quantity: number;
   unit_price: number;
-  item_type: 'mano_de_obra' | 'repuesto' | 'otro';
+  item_type: ItemType;
+  pricing_mode: PricingMode;
   supplier: string;
   children: ChildDraft[];
 }
@@ -169,12 +172,12 @@ interface ParentDraft {
                       <mat-form-field appearance="outline" class="item-qty" subscriptSizing="dynamic">
                         <mat-label>Cant.</mat-label>
                         <input matInput [(ngModel)]="item.quantity" type="number"
-                               [disabled]="item.children.length > 0"
+                               [disabled]="isDerived(item)"
                                (ngModelChange)="calcTotals()">
                       </mat-form-field>
                       <mat-form-field appearance="outline" class="item-price" subscriptSizing="dynamic">
-                        <mat-label>P. unit.</mat-label>
-                        @if (item.children.length > 0) {
+                        <mat-label>{{ isDerived(item) ? 'P. unit.' : (item.children.length > 0 ? 'Total' : 'P. unit.') }}</mat-label>
+                        @if (isDerived(item)) {
                           <input matInput [value]="parentSum(item)" disabled
                                  class="input-computed" title="Suma de detalles">
                         } @else {
@@ -189,9 +192,24 @@ interface ParentDraft {
                     </div>
 
                     @if (item.children.length > 0) {
+                      <div class="pricing-mode-row">
+                        <span class="pricing-mode-label">Precio del grupo</span>
+                        <div class="mode-toggle">
+                          <button type="button" class="mode-btn"
+                                  [class.active]="item.pricing_mode === 'detallado'"
+                                  (click)="setPricingMode(item, 'detallado')">
+                            Por detalle
+                          </button>
+                          <button type="button" class="mode-btn"
+                                  [class.active]="item.pricing_mode === 'agregado'"
+                                  (click)="setPricingMode(item, 'agregado')">
+                            Total del grupo
+                          </button>
+                        </div>
+                      </div>
                       <div class="children-block">
                         @for (child of item.children; track $index; let cIdx = $index) {
-                          <div class="child-row">
+                          <div class="child-row" [class.no-price]="item.pricing_mode === 'agregado'">
                             <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-desc">
                               <mat-label>Detalle</mat-label>
                               <input matInput [(ngModel)]="child.description"
@@ -199,13 +217,15 @@ interface ParentDraft {
                                      (keydown.enter)="onChildEnter($event, pIdx, cIdx)"
                                      (keydown.backspace)="onChildBackspace($event, pIdx, cIdx, child.description)">
                             </mat-form-field>
-                            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
-                              <mat-label>P. unit.</mat-label>
-                              <input matInput [(ngModel)]="child.unit_price" type="number"
-                                     [attr.data-row]="'p' + pIdx + 'c' + cIdx + 'p'"
-                                     (ngModelChange)="calcTotals()"
-                                     (keydown.enter)="onChildEnter($event, pIdx, cIdx)">
-                            </mat-form-field>
+                            @if (item.pricing_mode !== 'agregado') {
+                              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="child-price">
+                                <mat-label>P. unit.</mat-label>
+                                <input matInput [(ngModel)]="child.unit_price" type="number"
+                                       [attr.data-row]="'p' + pIdx + 'c' + cIdx + 'p'"
+                                       (ngModelChange)="calcTotals()"
+                                       (keydown.enter)="onChildEnter($event, pIdx, cIdx)">
+                              </mat-form-field>
+                            }
                             <button mat-icon-button class="child-delete"
                                     (click)="removeChild(pIdx, cIdx)" aria-label="Eliminar detalle">
                               <mat-icon>close</mat-icon>
@@ -326,7 +346,43 @@ interface ParentDraft {
       align-items: center;
       padding: 2px 0;
     }
+    /* An 'agregado' group tracks no per-sub-item price, so the price column is
+       absent entirely rather than shown empty. */
+    .child-row.no-price { grid-template-columns: 1fr 32px; }
     .child-desc, .child-price { min-width: 0; }
+    .pricing-mode-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 6px 0 2px 16px;
+    }
+    .pricing-mode-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-3);
+    }
+    .mode-toggle {
+      display: flex;
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      width: fit-content;
+    }
+    .mode-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--surface);
+      border: none;
+      cursor: pointer;
+      color: var(--text-2);
+      transition: background .12s, color .12s;
+    }
+    .mode-btn.active { background: var(--navy); color: #fff; }
+    .mode-btn:not(.active):hover { background: var(--bg); }
     .child-delete mat-icon {
       font-size: 16px;
       width: 16px;
@@ -480,8 +536,26 @@ export class JobCreateComponent {
   addItem() {
     this.items.push({
       description: '', quantity: 1, unit_price: 0,
-      item_type: 'mano_de_obra', supplier: '', children: []
+      item_type: 'mano_de_obra', pricing_mode: 'detallado', supplier: '', children: []
     });
+  }
+
+  setPricingMode(item: ParentDraft, mode: PricingMode) {
+    item.pricing_mode = mode;
+    // Whichever side no longer holds the price is cleared, so a number the user
+    // can't see any more never ends up in the total.
+    if (mode === 'agregado') {
+      item.children.forEach(c => c.unit_price = 0);
+      item.quantity = 1;
+    } else {
+      item.unit_price = 0;
+    }
+    this.calcTotals();
+  }
+
+  // True when the row's price is the sum of its children rather than entered.
+  isDerived(item: ParentDraft): boolean {
+    return item.children.length > 0 && item.pricing_mode !== 'agregado';
   }
 
   removeItem(index: number) {
@@ -535,8 +609,9 @@ export class JobCreateComponent {
     return sum.toFixed(2);
   }
 
+  // Mirrors groupLineTotal in the backend's jobsController.
   lineTotal(item: ParentDraft): number {
-    if (item.children.length > 0) {
+    if (this.isDerived(item)) {
       return item.children.reduce((s, c) => s + (Number(c.unit_price) || 0), 0);
     }
     return (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
@@ -557,7 +632,7 @@ export class JobCreateComponent {
     }, 200);
   }
 
-  typeLabel(t: CatalogItem['item_type']): string {
+  typeLabel(t: ItemType | null): string {
     return t === 'mano_de_obra' ? 'Mano de obra' : t === 'repuesto' ? 'Repuesto' : 'Otro';
   }
 
@@ -614,14 +689,22 @@ export class JobCreateComponent {
     const payloadItems = this.items
       .filter(i => i.description)
       .map(i => {
+        const aggregate = i.pricing_mode === 'agregado';
         const cleanChildren = i.children
           .filter(c => c.description)
-          .map(c => ({ description: c.description, unit_price: Number(c.unit_price) || 0 }));
+          .map(c => ({
+            description: c.description,
+            unit_price: aggregate ? 0 : (Number(c.unit_price) || 0),
+          }));
+        // A 'detallado' group's total comes from its children, so the parent row
+        // carries no price; an 'agregado' group is the reverse.
+        const derived = cleanChildren.length > 0 && !aggregate;
         return {
           description: i.description,
-          quantity: cleanChildren.length > 0 ? 1 : i.quantity,
-          unit_price: cleanChildren.length > 0 ? 0 : i.unit_price,
+          quantity: derived ? 1 : i.quantity,
+          unit_price: derived ? 0 : i.unit_price,
           item_type: i.item_type,
+          pricing_mode: i.pricing_mode,
           supplier: i.supplier || null,
           children: cleanChildren
         };

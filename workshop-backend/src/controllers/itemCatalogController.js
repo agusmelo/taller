@@ -350,13 +350,50 @@ async function replaceChildren(req, res, next) {
 }
 
 async function remove(req, res, next) {
+  let client;
   try {
-    const r = await pool.query(
-      `DELETE FROM item_catalog WHERE id = $1 AND parent_id IS NULL`, [req.params.id]
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    // Lockear la fila del catálogo primero cierra la ventana entre el UPDATE de
+    // definiciones y el DELETE: si otra transacción intenta crear una nueva
+    // definición que referencie este ítem, se bloquea hasta que cometamos.
+    // Cualquier definición creada antes del lock queda atrapada por el UPDATE
+    // de abajo; cualquiera creada después espera y verá que el ítem ya no existe.
+    const lock = await client.query(
+      `SELECT id FROM item_catalog WHERE id = $1 AND parent_id IS NULL FOR UPDATE`,
+      [req.params.id]
     );
-    if (r.rowCount === 0) return res.status(404).json({ error: 'Item no encontrado' });
+    if (lock.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Item no encontrado' });
+    }
+
+    // Orfanar y desactivar definiciones de alerta que apuntan a este ítem.
+    // El FK con ON DELETE SET NULL las preservaría igual, pero el UPDATE
+    // explícito garantiza que queden enabled=false (el runner no las evalúa).
+    await client.query(
+      `UPDATE alert_definitions
+         SET enabled         = false,
+             catalog_item_id = NULL,
+             updated_at      = NOW()
+       WHERE catalog_item_id = $1`,
+      [req.params.id]
+    );
+
+    await client.query(
+      `DELETE FROM item_catalog WHERE id = $1 AND parent_id IS NULL`,
+      [req.params.id]
+    );
+
+    await client.query('COMMIT');
     res.status(204).send();
-  } catch (err) { next(err); }
+  } catch (err) {
+    if (client) await client.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    if (client) client.release();
+  }
 }
 
 async function analytics(req, res, next) {

@@ -17,6 +17,10 @@ const settings  = require('../controllers/settingsController');
 const paymentsPage = require('../controllers/paymentsPageController');
 const importCtrl   = require('../controllers/importController');
 const itemCatalog  = require('../controllers/itemCatalogController');
+const retention    = require('../controllers/retentionController');
+const alerts       = require('../controllers/alertsController');
+const alertDefs    = require('../controllers/alertDefinitionsController');
+const alertWaTpl   = require('../controllers/alertWaTemplatesController');
 
 // Auth
 router.post('/auth/login', v.loginRules, auth.login);
@@ -69,6 +73,7 @@ router.delete('/jobs/:id',       authenticate, requireAdmin, v.uuidParam, jobs.r
 router.put('/jobs/:id/lock',     authenticate, requireAdminOrRecep, v.uuidParam, jobs.lockJob);
 router.put('/jobs/:id/unlock',   authenticate, requireAdmin, v.uuidParam, jobs.unlockJob);
 router.get('/jobs/:id/pdf',      authenticate, v.uuidParam, pdf.generatePdf);
+router.get('/jobs/:id/receipt-pdf', authenticate, requireAdminOrRecep, v.uuidParam, pdf.generateReceiptPdf);
 
 // Items (locked jobs block add/edit/delete)
 router.get('/jobs/:id/items',            authenticate, v.uuidParam, jobs.listItems);
@@ -124,6 +129,28 @@ router.get('/item-catalog/:id',              authenticate, v.uuidParam, itemCata
 router.patch('/item-catalog/:id',            authenticate, requireAdmin, v.uuidParam, itemCatalog.update);
 router.put('/item-catalog/:id/children',     authenticate, requireAdmin, v.uuidParam, itemCatalog.replaceChildren);
 router.delete('/item-catalog/:id',           authenticate, requireAdmin, v.uuidParam, itemCatalog.remove);
+
+// Retention (detailed per-vehicle search, kept for API compat)
+router.get('/retention/overdue-service', authenticate, requireAdminOrRecep, retention.getOverdueService);
+
+// Alert definitions CRUD (admin only)
+router.get('/alert-definitions',               authenticate, requireAdmin, alertDefs.list);
+router.post('/alert-definitions',              authenticate, requireAdmin, alertDefs.create);
+router.get('/alert-definitions/:id',           authenticate, requireAdmin, alertDefs.getOne);
+router.patch('/alert-definitions/:id',         authenticate, requireAdmin, alertDefs.update);
+router.delete('/alert-definitions/:id',        authenticate, requireAdmin, alertDefs.remove);
+router.post('/alert-definitions/:id/evaluate', authenticate, requireAdminOrRecep, alertDefs.evaluate);
+
+// Alerts feed
+router.get('/alerts/feed',          authenticate, requireAdminOrRecep, alerts.feed);
+router.post('/alerts/dismiss',      authenticate, requireAdminOrRecep, alerts.dismiss);
+router.get('/alerts/badge',         authenticate, requireAdminOrRecep, alerts.badge);
+router.post('/alerts/evaluate-all', authenticate, requireAdminOrRecep, alerts.evaluateAll);
+
+// WhatsApp templates (HU-11): listar es admin/recep, editar/eliminar es admin
+router.get('/alerts/wa-templates',         authenticate, requireAdminOrRecep, alertWaTpl.list);
+router.put('/alerts/wa-templates/:type',   authenticate, requireAdmin,        alertWaTpl.upsert);
+router.delete('/alerts/wa-templates/:type',authenticate, requireAdmin,        alertWaTpl.remove);
 
 // Users (admin only)
 router.get('/users',         authenticate, requireAdmin, users.list);
