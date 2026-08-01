@@ -1,6 +1,16 @@
+name: taller-observability
+
 # Log aggregation stack — separate from docker-compose.yml so it can be
 # brought up/down independently. Attaches to the `workshop-net` network
 # created by the main compose file (bring that up first).
+#
+# An explicit distinct project name (above) matters here: without it, both
+# this file and docker-compose.yml default their project name to the
+# containing directory, so Compose treats grafana/loki/promtail as part of
+# the SAME project as db/api/frontend — every `docker compose` command
+# scoped to just docker-compose.yml then reports them as "orphan
+# containers" and, worse, can fail outright trying to reconcile them
+# against a network they were never declared in.
 #
 # Usage:
 #   docker compose -f docker-compose.observability.yml up -d
