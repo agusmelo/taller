@@ -1,0 +1,91 @@
+name: workshop-test
+
+services:
+
+  # Isolated Postgres instance for local QA — separate container, port and
+  # volume from the dev/prod `db` service in docker-compose.yml, so it can
+  # run alongside it without touching real data.
+  db-test:
+    image: postgres:16-alpine
+    container_name: workshop-db-test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: workshop123
+      POSTGRES_DB: workshop_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workshop -d workshop_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: applies migrations then loads the fixed QA dataset. Re-run any
+  # time with `docker compose -f docker-compose.test.yml run --rm migrate-test`
+  # to reset the database back to its seeded state.
+  migrate-test:
+    build:
+      context: ./workshop-backend
+    container_name: workshop-migrate-test
+    environment:
+      DB_HOST: db-test
+      DB_PORT: 5432
+      DB_NAME: workshop_test
+      DB_USER: workshop
+      DB_PASSWORD: workshop123
+    depends_on:
+      db-test:
+        condition: service_healthy
+    command: sh -c "node migrations/run.js && node scripts/seed-test.js"
+    restart: "no"
+
+  api-test:
+    build:
+      context: ./workshop-backend
+    container_name: workshop-api-test
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./workshop-backend/assets:/app/assets:ro
+    environment:
+      NODE_ENV: test
+      PORT: 3000
+      DB_HOST: db-test
+      DB_PORT: 5432
+      DB_NAME: workshop_test
+      DB_USER: workshop
+      DB_PASSWORD: workshop123
+      JWT_SECRET: test-secret-key-not-for-production
+      JWT_EXPIRES_IN: 24h
+      WORKSHOP_NAME: Taller QA (test)
+      WORKSHOP_ADDRESS: Calle de Pruebas 123
+      WORKSHOP_PHONE: "+598 99 000 000"
+      WORKSHOP_EMAIL: qa@example.com
+      WORKSHOP_LOGO_URL: /assets/logo.png
+      WORKSHOP_SERVICES: "Diagnostico y reparacion (entorno de pruebas)"
+      CORS_ORIGIN: http://localhost:4201,http://localhost
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome-stable
+    depends_on:
+      db-test:
+        condition: service_healthy
+      migrate-test:
+        condition: service_completed_successfully
+
+  frontend-test:
+    build:
+      context: ./workshop-frontend
+    container_name: workshop-frontend-test
+    restart: unless-stopped
+    ports:
+      - "4201:80"
+    volumes:
+      - ./workshop-frontend/nginx.test.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api-test
+
+volumes:
+  pg_test_data:
