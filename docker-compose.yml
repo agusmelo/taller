@@ -46,6 +46,20 @@ services:
       context: ./workshop-backend
     container_name: workshop-api
     restart: unless-stopped
+    # Run an init process (docker-init/tini) as PID 1, with node as its child.
+    # This is the fix for the Chrome zombie leak: every PDF request launches a
+    # Chrome that spawns its own subprocesses (zygote, gpu, renderers and the
+    # long-lived chrome_crashpad_handler). When browser.close() ends the main
+    # Chrome, those subprocesses are orphaned and reparented to PID 1. node is
+    # not an init and never reap()s reparented grandchildren, so they pile up as
+    # <defunct> zombies until the container can no longer fork() ("Cannot fork").
+    # tini reaps them, so PIDs stay flat and the service runs indefinitely.
+    init: true
+    # Guardrail, not the fix: cap total processes so a future leak degrades this
+    # one container instead of exhausting the whole VPS. A PDF render is ~10
+    # short-lived Chrome procs; with reaping working they never accumulate, so
+    # 512 leaves ample headroom for concurrent renders.
+    pids_limit: 512
     # Not published to the host — frontend's nginx.conf already proxies
     # /api to api:3000 internally, and everything external goes through
     # `edge` on 80/443. Publishing 3000 here would let anyone bypass TLS

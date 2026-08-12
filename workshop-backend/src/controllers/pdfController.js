@@ -154,6 +154,29 @@ const BASE_CSS = `
   .info-plate { font-family: ${DISPLAY}; font-weight: 700; font-size: 15px; color: ${RED}; letter-spacing: .5px; line-height: 1; }
 `;
 
+// Close the browser, defensively. In the normal case browser.close() shuts
+// Chrome and its subprocess tree down cleanly. But if Chrome is wedged, close()
+// can hang or reject — which, without a bound, would leak the whole process
+// tree on every failed render. So we race it against a timeout and fall back to
+// SIGKILL on the Chrome process. Any subprocesses orphaned by the kill are then
+// reaped by the container's init (see `init: true` in docker-compose.yml), so
+// nothing is left <defunct>.
+async function closeBrowser(browser) {
+  const proc = browser.process();
+  try {
+    await Promise.race([
+      browser.close(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('browser.close() timed out')), 10000)),
+    ]);
+  } catch (err) {
+    console.error('[pdf] browser.close() failed, killing Chrome:', err.message);
+    try {
+      if (proc && proc.pid && proc.exitCode === null) process.kill(proc.pid, 'SIGKILL');
+    } catch (_) { /* already gone */ }
+  }
+}
+
 // Render an HTML string to an A4 PDF buffer. One Puppeteer setup for every
 // document; the browser is always closed even if rendering throws.
 async function renderPdf(html, footerTemplate) {
@@ -174,7 +197,7 @@ async function renderPdf(html, footerTemplate) {
       footerTemplate
     });
   } finally {
-    await browser.close();
+    await closeBrowser(browser);
   }
 }
 
