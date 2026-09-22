@@ -5,21 +5,25 @@ observabilidad. Pensada para ejecutarse **en orden** — el orden importa para
 no perder acceso SSH ni dejar el sitio caído en medio del proceso.
 
 Dominios: `admin.tallerlallave.com` (la app) y `grafana.tallerlallave.com`
-(Grafana) — ya están cableados en `deploy/nginx-edge/nginx.conf`,
-`nginx.bootstrap.conf` y `docker-compose.observability.yml`.
+(Grafana). El reverse proxy y el TLS que los sirven **no viven en este
+repo** — son un proyecto aparte (`reverse-proxy/`, infraestructura neutral
+del VPS que no le pertenece a `taller` ni sabe qué otros proyectos corren
+ahí). Este runbook levanta `taller` hasta el punto de estar listo para que
+ese proxy lo encuentre (red `edge`, `container_name` fijo) — el setup del
+proxy en sí, TLS incluido, está en el README de esa carpeta.
 
 Antes de empezar:
-- DNS: dos registros A apuntando a la IP del VPS —
-  `admin.tallerlallave.com` y `grafana.tallerlallave.com`. Confirmá que
-  resuelven (`dig +short admin.tallerlallave.com`) antes del paso de TLS.
+- El proxy del VPS (`reverse-proxy/`) tiene que existir y tener la red
+  `edge` creada — si es la primera vez que se levanta algo en este VPS, andá
+  primero a `reverse-proxy/README.md`.
 - Acceso SSH al VPS con un usuario que pueda `sudo`.
 
 ---
 
 `deploy.sh`, `scripts/rollback.sh` y `scripts/backup-db.sh` se ubican solos
 (resuelven su propio directorio, no asumen un usuario ni un path fijo) — cloná
-el repo donde quieras. Las entradas de `crontab` en los pasos 6 y 9 sí
-necesitan un path literal: correr `pwd` una vez que estés en el repo y
+el repo donde quieras. La entrada de `crontab` del paso 8 (backups) sí
+necesita un path literal: correr `pwd` una vez que estés en el repo y
 sustituir ese valor donde diga `<REPO_DIR>`.
 
 ## 1. Hardening del VPS (una sola vez)
@@ -97,57 +101,34 @@ git pull origin main
 `${{ github.sha }}` al mergear a `main` — `deploy.sh` va a pinnear ese tag
 automáticamente a partir del commit que acabás de traer.)
 
-## 4. Levantar el stack base (sin `edge` todavía)
+## 4. Levantar el stack
 
 ```bash
 ./deploy.sh
 ```
 
-Esto trae `db`, corre migraciones + seed, y levanta `api`/`frontend`. Verificá
-que Postgres **no** quedó publicado al host:
+Esto trae `db`, corre migraciones + seed, y levanta `api`/`frontend`.
+`frontend` se suma solo a la red `edge` (ver `docker-compose.yml`) — tiene
+que existir de antes (`docker network create edge`, normalmente ya hecho
+por el setup de `reverse-proxy/`). Verificá que Postgres **no** quedó
+publicado al host:
 
 ```bash
 docker compose ps
 ss -tlnp | grep 5432   # no debería haber nada
 ```
 
-## 5. TLS: bootstrap → certificado → final
+## 5. TLS y reverse proxy
 
-```bash
-# 5a. Config HTTP-only para poder validar el dominio con certbot
-cp deploy/nginx-edge/nginx.bootstrap.conf deploy/nginx-edge/nginx.conf
-docker compose up -d edge
+No son un paso de este repo. `frontend` (y `grafana`, sección 6) ya están
+listos para que el proxy los encuentre — falta el lado del proxy, que se
+hace una sola vez en `reverse-proxy/` (certificado, dominio → contenedor,
+renovación automática). Ver `reverse-proxy/README.md`.
 
-# 5b. Primer certificado (ajustá el email)
-docker compose run --rm certbot certonly --webroot -w /var/www/certbot \
-  -d admin.tallerlallave.com -d grafana.tallerlallave.com \
-  --email tu-email@ejemplo.com --agree-tos --no-eff-email
+Probá `https://admin.tallerlallave.com` en el navegador después de ese paso
+— certificado válido, sin warnings.
 
-# 5c. Restaurar la config HTTPS real desde git y recargar (sin downtime)
-git checkout -- deploy/nginx-edge/nginx.conf
-docker compose exec edge nginx -t      # valida la config antes de recargar
-docker compose exec edge nginx -s reload
-```
-
-Probá `https://admin.tallerlallave.com` en el navegador — certificado válido,
-sin warnings.
-
-## 6. Renovación automática del certificado
-
-```bash
-crontab -e
-```
-
-Agregar:
-
-```
-0 3,15 * * * cd <REPO_DIR> && docker compose run --rm certbot renew --quiet && docker compose exec edge nginx -s reload
-```
-
-Corre dos veces al día; certbot no hace nada si al certificado le quedan más
-de 30 días de vida, así que es seguro dejarlo así.
-
-## 7. Observabilidad (Grafana + Loki + Promtail)
+## 6. Observabilidad (Grafana + Loki + Promtail)
 
 ```bash
 docker compose -f docker-compose.observability.yml up -d
@@ -163,7 +144,7 @@ provisionado. En **Explore**, elegí Loki y probá:
 
 Deberías ver las líneas JSON de acceso/errores de la API en tiempo real.
 
-## 8. Alerta de tasa de errores
+## 7. Alerta de tasa de errores
 
 En Grafana: **Alerting → Alert rules → New rule**, query sobre Loki:
 
@@ -176,7 +157,7 @@ notificación: definir según lo que uses (email vía SMTP, webhook a
 Slack/Discord, etc.) — no está preconfigurado, hay que darlo de alta en
 **Alerting → Contact points**.
 
-## 9. Backups
+## 8. Backups
 
 ```bash
 crontab -e
@@ -196,7 +177,7 @@ ls -lh backups/
 gunzip -t backups/*.sql.gz   # confirma que no está corrupto
 ```
 
-## 10. Probar deploy + rollback antes de necesitarlo en un incidente real
+## 9. Probar deploy + rollback antes de necesitarlo en un incidente real
 
 ```bash
 ./deploy.sh                  # despliega el HEAD actual
