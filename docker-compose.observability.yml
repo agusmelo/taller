@@ -5,8 +5,9 @@
 # Usage:
 #   docker compose -f docker-compose.observability.yml up -d
 #
-# Grafana is reachable at https://grafana.tallerlallave.com (via `edge` in
-# the main compose file, see deploy/nginx-edge/nginx.conf).
+# Grafana is reachable at https://grafana.tallerlallave.com via el reverse
+# proxy del VPS (carpeta reverse-proxy/, fuera de este repo) — por eso
+# grafana, a diferencia de loki/promtail, también se suma a la red `edge`.
 
 services:
   loki:
@@ -46,6 +47,9 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - default
+      - edge
     depends_on:
       - loki
 
@@ -56,4 +60,6 @@ volumes:
 networks:
   default:
     name: workshop-net
+    external: true
+  edge:
     external: true
