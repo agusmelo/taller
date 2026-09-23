@@ -59,9 +59,26 @@ ALTER TABLE job_items
   ADD COLUMN IF NOT EXISTS pricing_mode VARCHAR(20) NULL;
 
 UPDATE job_items
-   SET pricing_mode = CASE WHEN parent_id IS NULL THEN 'detallado' ELSE NULL END
- WHERE pricing_mode IS DISTINCT FROM
-       (CASE WHEN parent_id IS NULL THEN 'detallado' ELSE NULL END);
+   SET pricing_mode = NULL
+ WHERE parent_id IS NOT NULL AND pricing_mode IS NOT NULL;
+
+-- Backfill roots ONLY where the column has never been touched (IS NULL) —
+-- never overwrite an explicit 'agregado' a user chose after the first run.
+--
+-- HOTFIX 2026-09-23 (docs/incidents/2026-09-22-mano-de-obra-pricing-mode.md):
+-- this used to be a single UPDATE keyed off "pricing_mode IS DISTINCT FROM
+-- 'detallado'". run.js has no migration-tracking table — it re-runs every
+-- file on every deploy, relying on each one being a no-op after the first
+-- successful run. That version was NOT one: any root a user had since set to
+-- 'agregado' also satisfies "IS DISTINCT FROM 'detallado'", so the next
+-- deploy silently flipped it back to 'detallado' — and an 'agregado' group's
+-- children never carry their own price, so the group's total collapsed to 0.
+-- Confirmed against a pre-incident backup: a real $12000 'agregado' root
+-- came back as 'detallado' / $0 after a deploy. "IS NULL" cannot make this
+-- mistake: once a root has ANY pricing_mode, this UPDATE leaves it alone.
+UPDATE job_items
+   SET pricing_mode = 'detallado'
+ WHERE parent_id IS NULL AND pricing_mode IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- Constraints. Named + guarded so re-running the migration is a no-op.
