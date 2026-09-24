@@ -36,6 +36,11 @@ services:
       FLYWAY_USER: workshop
       FLYWAY_PASSWORD: workshop123
       FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      # Sin efecto contra una db-test vacía (el caso normal de QA) — solo
+      # entra en juego si scripts/restore-backup.sh cargó un backup real acá
+      # para probar algo contra datos de producción antes de deployar.
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_BASELINE_VERSION: "24"
     volumes:
       - ./workshop-backend/migrations:/flyway/sql:ro
     command: migrate
