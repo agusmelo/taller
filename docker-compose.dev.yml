@@ -26,10 +26,30 @@ services:
       timeout: 5s
       retries: 10
 
+  # Flyway — ver docker-compose.yml para el porqué (reemplaza migrations/run.js).
   migrate-dev:
+    image: flyway/flyway:10-alpine
+    container_name: workshop-migrate-dev
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db-dev:5432/${DB_NAME}
+      FLYWAY_USER: ${DB_USER}
+      FLYWAY_PASSWORD: ${DB_PASSWORD}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_BASELINE_VERSION: "24"
+      FLYWAY_BASELINE_DESCRIPTION: pre-flyway (migrations/run.js)
+    volumes:
+      - ./workshop-backend/migrations:/flyway/sql:ro
+    command: migrate
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    restart: "no"
+
+  seed-dev:
     build:
       context: ./workshop-backend
-    container_name: workshop-migrate-dev
+    container_name: workshop-seed-dev
     environment:
       DB_HOST: db-dev
       DB_PORT: 5432
@@ -40,11 +60,11 @@ services:
       SEED_RECEP_PASSWORD: ${SEED_RECEP_PASSWORD}
       SEED_MECH_PASSWORD: ${SEED_MECH_PASSWORD}
     depends_on:
-      db-dev:
-        condition: service_healthy
+      migrate-dev:
+        condition: service_completed_successfully
     # Regular seed.js (small, idempotent sample data) — not the QA dataset
     # used by the test environment.
-    command: sh -c "node migrations/run.js && node scripts/seed.js"
+    command: node scripts/seed.js
     restart: "no"
 
   api-dev:
@@ -77,7 +97,7 @@ services:
     depends_on:
       db-dev:
         condition: service_healthy
-      migrate-dev:
+      seed-dev:
         condition: service_completed_successfully
 
   frontend-dev:

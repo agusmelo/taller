@@ -25,8 +25,11 @@ docker compose pull
 echo "Stopping api/frontend..."
 docker compose stop api frontend
 
-echo "Running migrations..."
+echo "Running migrations (Flyway)..."
 docker compose run --rm migrate
+
+echo "Seeding..."
+docker compose run --rm seed
 
 echo "Starting services..."
 docker compose up -d api frontend
@@ -37,4 +40,4 @@ echo "Cleaning old images..."
 docker image prune -f
 
 echo "Deployed $IMAGE_TAG. Previous tag saved in .last-good-tag (use scripts/rollback.sh to revert)."
-echo "NOTE: rollback only reverts the app images, not the database schema — migrations are forward-only."
+echo "NOTE: rollback only reverts the app images, not the database schema — migrations are forward-only. See docs/database-migrations-and-rollbacks.md."
