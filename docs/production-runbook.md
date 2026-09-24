@@ -85,8 +85,10 @@ automáticamente a partir del commit que acabás de traer.)
 ./deploy.sh
 ```
 
-Esto trae `db`, corre migraciones + seed, y levanta `api`/`frontend`.
-`frontend` se suma solo a la red `edge` (ver `docker-compose.yml`) — tiene
+Esto trae `db`, corre migraciones (Flyway — ver
+`docs/database-migrations-and-rollbacks.md`) + seed, y levanta
+`api`/`frontend`. `frontend` se suma solo a la red `edge` (ver
+`docker-compose.yml`) — tiene
 que existir de antes (`docker network create edge`, normalmente ya hecho
 por el setup de `reverse-proxy/`). Verificá que Postgres **no** quedó
 publicado al host:

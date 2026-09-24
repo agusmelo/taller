@@ -142,11 +142,15 @@ está protegida contra re-ejecutarse con datos reales de por medio**, porque
 quien lo escribe recuerde hacerlo perfectamente idempotente — que es
 exactamente lo que falló acá.
 
-Evaluamos migrar a **Flyway** (o una herramienta equivalente con tabla de
-historial y checksums) para eliminar esta clase de bug de raíz: una vez que
-Flyway registra una migración como aplicada, no la vuelve a correr —
-punto, sin depender de que el SQL sea idempotente. Detalle de la propuesta
-en la sección correspondiente de este mismo incidente / seguimiento.
+**Hecho**: se migró a **Flyway** para eliminar esta clase de bug de raíz —
+una vez que Flyway registra una migración como aplicada, no la vuelve a
+correr, sin depender de que el SQL sea idempotente. Los 24 archivos pasaron
+a la convención `V1__...` .. `V24__...`, y `migrations/run.js` se retiró.
+Probado: instalación nueva desde cero, y el escenario real (una base con el
+historial viejo de `run.js`, sin tabla de Flyway) usando `baselineOnMigrate`
+— en los dos casos, correr `migrate` una segunda y tercera vez no vuelve a
+tocar nada. Ver `docs/database-migrations-and-rollbacks.md` para el diseño
+completo y el playbook de rollback.
 
 ## Reparación de datos (pendiente, manual)
 

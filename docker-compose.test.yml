@@ -23,13 +23,31 @@ services:
       timeout: 5s
       retries: 10
 
-  # One-shot: applies migrations then loads the fixed QA dataset. Re-run any
-  # time with `docker compose -f docker-compose.test.yml run --rm migrate-test`
-  # to reset the database back to its seeded state.
+  # One-shot: aplica las migraciones (Flyway, ver docker-compose.yml) y carga
+  # el dataset fijo de QA. Re-correr en cualquier momento con
+  # `docker compose -f docker-compose.test.yml up migrate-test seed-test`
+  # para resetear la base al estado sembrado (db-test es efímera igual, así
+  # que el uso normal es recrearla entera).
   migrate-test:
+    image: flyway/flyway:10-alpine
+    container_name: workshop-migrate-test
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db-test:5432/workshop_test
+      FLYWAY_USER: workshop
+      FLYWAY_PASSWORD: workshop123
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+    volumes:
+      - ./workshop-backend/migrations:/flyway/sql:ro
+    command: migrate
+    depends_on:
+      db-test:
+        condition: service_healthy
+    restart: "no"
+
+  seed-test:
     build:
       context: ./workshop-backend
-    container_name: workshop-migrate-test
+    container_name: workshop-seed-test
     environment:
       DB_HOST: db-test
       DB_PORT: 5432
@@ -37,9 +55,9 @@ services:
       DB_USER: workshop
       DB_PASSWORD: workshop123
     depends_on:
-      db-test:
-        condition: service_healthy
-    command: sh -c "node migrations/run.js && node scripts/seed-test.js"
+      migrate-test:
+        condition: service_completed_successfully
+    command: node scripts/seed-test.js
     restart: "no"
 
   api-test:
@@ -72,7 +90,7 @@ services:
     depends_on:
       db-test:
         condition: service_healthy
-      migrate-test:
+      seed-test:
         condition: service_completed_successfully
 
   frontend-test:

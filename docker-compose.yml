@@ -20,11 +20,42 @@ services:
       timeout: 5s
       retries: 10
 
+  # Flyway reemplaza a migrations/run.js (ver
+  # docs/database-migrations-and-rollbacks.md). Diferencia que importa: esto
+  # SÍ trackea qué migración ya corrió (tabla flyway_schema_history) — nunca
+  # vuelve a ejecutar una que ya aplicó, a diferencia de run.js, que corría
+  # las 24 en cada deploy y fue la causa raíz del incidente de
+  # docs/incidents/2026-09-22-mano-de-obra-pricing-mode.md.
+  #
+  # baselineOnMigrate + baselineVersion=24: la primera vez que esto corre
+  # contra una base que YA tiene el historial de run.js (prod, tu Postgres de
+  # dev), Flyway la marca como "ya está en V24" sin re-ejecutar nada, y
+  # arranca a aplicar V25 en adelante. Contra una base nueva de verdad (CI,
+  # un dev nuevo), no hay nada que baselinear — corre V1..V24 tal cual.
   migrate:
+    image: flyway/flyway:10-alpine
+    container_name: workshop-migrate
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db:5432/${DB_NAME}
+      FLYWAY_USER: ${DB_USER}
+      FLYWAY_PASSWORD: ${DB_PASSWORD}
+      FLYWAY_LOCATIONS: filesystem:/flyway/sql
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+      FLYWAY_BASELINE_VERSION: "24"
+      FLYWAY_BASELINE_DESCRIPTION: pre-flyway (migrations/run.js)
+    volumes:
+      - ./workshop-backend/migrations:/flyway/sql:ro
+    command: migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
     image: ozzon42/ozzon-images:migrate-${IMAGE_TAG:-latest}
     build:
       context: ./workshop-backend
-    container_name: workshop-migrate
+    container_name: workshop-seed
     environment:
       DB_HOST: db
       DB_PORT: 5432
@@ -35,9 +66,9 @@ services:
       SEED_RECEP_PASSWORD: ${SEED_RECEP_PASSWORD}
       SEED_MECH_PASSWORD: ${SEED_MECH_PASSWORD}
     depends_on:
-      db:
-        condition: service_healthy
-    command: sh -c "node migrations/run.js && node scripts/seed.js"
+      migrate:
+        condition: service_completed_successfully
+    command: node scripts/seed.js
     restart: "no"
 
   api:
@@ -89,7 +120,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migrate:
+      seed:
         condition: service_completed_successfully
 
   frontend:
